@@ -67,8 +67,13 @@ lemma (in Digraph) paths_are_contiguous:
 
 lemma (in Digraph) path_dom_ends_on_finite_paths:
   assumes "valid_path P" "finite_path P"
-  obtains i where "i \<in> path_dom P \<and> P (i + 1) = None"
-  by (metis (mono_tags, lifting) Suc_eq_plus1 assms(2) finite_path_def lessI less_imp_le mem_Collect_eq not_less path_dom_def)
+  shows "\<exists>!i \<in> path_dom P. P (i + 1) = None"
+  proof -
+    obtain i where i_def: "i \<in> path_dom P \<and> P (i + 1) = None"
+      by (metis (mono_tags, lifting) Suc_eq_plus1 assms(2) finite_path_def less_Suc_eq less_irrefl mem_Collect_eq path_dom_def)
+    thus ?thesis
+      by (metis (mono_tags, lifting) One_nat_def add.right_neutral add_Suc_right assms(2) finite_path_def less_Suc_eq mem_Collect_eq path_dom_def)
+  qed
 
 (* The set of nodes that occur infinitely often on a given path. *)
 definition (in ParityGame) path_inf :: "Path \<Rightarrow> Vertex set" where
@@ -116,7 +121,7 @@ fun winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
   | "winning_priority Odd = odd"
 
 lemma winning_priority_for_one_player:
-  shows "winning_priority p i \<or> winning_priority p** i"
+  shows "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i"
   by (metis (full_types) Player.distinct(1) other_player.simps(1) other_player.simps(2) winning_priority.elims)
 
 (* True iff the path is winning for the given player. *)
@@ -125,19 +130,31 @@ definition (in ParityGame) winning_path :: "Player \<Rightarrow> Path \<Rightarr
     (infinite_path P \<and> (\<exists>a \<in> path_inf_priorities P. (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
     \<or> (finite_path P \<and> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV p**))"
 
-lemma (in "ParityGame") paths_are_winning_for_one_player:
+lemma (in "ParityGame") paths_are_winning_for_exactly_one_player:
   assumes "valid_path P"
-  shows "\<exists>p. winning_path p P"
+  shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
   proof (cases)
     assume infinite: "infinite_path P"
     then obtain a where "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)" using assms path_inf_priorities_has_minimum by blast
-    thus ?thesis by (meson infinite winning_path_def winning_priority_for_one_player)
+    thus ?thesis by (metis infinite infinite_path_def le_antisym winning_path_def winning_priority_for_one_player)
   next
-    assume "\<not>infinite_path P"
+    assume not_infinite: "\<not>infinite_path P"
     hence finite: "finite_path P" using assms valid_path_def by blast
-    then obtain i where "i \<in> path_dom P \<and> P (i+1) = None" using assms path_dom_ends_on_finite_paths by blast
-    thus ?thesis by (metis Diff_iff VV.simps(1) VV.simps(2) assms local.finite other_player.simps(1) other_player.simps(2) valid_path_def winning_path_def)
+    then obtain i where i_def: "i \<in> path_dom P \<and> P (i+1) = None" using assms path_dom_ends_on_finite_paths by blast
+    def v \<equiv> "the (P i)" (* the last vertex in the path *)
+    hence "\<And>q. winning_path q P \<longleftrightarrow> v \<in> VV q**"
+      using not_infinite assms local.finite path_dom_ends_on_finite_paths winning_path_def i_def by auto
+    hence "\<And>q. winning_path q P \<equiv> v \<in> VV q**" by fastforce
+    hence "v \<in> VV p** \<longleftrightarrow> \<not>v \<in> VV p \<Longrightarrow> ?thesis"
+      by (metis (full_types) Player.exhaust other_player.simps(1) other_player.simps(2))
+    thus ?thesis
+      by (metis (full_types) Diff_iff Player.exhaust VV.simps(1) VV.simps(2) assms i_def other_player.simps(1) other_player.simps(2) valid_path_def v_def)
   qed
+
+lemma (in "ParityGame") paths_are_winning_for_one_player:
+  assumes "valid_path P"
+  shows "\<exists>!p. winning_path p P"
+  by (metis (full_types) VV.elims assms paths_are_winning_for_exactly_one_player)
 
 definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> Strategy \<Rightarrow> Vertex \<Rightarrow> bool" where
   "winning_strategy p \<sigma> v == \<forall>P. P 0 = Some v \<longrightarrow> path_conforms_with_strategy p P \<sigma> \<longrightarrow> winning_path p P"
