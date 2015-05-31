@@ -158,7 +158,27 @@ lemma (in "ParityGame") paths_are_winning_for_one_player:
   by (metis (full_types) VV.elims assms paths_are_winning_for_exactly_one_player)
 
 definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> Strategy \<Rightarrow> Vertex \<Rightarrow> bool" where
-  "winning_strategy p \<sigma> v \<equiv> \<forall>P. P 0 = Some v \<longrightarrow> path_conforms_with_strategy p P \<sigma> \<longrightarrow> winning_path p P"
+  [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. P 0 = Some v \<longrightarrow> path_conforms_with_strategy p P \<sigma> \<longrightarrow> winning_path p P"
+
+theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
+  assumes "v \<in> V"
+  and "\<forall>w \<in> V. \<omega>(w) = 0"
+  shows "\<exists>p :: Player. \<exists>\<sigma> :: Strategy. positional_strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
+  proof -
+    {
+      fix P :: "Path"
+      assume "valid_path P" "infinite_path P"
+      then obtain v where "v \<in> path_inf P" using path_inf_is_nonempty by blast
+      then obtain i where "P i = Some v" using path_inf_def by auto
+      hence "v \<in> V" using assms using `valid_path P`
+        by (metis (no_types) domI dom_def option.sel path_dom_def valid_path_def)
+      hence "\<omega>(v) = 0" using assms by blast
+      hence "winning_path Even P" by sledgehammer
+      obtain p where "winning_path p P" using paths_are_winning_for_one_player by blast
+      hence "p = Even" by sledgehamme
+    }
+    show ?thesis sorry
+  qed
 
 theorem (in "ParityGame") positional_strategy_exists:
   assumes "v \<in> V"
