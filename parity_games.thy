@@ -6,6 +6,29 @@ begin
 
 type_synonym Vertex = "nat"
 type_synonym Edge = "nat \<times> nat"
+type_synonym Path = "nat \<Rightarrow> Vertex option"
+type_synonym Strategy = "Vertex \<Rightarrow> Vertex option"
+
+definition infinite_path :: "Path \<Rightarrow> bool" where [simp]: "infinite_path P \<equiv> \<forall>i. P i  \<noteq> None"
+definition finite_path :: "Path \<Rightarrow> bool" where [simp]: "finite_path P \<equiv> \<exists>i. \<forall>j. (j > i \<longleftrightarrow> P j = None)"
+definition path_dom :: "Path \<Rightarrow> nat set" where [simp]: "path_dom P = {i. P i \<noteq> None}"
+(* The set of nodes that occur infinitely often on a given path. *)
+definition path_inf :: "Path \<Rightarrow> Vertex set" where
+  "path_inf P \<equiv> {v. (\<exists>i. P i = Some v) \<and> (\<forall>i. P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v))}"
+
+lemma paths_are_contiguous:
+  assumes "infinite_path P \<or> finite_path P"
+  shows "P i \<noteq> None \<Longrightarrow> \<forall>j \<le> i. P j \<noteq> None"
+  by (metis assms finite_path_def infinite_path_def leD le_less_linear le_trans)
+lemma path_dom_ends_on_finite_paths:
+  assumes finite: "finite_path P"
+  shows "\<exists>!i \<in> path_dom P. P (i + 1) = None"
+  proof -
+    obtain i where "\<forall>j. (j > i \<longleftrightarrow> P j = None)" using finite by fastforce
+    hence "i \<in> path_dom P \<and> P (i + 1) = None" by auto
+    thus ?thesis
+      by (metis (mono_tags, lifting) One_nat_def add.right_neutral add_Suc_right finite finite_path_def less_Suc_eq mem_Collect_eq path_dom_def)
+  qed
 
 record Graph =
   verts :: "Vertex set"
@@ -16,78 +39,43 @@ locale Digraph = fixes G :: "Graph"
     and non_empty_vertex_set: "\<exists>v. v \<in> verts G"
     and valid_edge_set: "arcs G \<subseteq> verts G \<times> verts G"
 begin
-  abbreviation "V \<equiv> verts G"
-  abbreviation "E \<equiv> arcs G"
+abbreviation "V \<equiv> verts G"
+abbreviation "E \<equiv> arcs G"
+definition deadend :: "Vertex \<Rightarrow> bool" where [simp]: "deadend v \<equiv> \<not>(\<exists>w \<in> V. (v,w) \<in> E)"
+definition valid_path :: "Path \<Rightarrow> bool" where
+  [simp]: "valid_path P \<equiv> (infinite_path P \<or> finite_path P)
+    \<and> (\<forall>i \<in> path_dom P. the (P i) \<in> V
+      \<and> (\<not>deadend (the (P i)) \<longrightarrow> (the (P i), the (P (i+1))) \<in> E))"
 end
 
-record ParityGameVertex =
-  player0 :: bool
-  priority :: nat
+datatype Player = Even | Odd
+fun other_player :: "Player \<Rightarrow> Player" where "other_player Even = Odd" | "other_player Odd = Even"
+notation other_player ("(_**)" [1000] 1000)
+fun winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
+  "winning_priority Even = even"
+  | "winning_priority Odd = odd"
+lemma winning_priority_for_one_player:
+  shows "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i"
+  by (metis (full_types) Player.distinct(1) other_player.simps(1) other_player.simps(2) winning_priority.elims)
 
 locale ParityGame = Digraph +
-  fixes priority :: "Vertex \<Rightarrow> nat"
+  fixes priority :: "Vertex \<Rightarrow> nat" ("\<omega>")
     and player0 :: "Vertex set"
-  assumes
-     valid_player0_set "player0 \<subseteq> verts G"
+  assumes valid_player0_set: "player0 \<subseteq> V"
 begin
-  datatype Player = Even | Odd
-  fun other_player :: "Player \<Rightarrow> Player" where "other_player Even = Odd" | "other_player Odd = Even"
-  notation other_player ("(_**)" [1000] 1000)
-  abbreviation "V0 \<equiv> player0"
-  fun VV :: "Player \<Rightarrow> Vertex set" where "VV Even = V0" | "VV Odd = V - V0"
-  abbreviation "\<omega> \<equiv> priority"
+  fun VV :: "Player \<Rightarrow> Vertex set" where "VV Even = player0" | "VV Odd = V - player0"
 end
-
-type_synonym Path = "nat \<Rightarrow> Vertex option"
-type_synonym Strategy = "Vertex \<Rightarrow> Vertex option"
-
-definition (in Digraph) deadend :: "Vertex \<Rightarrow> bool" where
-  [simp]: "deadend v \<equiv> \<not>(\<exists>w \<in> V. (v,w) \<in> E)"
-
-definition (in Digraph) infinite_path :: "Path \<Rightarrow> bool" where
-  [simp]: "infinite_path P \<equiv> \<forall>i. P i  \<noteq> None"
-
-definition (in Digraph) finite_path :: "Path \<Rightarrow> bool" where
-  [simp]: "finite_path P \<equiv> \<exists>i. \<forall>j. (j > i \<longleftrightarrow> P j = None)"
-
-definition (in Digraph) path_dom :: "Path \<Rightarrow> nat set" where
-  [simp]: "path_dom P = {i. P i \<noteq> None}"
-
-definition  (in Digraph) valid_path :: "Path \<Rightarrow> bool" where
-  [simp]: "valid_path P \<equiv> (infinite_path P \<or> finite_path P)
-    \<and> (\<forall>i \<in> path_dom P.
-      the (P i) \<in> V
-      \<and> (\<not>deadend (the (P i)) \<longrightarrow> (the (P i), the (P (i+1))) \<in> E))"
-
-lemma (in Digraph) paths_are_contiguous:
-  assumes "valid_path P"
-  shows "P i \<noteq> None \<Longrightarrow> \<forall>j \<le> i. P j \<noteq> None"
-  by (metis assms dual_order.order_iff_strict dual_order.strict_trans finite_path_def infinite_path_def valid_path_def)
-
-lemma (in Digraph) path_dom_ends_on_finite_paths:
-  assumes finite: "finite_path P"
-  shows "\<exists>!i \<in> path_dom P. P (i + 1) = None"
-  proof -
-    obtain i where "\<forall>j. (j > i \<longleftrightarrow> P j = None)" using finite by fastforce
-    hence "i \<in> path_dom P \<and> P (i + 1) = None" by auto
-    thus ?thesis
-      by (metis (mono_tags, lifting) One_nat_def add.right_neutral add_Suc_right finite finite_path_def less_Suc_eq mem_Collect_eq path_dom_def)
-  qed
-
-(* The set of nodes that occur infinitely often on a given path. *)
-definition (in ParityGame) path_inf :: "Path \<Rightarrow> Vertex set" where
-  "path_inf P \<equiv> {v. (\<exists>i. P i = Some v) \<and> (\<forall>i. P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v))}"
 
 (* The set of priorities that occur infinitely often on a given path. *)
 definition (in ParityGame) path_inf_priorities :: "Path \<Rightarrow> nat set" where
-  "path_inf_priorities P \<equiv> {i. \<exists>v \<in> path_inf P. i = priority v}"
+  "path_inf_priorities P \<equiv> {\<omega> v | v. v \<in> path_inf P}"
 
-(* True iff \<sigma> is a positional strategy for the given player. *)
+(* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> Strategy \<Rightarrow> bool" where
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
 
 definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> Path \<Rightarrow> Strategy \<Rightarrow> bool" where
-  "path_conforms_with_strategy p P \<sigma> = (\<forall>i \<in> path_dom P. the (P i) \<in> VV p \<longrightarrow> \<sigma>(the (P i)) = P (i+1))"
+  "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i \<in> path_dom P. the (P i) \<in> VV p \<longrightarrow> \<sigma>(the (P i)) = P (i+1))"
 
 lemma (in "ParityGame") path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
@@ -112,16 +100,8 @@ lemma (in "ParityGame") path_inf_priorities_has_minimum:
     have "\<exists>a. a \<in> path_inf_priorities P" using assms path_inf_priorities_is_nonempty by blast
     then obtain a where "a \<in> path_inf_priorities P" "(\<And>z. z < a \<Longrightarrow> z \<notin> path_inf_priorities P)"
       by (metis less_eq less_than_def wf_less_than wfE_min)
-    thus ?thesis by (meson leI that)
+    thus ?thesis by (metis leI that)
   qed
-
-fun (in ParityGame) winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
-  "winning_priority Even = even"
-  | "winning_priority Odd = odd"
-
-lemma (in ParityGame) winning_priority_for_one_player:
-  shows "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i"
-  by (metis (full_types) Player.distinct(1) other_player.simps(1) other_player.simps(2) winning_priority.elims)
 
 (* True iff the path is winning for the given player. *)
 definition (in ParityGame) winning_path :: "Player \<Rightarrow> Path \<Rightarrow> bool" where
@@ -164,33 +144,44 @@ definition (in ParityGame) trap :: "Player \<Rightarrow> Vertex set \<Rightarrow
     (v \<in> VV p** \<longrightarrow> (\<exists>(v,w) \<in> E. w \<in> A))
     \<and> (v \<in> VV p \<longrightarrow> (\<forall>(v,w) \<in> E. w \<in> A)))"
 
+(* The attractor set of a given set of vertices. *)
+inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> Vertex set \<Rightarrow> Vertex set"
+  for p :: Player and W :: "Vertex set" where
+  0 [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
+  1: "v \<in> VV p \<Longrightarrow> \<exists>(v,w) \<in> E. w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
+  2: "v \<in> VV p** \<Longrightarrow> \<forall>(v,w) \<in> E. w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
+
+lemma (in "ParityGame") attractor_is_superset:
+  shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
+
+lemma (in "ParityGame") attractor_is_bounded_by_V:
+  assumes "W \<subseteq> V" shows "attractor p W \<subseteq> V"
+  proof -
+    { fix v assume "v \<in> attractor p W"
+      hence "v \<in> W \<or> v \<in> VV p \<or> v \<in> VV p**" using attractor.simps by blast
+      hence "v \<in> V" by (metis (full_types) Diff_subset VV.elims assms subsetCE valid_player0_set)
+    }
+    thus ?thesis by blast
+  qed
+
+(* True iff the given set is attractor closed. *)
 definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> Vertex set \<Rightarrow> bool" where
   "attractor_closed p W \<equiv> \<forall>v \<in> V.
     (v \<in> VV p - W \<longrightarrow> (\<forall>(v,w) \<in> E. w \<notin> W))
     \<and> (v \<in> VV p** - W \<longrightarrow> (\<exists>(v,w) \<in> E. w \<notin> W))"
 
-inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> Vertex set \<Rightarrow> Vertex set"
-  for p :: Player and W :: "Vertex set" where
-  [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
-  "(v \<in> VV p \<longrightarrow> (\<exists>(v,w) \<in> E. w \<in> attractor p W)) \<or> (v \<in> VV p** \<longrightarrow> (\<forall>(v,w) \<in> E. w \<in> attractor p W))
-    \<Longrightarrow> v \<in> attractor p W"
-
-lemma (in "ParityGame") attractor_is_superset:
-  shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
-
+(* Show that the attractor set is indeed attractor closed. *)
 lemma (in "ParityGame") attractor_is_attractor_closed:
   shows "attractor_closed p (attractor p W)"
   proof -
     def A \<equiv> "attractor p W"
     {
       fix v assume "v \<in> VV p - A"
-      hence "\<forall>(v,w) \<in> E. w \<notin> A"
-        by (metis A_def DiffD2 attractor.intros(2) case_prodI case_prodI2)
+      hence "\<forall>(v,w) \<in> E. w \<notin> A" by (metis A_def DiffD1 DiffD2 attractor.intros(2) case_prodI2 splitI)
     } moreover
     {
       fix v assume "v \<in> VV p** - A"
-      hence "\<exists>(v,w) \<in> E. w \<notin> A"
-        by (metis A_def DiffD2 attractor.intros(2) case_prodI case_prodI2)
+      hence "\<exists>(v,w) \<in> E. w \<notin> A" by (metis A_def DiffD1 DiffD2 attractor.intros(3) case_prodI2 splitI)
     }
     ultimately show ?thesis using A_def by (simp add: attractor_closed_def)
   qed
