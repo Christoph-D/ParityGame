@@ -4,8 +4,8 @@ imports
   pigeon_hole_principle
 begin
 
-type_synonym Vertex = "nat"
-type_synonym Edge = "nat \<times> nat"
+typedecl Vertex
+type_synonym Edge = "Vertex \<times> Vertex"
 type_synonym Path = "nat \<Rightarrow> Vertex option"
 type_synonym Strategy = "Vertex \<Rightarrow> Vertex option"
 
