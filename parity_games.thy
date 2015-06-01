@@ -147,9 +147,9 @@ definition (in ParityGame) trap :: "Player \<Rightarrow> Vertex set \<Rightarrow
 (* The attractor set of a given set of vertices. *)
 inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> Vertex set \<Rightarrow> Vertex set"
   for p :: Player and W :: "Vertex set" where
-  0 [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
-  1: "v \<in> VV p \<Longrightarrow> \<exists>(v,w) \<in> E. w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
-  2: "v \<in> VV p** \<Longrightarrow> \<forall>(v,w) \<in> E. w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
+  [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
+  "v \<in> VV p \<Longrightarrow> \<exists>(v,w) \<in> E. w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
+  "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>(v,w) \<in> E. w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
 
 lemma (in "ParityGame") attractor_is_superset:
   shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
@@ -164,11 +164,14 @@ lemma (in "ParityGame") attractor_is_bounded_by_V:
     thus ?thesis by blast
   qed
 
+lemma (in "ParityGame") attractor_is_finite:
+  assumes "W \<subseteq> V" shows "finite (attractor p W)" by (metis assms attractor_is_bounded_by_V finite_vertex_set rev_finite_subset)
+
 (* True iff the given set is attractor closed. *)
 definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> Vertex set \<Rightarrow> bool" where
   "attractor_closed p W \<equiv> \<forall>v \<in> V.
     (v \<in> VV p - W \<longrightarrow> (\<forall>(v,w) \<in> E. w \<notin> W))
-    \<and> (v \<in> VV p** - W \<longrightarrow> (\<exists>(v,w) \<in> E. w \<notin> W))"
+    \<and> (\<not>deadend v \<and> v \<in> VV p** - W \<longrightarrow> (\<exists>(v,w) \<in> E. w \<notin> W))"
 
 (* Show that the attractor set is indeed attractor closed. *)
 lemma (in "ParityGame") attractor_is_attractor_closed:
@@ -180,10 +183,73 @@ lemma (in "ParityGame") attractor_is_attractor_closed:
       hence "\<forall>(v,w) \<in> E. w \<notin> A" by (metis A_def DiffD1 DiffD2 attractor.intros(2) case_prodI2 splitI)
     } moreover
     {
-      fix v assume "v \<in> VV p** - A"
+      fix v assume "v \<in> VV p** - A" "\<not>deadend v"
       hence "\<exists>(v,w) \<in> E. w \<notin> A" by (metis A_def DiffD1 DiffD2 attractor.intros(3) case_prodI2 splitI)
     }
-    ultimately show ?thesis using A_def by (simp add: attractor_closed_def)
+    ultimately show ?thesis using A_def by (metis Diff_iff attractor_closed_def)
+  qed
+
+(* Maybe something like the following is useful for proofs by induction? *)
+lemma (in "ParityGame")
+  assumes "W \<subseteq> V" and "A = attractor p W" and "W \<noteq> {}"
+  shows "\<exists>x \<in> V. \<forall>v \<in> A. v \<in> W
+    \<or> (v \<in> VV p \<and> (\<exists>(v,w) \<in> E. w \<in> A))
+    \<or> (\<not>deadend v \<and> v \<in> VV p** \<and> (\<forall>(v,w) \<in> E. w \<in> A))"
+  proof-
+    show ?thesis sorry
+  qed
+
+definition (in ParityGame) absorbed :: "Vertex \<Rightarrow> (Vertex list) set \<Rightarrow> bool" where
+  "absorbed v T \<equiv> (\<exists>q \<in> T. hd q = v) \<or> (\<forall>(v,w) \<in> E. \<exists>q \<in> T. hd q = w)"
+
+lemma (in ParityGame) absorbed_mono:
+  assumes "A \<subseteq> B"
+  shows "absorbed v A \<longrightarrow> absorbed v B"
+  proof-
+    { fix v assume 0: "absorbed v A"
+      have "absorbed v B" proof cases
+        assume "\<exists>q \<in> A. hd q = v"
+        thus ?thesis using absorbed_def assms by blast
+      next
+        assume "\<not>(\<exists>q \<in> A. hd q = v)"
+        thus ?thesis using 0 absorbed_def assms by fastforce
+      qed
+    }
+    thus ?thesis using assms by blast
+  qed
+
+inductive_set (in ParityGame) attractor_pre_strategy :: "Player \<Rightarrow> Vertex set \<Rightarrow> (Vertex list) set"
+  for p :: Player and W :: "Vertex set" where
+  "v \<in> W \<Longrightarrow> [v] \<in> attractor_pre_strategy p W" |
+  "w#rest \<in> attractor_pre_strategy p W \<Longrightarrow> v \<in> VV p \<Longrightarrow> (v,w) \<in> E
+    \<Longrightarrow> v#(w#rest) \<in> attractor_pre_strategy p W" |
+  "w#rest \<in> attractor_pre_strategy p W \<Longrightarrow> v \<in> VV p** \<Longrightarrow> (v,w) \<in> E
+    \<Longrightarrow> absorbed v (attractor_pre_strategy p W)
+    \<Longrightarrow> v#(w#rest) \<in> attractor_pre_strategy p W"
+  monos absorbed_mono
+
+lemma (in ParityGame)
+  assumes "v \<in> attractor p W" and "v \<notin> W"
+  shows "\<exists>q \<in> attractor_pre_strategy p W. hd q = v"
+  sorry
+
+lemma (in ParityGame)
+  assumes "q \<in> attractor_pre_strategy p W" and "last q = v"
+  shows "v \<in> W"
+  sorry
+
+lemma (in "ParityGame") attractor_has_strategy:
+  shows "\<exists>\<sigma>. positional_strategy p \<sigma> \<and> (\<forall>v \<in> attractor p W. \<forall>P. P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>v \<in> path_dom P. v \<in> W))"
+  proof -
+    have closed: "attractor_closed p (attractor p W)" using attractor_is_attractor_closed by simp
+    {
+      assume "v \<in> attractor p W" and "v \<notin> W"
+      hence "v \<in> VV p - W \<or> v \<in> VV p** - W" using attractor.simps by blast
+      {
+        assume "v \<in> VV p - W"
+        hence "\<exists>(v,w) \<in> E. w \<in> attractor p W" using closed sorry
+      }
+    }
   qed
 
 theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
@@ -199,9 +265,9 @@ theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
       hence "v \<in> V" using assms using `valid_path P`
         by (metis (no_types) domI dom_def option.sel path_dom_def valid_path_def)
       hence "\<omega>(v) = 0" using assms by blast
-      hence "winning_path Even P" by sledgehammer
+      hence "winning_path Even P" sorry
       obtain p where "winning_path p P" using paths_are_winning_for_one_player by blast
-      hence "p = Even" by sledgehamme
+      hence "p = Even" sorry
     }
     show ?thesis sorry
   qed
