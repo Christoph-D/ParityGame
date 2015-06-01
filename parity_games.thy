@@ -24,16 +24,15 @@ record ParityGameVertex =
   player0 :: bool
   priority :: nat
 
-datatype Player = Even | Odd
-fun other_player :: "Player \<Rightarrow> Player" where "other_player Even = Odd" | "other_player Odd = Even"
-notation other_player ("(_**)" [1000] 1000)
-
 locale ParityGame = Digraph +
   fixes priority :: "Vertex \<Rightarrow> nat"
     and player0 :: "Vertex set"
   assumes
      valid_player0_set "player0 \<subseteq> verts G"
 begin
+  datatype Player = Even | Odd
+  fun other_player :: "Player \<Rightarrow> Player" where "other_player Even = Odd" | "other_player Odd = Even"
+  notation other_player ("(_**)" [1000] 1000)
   abbreviation "V0 \<equiv> player0"
   fun VV :: "Player \<Rightarrow> Vertex set" where "VV Even = V0" | "VV Odd = V - V0"
   abbreviation "\<omega> \<equiv> priority"
@@ -116,11 +115,11 @@ lemma (in "ParityGame") path_inf_priorities_has_minimum:
     thus ?thesis by (meson leI that)
   qed
 
-fun winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
+fun (in ParityGame) winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
   "winning_priority Even = even"
   | "winning_priority Odd = odd"
 
-lemma winning_priority_for_one_player:
+lemma (in ParityGame) winning_priority_for_one_player:
   shows "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i"
   by (metis (full_types) Player.distinct(1) other_player.simps(1) other_player.simps(2) winning_priority.elims)
 
@@ -159,6 +158,42 @@ lemma (in "ParityGame") paths_are_winning_for_one_player:
 
 definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> Strategy \<Rightarrow> Vertex \<Rightarrow> bool" where
   [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. P 0 = Some v \<longrightarrow> path_conforms_with_strategy p P \<sigma> \<longrightarrow> winning_path p P"
+
+definition (in ParityGame) trap :: "Player \<Rightarrow> Vertex set \<Rightarrow> bool" where
+  "trap p A \<equiv> (\<forall>v \<in> A. \<not>deadend v \<longrightarrow>
+    (v \<in> VV p** \<longrightarrow> (\<exists>(v,w) \<in> E. w \<in> A))
+    \<and> (v \<in> VV p \<longrightarrow> (\<forall>(v,w) \<in> E. w \<in> A)))"
+
+definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> Vertex set \<Rightarrow> bool" where
+  "attractor_closed p W \<equiv> \<forall>v \<in> V.
+    (v \<in> VV p - W \<longrightarrow> (\<forall>(v,w) \<in> E. w \<notin> W))
+    \<and> (v \<in> VV p** - W \<longrightarrow> (\<exists>(v,w) \<in> E. w \<notin> W))"
+
+inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> Vertex set \<Rightarrow> Vertex set"
+  for p :: Player and W :: "Vertex set" where
+  [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
+  "(v \<in> VV p \<longrightarrow> (\<exists>(v,w) \<in> E. w \<in> attractor p W)) \<or> (v \<in> VV p** \<longrightarrow> (\<forall>(v,w) \<in> E. w \<in> attractor p W))
+    \<Longrightarrow> v \<in> attractor p W"
+
+lemma (in "ParityGame") attractor_is_superset:
+  shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
+
+lemma (in "ParityGame") attractor_is_attractor_closed:
+  shows "attractor_closed p (attractor p W)"
+  proof -
+    def A \<equiv> "attractor p W"
+    {
+      fix v assume "v \<in> VV p - A"
+      hence "\<forall>(v,w) \<in> E. w \<notin> A"
+        by (metis A_def DiffD2 attractor.intros(2) case_prodI case_prodI2)
+    } moreover
+    {
+      fix v assume "v \<in> VV p** - A"
+      hence "\<exists>(v,w) \<in> E. w \<notin> A"
+        by (metis A_def DiffD2 attractor.intros(2) case_prodI case_prodI2)
+    }
+    ultimately show ?thesis using A_def by (simp add: attractor_closed_def)
+  qed
 
 theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
