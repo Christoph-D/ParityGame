@@ -9,7 +9,7 @@ begin
 type_synonym 'a Edge = "'a \<times> 'a"
 type_synonym 'a Path = "nat \<Rightarrow> 'a option"
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a option"
-definition infinite_path :: "'a Path \<Rightarrow> bool" where [simp]: "infinite_path P \<equiv> \<forall>i. P i  \<noteq> None"
+definition infinite_path :: "'a Path \<Rightarrow> bool" where [simp]: "infinite_path P \<equiv> \<forall>i. P i \<noteq> None"
 definition finite_path :: "'a Path \<Rightarrow> bool" where [simp]: "finite_path P \<equiv> \<exists>i. \<forall>j. (j > i \<longleftrightarrow> P j = None)"
 definition path_dom :: "'a Path \<Rightarrow> nat set" where [simp]: "path_dom P = {i. P i \<noteq> None}"
 (* The set of nodes that occur infinitely often on a given path. *)
@@ -44,9 +44,11 @@ abbreviation "E \<equiv> arcs G"
 
 definition deadend :: "'a \<Rightarrow> bool" where [simp]: "deadend v \<equiv> \<not>(\<exists>w \<in> V. (v,w) \<in> E)"
 definition valid_path :: "'a Path \<Rightarrow> bool" where
-  [simp]: "valid_path P \<equiv> (infinite_path P \<or> finite_path P)
-    \<and> (\<forall>i \<in> path_dom P. the (P i) \<in> V
-      \<and> (\<not>deadend (the (P i)) \<longrightarrow> (the (P i), the (P (i+1))) \<in> E))"
+  [simp]: "valid_path P \<equiv> P 0 \<noteq> None \<and> (infinite_path P \<or> finite_path P)
+      \<and> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V)
+      \<and> (\<forall>i. P i \<noteq> None \<and> P (i+1) \<noteq> None \<longrightarrow> (the (P i), the (P (i+1))) \<in> E)"
+definition maximal_path :: "'a Path \<Rightarrow> bool" where
+  [simp]: "maximal_path P \<equiv> \<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<longrightarrow> P (i+1) \<noteq> None"
 end
 
 datatype Player = Even | Odd
@@ -80,7 +82,7 @@ definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 
 
 lemma (in "ParityGame") VV_cases:
   assumes "v \<in> V"
-  shows "v \<in> VV p \<or> v \<in> VV p**"
+  shows "v \<in> VV p \<longleftrightarrow> \<not>v \<in> VV p**"
   by (metis (full_types) Diff_iff assms local.VV.simps(1) local.VV.simps(2) other_player.simps(1) other_player.simps(2) winning_priority.cases)
 
 lemma (in "ParityGame") path_inf_is_nonempty:
@@ -129,14 +131,14 @@ lemma (in "ParityGame") paths_are_winning_for_exactly_one_player:
     hence finite: "finite_path P" using assms valid_path_def by blast
     then obtain i where i_def: "i \<in> path_dom P \<and> P (i+1) = None" using assms path_dom_ends_on_finite_paths by blast
     def v \<equiv> "the (P i)" (* the last vertex in the path *)
+    hence "v \<in> V" using valid_path_def using assms i_def by auto
     have "\<And>q. winning_path q P \<longleftrightarrow> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV q**)"
       using not_infinite finite winning_path_def by blast
     hence "\<And>q. winning_path q P \<longleftrightarrow> v \<in> VV q**"
       using not_infinite finite path_dom_ends_on_finite_paths i_def v_def by blast
     hence "v \<in> VV p** \<longleftrightarrow> \<not>v \<in> VV p \<Longrightarrow> ?thesis"
       by (metis (full_types) Player.exhaust other_player.simps(1) other_player.simps(2))
-    thus ?thesis
-      by (metis (full_types) Diff_iff Player.exhaust VV.simps(1) VV.simps(2) assms i_def other_player.simps(1) other_player.simps(2) valid_path_def v_def)
+    thus ?thesis using VV_cases `v \<in> V` by blast
   qed
 
 lemma (in "ParityGame") paths_are_winning_for_one_player:
@@ -309,52 +311,44 @@ lemma (in ParityGame) path_updates_with_strategy:
 lemma (in ParityGame) attractor_has_strategy:
   fixes p W
   assumes "W \<subseteq> V"
-  shows "\<exists>\<sigma> :: 'a Strategy. positional_strategy p \<sigma> \<and> (\<forall>v \<in> attractor p W. \<forall>P. P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+  shows "\<exists>\<sigma>. positional_strategy p \<sigma> \<and> (\<forall>v \<in> attractor p W. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
   proof -
-    let ?good_in = "\<lambda>\<sigma> A. positional_strategy p \<sigma> \<and> (\<forall>v \<in> A. \<forall>P. P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+    let ?good_in = "\<lambda>\<sigma> A. (\<forall>w \<in> W. \<sigma> w = None) \<and> positional_strategy p \<sigma> \<and> (\<forall>v \<in> A. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma>
+      \<longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> A) \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
     let "?P" = "\<lambda>A. \<not>(A \<subseteq> V) \<or> (\<exists>\<sigma>. ?good_in \<sigma> A)"
     have "?P {}" sorry
     moreover
     have "\<And>W' v. ?P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> ?P (insert v W')" proof-
       fix W' v
       assume 0: "?P W'" and v_is_directly_attracted: "v \<in> directly_attracted p W'"
+      hence "v \<notin> W'" using local.directly_attracted_is_disjoint_from_W by blast
       { assume "\<not>W' \<subseteq> V" hence "?P (insert v W')" by auto }
       moreover
       { assume "W' \<subseteq> V"
         (* Obtain the strategy to reach W from anywhere in W'.
         Next, we extend this strategy to handle v. *)
         then obtain \<sigma> :: "'a Strategy" where \<sigma>_def: "?good_in \<sigma> W'" using 0 by auto
-        have \<sigma>_was_good: "\<And>v P. v \<in> W' \<Longrightarrow> P 0 = Some v \<Longrightarrow> path_conforms_with_strategy p P \<sigma> \<Longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" using \<sigma>_def by blast
+        have \<sigma>_was_good: "\<And>v P. v \<in> W' \<Longrightarrow> valid_path P \<Longrightarrow> P 0 = Some v \<Longrightarrow> path_conforms_with_strategy p P \<sigma> \<Longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" using \<sigma>_def by blast
         have "?P (insert v W')" proof (cases)
           assume v_in_VVp: "v \<in> VV p"
           then obtain w where w_def: "(v,w) \<in> E \<and> w \<in> W'" using v_is_directly_attracted directly_attracted_def v_in_VVp by blast
           let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
-          have "?good_in ?\<sigma>' (insert v W')" proof
+          have "?good_in ?\<sigma>' (insert v W')" proof (rule; rule)
+            show "\<And>w'. w' \<in> W \<Longrightarrow> (\<sigma>(v \<mapsto> w)) w' = None" using \<sigma>_def local.directly_attracted_contains_no_deadends local.positional_strategy_def v_in_VVp v_is_directly_attracted by auto
             show "positional_strategy p ?\<sigma>'" using \<sigma>_def local.positional_strategy_def by auto
-            show "\<forall>v' \<in> insert v W'. \<forall>P. P 0 = Some v' \<and> path_conforms_with_strategy p P (\<sigma>(v \<mapsto> w)) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
+            show "\<forall>v' \<in> insert v W'. \<forall>P. valid_path P \<and> P 0 = Some v' \<and> path_conforms_with_strategy p P (\<sigma>(v \<mapsto> w)) \<longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> insert v W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
               fix v' assume v'_def: "v' \<in> insert v W'"
               fix P
-              assume path_assm0: "P 0 = Some v'"
-                and path_assm1: "path_conforms_with_strategy p P (\<sigma>(v \<mapsto> w))"
-              show "\<exists>i \<in> path_dom P. the (P i) \<in> W" proof (cases)
+              assume P_starts_at_v': "P 0 = Some v'"
+                and P_is_valid: "valid_path P"
+                and P_conforms_with_\<sigma>': "path_conforms_with_strategy p P ?\<sigma>'"
+              show "(\<forall>i \<in> path_dom P. the (P i) \<in> insert v W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (cases)
                 assume "v' = v"
                 thus ?thesis sorry
               next
                 assume "v' \<noteq> v"
                 hence "v' \<in> W'" using v'_def by simp
-                let ?P' = "\<lambda>i. if \<exists>j \<le> i. the (P j) \<in> W then None else P i"
-                have "path_dom ?P' \<subseteq> path_dom P" by auto
-                have "\<forall>i \<in> path_dom ?P'. ?P' i = P i" by auto
-                have "\<forall>i \<in> path_dom ?P'. the (?P' i) \<in> VV p \<longrightarrow> \<sigma>(the (?P' i)) = ?P' (i+1)" proof (clarify)
-                  fix i assume "i \<in> path_dom ?P'"
-                  hence "?P' i \<noteq> None" by simp
-                  hence "\<not>(\<exists>j \<le> i. the (P j) \<in> W)" by presburger
-                  hence "?P' i = P i" by auto
-                  have "\<sigma>(the (P i)) = P (i+1)" by sledgehammer
-                  hence "\<sigma>(the (?P' i)) = P (i+1)" by sledgehamme
-                  thus "\<sigma>(the (?P' i)) = ?P' (i+1)" by sledgehamme
-                qed
-                hence "path_conforms_with_strategy p ?P' \<sigma>" using path_conforms_with_strategy_def by auto
+                hence "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_def by sledgehammer
                 thus ?thesis using \<sigma>_was_good[of v' P] path_assm0 path_assm1 by
               qed
             qed
