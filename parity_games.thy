@@ -78,6 +78,11 @@ definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strat
 definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i \<in> path_dom P. the (P i) \<in> VV p \<longrightarrow> \<sigma>(the (P i)) = P (i+1))"
 
+lemma (in "ParityGame") VV_cases:
+  assumes "v \<in> V"
+  shows "v \<in> VV p \<or> v \<in> VV p**"
+  by (metis (full_types) Diff_iff assms local.VV.simps(1) local.VV.simps(2) other_player.simps(1) other_player.simps(2) winning_priority.cases)
+
 lemma (in "ParityGame") path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
   shows "\<exists>v. v \<in> path_inf P"
@@ -154,7 +159,7 @@ inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Righta
   "v \<in> VV p \<Longrightarrow> \<exists>w. (v,w) \<in> E \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
   "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
 
-lemma (in "ParityGame") attractor_is_superset:
+lemma (in "ParityGame") attractor_is_superset [simp]:
   shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
 
 lemma (in "ParityGame") attractor_is_bounded_by_V:
@@ -172,14 +177,14 @@ lemma (in "ParityGame") attractor_is_finite:
 
 definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
   "directly_attracted p W \<equiv> {v \<in> V - W. \<not>deadend v \<and>
-    (v \<in> VV p - W \<longrightarrow> (\<exists>w. (v,w) \<in> E \<and> w \<in> W))
-    \<and> (v \<in> VV p** - W \<longrightarrow> (\<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> W))}"
+    (v \<in> VV p \<longrightarrow> (\<exists>w. (v,w) \<in> E \<and> w \<in> W))
+    \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> W))}"
 
 lemma (in "ParityGame") directly_attracted_is_bounded_by_V:
   shows "directly_attracted p W \<subseteq> V" using directly_attracted_def by blast
-lemma (in "ParityGame") directly_attracted_is_disjoint_from_W:
+lemma (in "ParityGame") directly_attracted_is_disjoint_from_W [simp]:
   shows "W \<inter> directly_attracted p W = {}" using directly_attracted_def by blast
-lemma (in "ParityGame") directly_attracted_is_eventually_empty:
+lemma (in "ParityGame") directly_attracted_is_eventually_empty [simp]:
   shows "directly_attracted p V = {}" using directly_attracted_def by blast
 lemma (in "ParityGame") directly_attracted_contains_no_deadends:
   shows "v \<in> directly_attracted p W \<Longrightarrow> \<not>deadend v" using directly_attracted_def by blast
@@ -203,7 +208,7 @@ definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> 'a set \<Ri
   "attractor_closed p W \<equiv> directly_attracted p W = {}"
 
 (* Show that the attractor set is indeed attractor closed. *)
-lemma (in "ParityGame") attractor_is_attractor_closed:
+lemma (in "ParityGame") attractor_is_attractor_closed [simp]:
   shows "attractor_closed p (attractor p W)"
   proof -
     def A \<equiv> "attractor p W"
@@ -245,7 +250,7 @@ function attractor_strategy :: "Player \<Rightarrow> 'a set \<Rightarrow> ('a \<
 
     fix p W \<sigma> assume non_empty: "directly_attracted p W \<noteq> {}"
     let ?W' = "W \<union> directly_attracted p W"
-    have "directly_attracted p W \<inter> W = {}" by (simp add: inf_commute local.directly_attracted_is_disjoint_from_W)
+    have "directly_attracted p W \<inter> W = {}" by (simp add: inf_commute)
     then obtain v where "v \<in> ?W' - W" using non_empty by auto
     hence "v \<in> ?W' - W \<and> v \<in> V" using local.directly_attracted_is_bounded_by_V by auto
     hence "card (V - ?W') < card (V - W)" by (metis Diff_Un Diff_iff card_seteq finite_Diff inf_le1 local.finite_vertex_set not_le)
@@ -283,6 +288,91 @@ lemma (in ParityGame) attractor_strategy_is_monotone:
       hence "attractor_strategy p (W \<union> directly_attracted p W) \<sigma>' \<subseteq> attractor_strategy p (W \<union> directly_attracted p W) \<sigma>''" using hypothesis subset by auto
       thus "attractor_strategy p W \<sigma>' \<subseteq> attractor_strategy p W \<sigma>''" by (metis (no_types, lifting) Int_lower2 Un_Int_distrib2 hypothesis le_iff_inf local.attractor_strategy.simps subset)
     qed
+  qed
+
+lemma (in ParityGame) attractor_induction:
+  fixes p :: Player and P :: "'a set \<Rightarrow> bool" and W :: "'a set"
+  assumes "P {}"
+  and "\<And>W' v. P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
+  shows "P (attractor p W)"
+  proof -
+    show ?thesis sorry
+  qed
+
+lemma (in ParityGame) path_updates_with_strategy:
+  assumes "P 0 = Some v"
+  shows "\<exists>P'. path_conforms_with_strategy p P' (\<sigma>(v := Some v'))"
+  proof -
+    show ?thesis sorry
+  qed
+
+lemma (in ParityGame) attractor_has_strategy:
+  fixes p W
+  assumes "W \<subseteq> V"
+  shows "\<exists>\<sigma> :: 'a Strategy. positional_strategy p \<sigma> \<and> (\<forall>v \<in> attractor p W. \<forall>P. P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+  proof -
+    let ?good_in = "\<lambda>\<sigma> A. positional_strategy p \<sigma> \<and> (\<forall>v \<in> A. \<forall>P. P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+    let "?P" = "\<lambda>A. \<not>(A \<subseteq> V) \<or> (\<exists>\<sigma>. ?good_in \<sigma> A)"
+    have "?P {}" sorry
+    moreover
+    have "\<And>W' v. ?P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> ?P (insert v W')" proof-
+      fix W' v
+      assume 0: "?P W'" and v_is_directly_attracted: "v \<in> directly_attracted p W'"
+      { assume "\<not>W' \<subseteq> V" hence "?P (insert v W')" by auto }
+      moreover
+      { assume "W' \<subseteq> V"
+        (* Obtain the strategy to reach W from anywhere in W'.
+        Next, we extend this strategy to handle v. *)
+        then obtain \<sigma> :: "'a Strategy" where \<sigma>_def: "?good_in \<sigma> W'" using 0 by auto
+        have \<sigma>_was_good: "\<And>v P. v \<in> W' \<Longrightarrow> P 0 = Some v \<Longrightarrow> path_conforms_with_strategy p P \<sigma> \<Longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" using \<sigma>_def by blast
+        have "?P (insert v W')" proof (cases)
+          assume v_in_VVp: "v \<in> VV p"
+          then obtain w where w_def: "(v,w) \<in> E \<and> w \<in> W'" using v_is_directly_attracted directly_attracted_def v_in_VVp by blast
+          let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
+          have "?good_in ?\<sigma>' (insert v W')" proof
+            show "positional_strategy p ?\<sigma>'" using \<sigma>_def local.positional_strategy_def by auto
+            show "\<forall>v' \<in> insert v W'. \<forall>P. P 0 = Some v' \<and> path_conforms_with_strategy p P (\<sigma>(v \<mapsto> w)) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
+              fix v' assume v'_def: "v' \<in> insert v W'"
+              fix P
+              assume path_assm0: "P 0 = Some v'"
+                and path_assm1: "path_conforms_with_strategy p P (\<sigma>(v \<mapsto> w))"
+              show "\<exists>i \<in> path_dom P. the (P i) \<in> W" proof (cases)
+                assume "v' = v"
+                thus ?thesis sorry
+              next
+                assume "v' \<noteq> v"
+                hence "v' \<in> W'" using v'_def by simp
+                let ?P' = "\<lambda>i. if \<exists>j \<le> i. the (P j) \<in> W then None else P i"
+                have "path_dom ?P' \<subseteq> path_dom P" by auto
+                have "\<forall>i \<in> path_dom ?P'. ?P' i = P i" by auto
+                have "\<forall>i \<in> path_dom ?P'. the (?P' i) \<in> VV p \<longrightarrow> \<sigma>(the (?P' i)) = ?P' (i+1)" proof (clarify)
+                  fix i assume "i \<in> path_dom ?P'"
+                  hence "?P' i \<noteq> None" by simp
+                  hence "\<not>(\<exists>j \<le> i. the (P j) \<in> W)" by presburger
+                  hence "?P' i = P i" by auto
+                  have "\<sigma>(the (P i)) = P (i+1)" by sledgehammer
+                  hence "\<sigma>(the (?P' i)) = P (i+1)" by sledgehamme
+                  thus "\<sigma>(the (?P' i)) = ?P' (i+1)" by sledgehamme
+                qed
+                hence "path_conforms_with_strategy p ?P' \<sigma>" using path_conforms_with_strategy_def by auto
+                thus ?thesis using \<sigma>_was_good[of v' P] path_assm0 path_assm1 by
+              qed
+            qed
+          qed
+          thus ?thesis by auto
+        next
+          assume "v \<notin> VV p"
+          have "\<not>deadend v" using v_is_directly_attracted directly_attracted_def by auto
+          have "?good_in \<sigma> (insert v W')" sorry
+          thus ?thesis by auto
+        qed
+      }
+      ultimately show "?P (insert v W')" by auto
+    qed
+    ultimately have "?P (attractor p W)" using attractor_induction[of ?P] by auto
+    moreover
+    have "attractor p W - V = {}" by (simp add: assms local.attractor_is_bounded_by_V)
+    ultimately show ?thesis by blast
   qed
 
 (* unfinished *)
@@ -364,20 +454,6 @@ inductive_set (in ParityGame) attractor_pre_strategy :: "Player \<Rightarrow> 'a
     \<Longrightarrow> v#(w#rest) \<in> attractor_pre_strategy p W"
   monos absorbed_mono
 *)
-
-lemma (in "ParityGame") attractor_has_strategy:
-  shows "\<exists>\<sigma> :: 'a Strategy. positional_strategy p \<sigma> \<and> (\<forall>v \<in> attractor p W. \<forall>P. P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>v \<in> path_dom P. v \<in> W))"
-  proof -
-    have closed: "attractor_closed p (attractor p W)" using attractor_is_attractor_closed by simp
-    {
-      assume "v \<in> attractor p W" and "v \<notin> W"
-      hence "v \<in> VV p - W \<or> v \<in> VV p** - W" using attractor.simps by blast
-      {
-        assume "v \<in> VV p - W"
-        hence "\<exists>(v,w) \<in> E. w \<in> attractor p W" using closed sorry
-      }
-    }
-  qed
 
 theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
