@@ -31,22 +31,23 @@ lemma path_dom_ends_on_finite_paths:
   qed
 
 record 'a Graph =
-  verts :: "'a set"
-  arcs :: "('a \<times> 'a) set"
+  verts :: "'a set" ("V\<index>")
+  arcs :: "'a Edge set" ("E\<index>")
+definition is_arc :: "('a, 'b) Graph_scheme \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> bool" (infixl "\<rightarrow>\<index>" 60) where
+  [simp]: "v \<rightarrow>\<^bsub>G\<^esub> w \<equiv> (v,w) \<in> E\<^bsub>G\<^esub>"
 
-class Digraph = fixes G :: "'a Graph"
-  assumes finite_vertex_set: "finite (verts G)"
-    and non_empty_vertex_set: "\<exists>v. v \<in> verts G"
-    and valid_edge_set: "arcs G \<subseteq> verts G \<times> verts G"
+locale Digraph =
+  fixes G (structure)
+  assumes finite_vertex_set: "finite V"
+    and non_empty_vertex_set: "V \<noteq> {}"
+    and valid_edge_set: "E \<subseteq> V \<times> V"
 begin
-abbreviation "V \<equiv> verts G"
-abbreviation "E \<equiv> arcs G"
 
-definition deadend :: "'a \<Rightarrow> bool" where [simp]: "deadend v \<equiv> \<not>(\<exists>w \<in> V. (v,w) \<in> E)"
+definition deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 definition valid_path :: "'a Path \<Rightarrow> bool" where
   [simp]: "valid_path P \<equiv> P 0 \<noteq> None \<and> (infinite_path P \<or> finite_path P)
       \<and> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V)
-      \<and> (\<forall>i. P i \<noteq> None \<and> P (i+1) \<noteq> None \<longrightarrow> (the (P i), the (P (i+1))) \<in> E)"
+      \<and> (\<forall>i. P i \<noteq> None \<and> P (i+1) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (i+1)))"
 definition maximal_path :: "'a Path \<Rightarrow> bool" where
   [simp]: "maximal_path P \<equiv> \<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<longrightarrow> P (i+1) \<noteq> None"
 end
@@ -55,26 +56,35 @@ datatype Player = Even | Odd
 fun other_player :: "Player \<Rightarrow> Player" where "other_player Even = Odd" | "other_player Odd = Even"
 notation other_player ("(_**)" [1000] 1000)
 
-class ParityGame = Digraph +
-  fixes priority :: "'a \<Rightarrow> nat" ("\<omega>")
-    and player0 :: "'a set"
-  assumes valid_player0_set: "player0 \<subseteq> V"
-begin
-  fun VV :: "Player \<Rightarrow> 'a set" where "VV Even = player0" | "VV Odd = V - player0"
+record 'a ParityGame = "'a Graph" +
+  priority :: "'a \<Rightarrow> nat" ("\<omega>\<index>")
+  player0 :: "'a set" ("V0\<index>")
+
 fun winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
   "winning_priority Even = even"
   | "winning_priority Odd = odd"
 lemma winning_priority_for_one_player:
   shows "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i"
   by (metis (full_types) Player.distinct(1) other_player.simps(1) other_player.simps(2) winning_priority.elims)
-end
+
+locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) +
+  assumes valid_player0_set: "V0 \<subseteq> V"
+
+fun (in ParityGame) VV :: "Player \<Rightarrow> 'a set" where "VV Even = V0" | "VV Odd = V - V0"
 
 (* The set of priorities that occur infinitely often on a given path. *)
 definition (in ParityGame) path_inf_priorities :: "'a Path \<Rightarrow> nat set" where
   "path_inf_priorities P \<equiv> {\<omega> v | v. v \<in> path_inf P}"
 
 definition (in ParityGame) strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_on p \<sigma> W \<equiv> \<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> \<sigma>(v) \<noteq> None"
+  "strategy_on p \<sigma> W \<equiv> \<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
+
+lemma (in ParityGame) strategy_subset [intro]:
+  assumes "W' \<subseteq> W" and "strategy_on p \<sigma> W"
+  shows "strategy_on p \<sigma> W'" using assms strategy_on_def by auto
+
+lemma (in ParityGame) strategy_on_empty_set [simp]: "strategy_on p \<sigma> {}"
+  by (simp add: strategy_on_def)
 
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
@@ -154,15 +164,15 @@ definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> 'a Strategy
 
 definition (in ParityGame) trap :: "Player \<Rightarrow> 'a set \<Rightarrow> bool" where
   "trap p A \<equiv> (\<forall>v \<in> A. \<not>deadend v \<longrightarrow>
-    (v \<in> VV p** \<longrightarrow> (\<exists>(v,w) \<in> E. w \<in> A))
-    \<and> (v \<in> VV p \<longrightarrow> (\<forall>(v,w) \<in> E. w \<in> A)))"
+    (v \<in> VV p** \<longrightarrow> (\<exists>w. v\<rightarrow>w \<and> w \<in> A))
+    \<and> (v \<in> VV p \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> A)))"
 
 (* The attractor set of a given set of vertices. *)
 inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
   for p :: Player and W :: "'a set" where
   [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
-  "v \<in> VV p \<Longrightarrow> \<exists>w. (v,w) \<in> E \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
-  "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
+  "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
+  "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
 
 lemma (in ParityGame) attractor_is_superset [simp]:
   shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
@@ -182,8 +192,8 @@ lemma (in ParityGame) attractor_is_finite:
 
 definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
   "directly_attracted p W \<equiv> {v \<in> V - W. \<not>deadend v \<and>
-    (v \<in> VV p \<longrightarrow> (\<exists>w. (v,w) \<in> E \<and> w \<in> W))
-    \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> W))}"
+    (v \<in> VV p \<longrightarrow> (\<exists>w. v\<rightarrow>w \<and> w \<in> W))
+    \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W))}"
 
 lemma (in ParityGame) directly_attracted_is_bounded_by_V:
   shows "directly_attracted p W \<subseteq> V" using directly_attracted_def by blast
@@ -201,8 +211,8 @@ lemma (in ParityGame) attractor_contains_no_deadends:
   proof (induct rule: attractor.induct)
     fix v assume "v \<in> W" thus "v \<in> W \<or> \<not>deadend v" by simp
   next
-    fix v assume "v \<in> VV p" and "\<exists>w. (v,w) \<in> E \<and> w \<in> attractor p W \<and> (w \<in> W \<or> \<not> deadend w)"
-    thus "v \<in> W \<or> \<not>deadend v" using local.deadend_def local.valid_edge_set by blast
+    fix v assume "v \<in> VV p" and "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W \<and> (w \<in> W \<or> \<not>deadend w)"
+    thus "v \<in> W \<or> \<not>deadend v" using local.deadend_def local.valid_edge_set by auto
   next
     fix v assume "\<not>deadend v"
     thus "v \<in> W \<or> \<not>deadend v" by simp
@@ -228,12 +238,12 @@ lemma (in ParityGame) attractor_is_attractor_closed [simp]:
         hence v_dom: "v \<in> V - A" using directly_attracted_def by auto
         hence False proof (cases)
           assume v_in_VVp: "v \<in> VV p - A"
-          hence "\<forall>w. (v,w) \<in> E \<longrightarrow> w \<notin> A" by (metis A_def DiffD1 DiffD2 local.attractor.intros(2))
+          hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<notin> A" by (metis A_def DiffD1 DiffD2 local.attractor.intros(2))
           thus ?thesis using v_def directly_attracted_def v_in_VVp by blast
         next
           assume "v \<notin> VV p - A"
           hence v_in_VVp_star: "v \<in> VV p** - A" using VV_A_disjoint v_dom by blast
-          hence "\<not>deadend v \<Longrightarrow> \<exists>w. (v,w) \<in> E \<and> w \<notin> A" by (metis A_def DiffD1 DiffD2 local.attractor.intros(3))
+          hence "\<not>deadend v \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<notin> A" by (metis A_def DiffD1 DiffD2 local.attractor.intros(3))
           thus ?thesis using v_def directly_attracted_def v_in_VVp_star by blast
         qed
       }
@@ -246,7 +256,7 @@ context ParityGame begin
 function attractor_strategy :: "Player \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set \<Rightarrow> ('a \<times> 'a) set" where
   "attractor_strategy p W \<sigma> = (if directly_attracted p W = {}
     then \<sigma>
-    else attractor_strategy p (W \<union> directly_attracted p W) (\<sigma> \<union> {(v,w) | v w. v \<in> directly_attracted p W \<and> (v,w) \<in> E \<and> w \<in> W})
+    else attractor_strategy p (W \<union> directly_attracted p W) (\<sigma> \<union> {(v,w) | v w. v \<in> directly_attracted p W \<and> v\<rightarrow>w \<and> w \<in> W})
   )"
   by auto
   termination proof
@@ -259,7 +269,7 @@ function attractor_strategy :: "Player \<Rightarrow> 'a set \<Rightarrow> ('a \<
     then obtain v where "v \<in> ?W' - W" using non_empty by auto
     hence "v \<in> ?W' - W \<and> v \<in> V" using local.directly_attracted_is_bounded_by_V by auto
     hence "card (V - ?W') < card (V - W)" by (metis Diff_Un Diff_iff card_seteq finite_Diff inf_le1 local.finite_vertex_set not_le)
-    thus "((p, ?W', \<sigma> \<union> {(v,w) | v w. v \<in> directly_attracted p W \<and> (v,w) \<in> E \<and> w \<in> W}), p, W, \<sigma>) \<in> ?R" by simp
+    thus "((p, ?W', \<sigma> \<union> {(v,w) | v w. v \<in> directly_attracted p W \<and> v\<rightarrow>w \<and> w \<in> W}), p, W, \<sigma>) \<in> ?R" by simp
   qed
 end
 
@@ -334,7 +344,7 @@ lemma (in ParityGame) attractor_has_strategy:
         have \<sigma>_was_good: "\<And>v P. v \<in> W' \<Longrightarrow> valid_path P \<Longrightarrow> P 0 = Some v \<Longrightarrow> path_conforms_with_strategy p P \<sigma> \<Longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" using \<sigma>_def by blast
         have "?P (insert v W')" proof (cases)
           assume v_in_VVp: "v \<in> VV p"
-          then obtain w where w_def: "(v,w) \<in> E \<and> w \<in> W'" using v_is_directly_attracted directly_attracted_def v_in_VVp by blast
+          then obtain w where w_def: "v\<rightarrow>w \<and> w \<in> W'" using v_is_directly_attracted directly_attracted_def v_in_VVp by blast
           let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
           have "?good_in ?\<sigma>' (insert v W')" proof (rule; rule)
             show "\<And>w'. w' \<in> W \<Longrightarrow> (\<sigma>(v \<mapsto> w)) w' = None" using \<sigma>_def local.directly_attracted_contains_no_deadends local.positional_strategy_def v_in_VVp v_is_directly_attracted by auto
