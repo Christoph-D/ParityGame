@@ -73,6 +73,9 @@ end
 definition (in ParityGame) path_inf_priorities :: "'a Path \<Rightarrow> nat set" where
   "path_inf_priorities P \<equiv> {\<omega> v | v. v \<in> path_inf P}"
 
+definition (in ParityGame) strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "strategy_on p \<sigma> W \<equiv> \<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> \<sigma>(v) \<noteq> None"
+
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
