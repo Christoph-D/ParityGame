@@ -83,12 +83,12 @@ definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strat
 definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i \<in> path_dom P. the (P i) \<in> VV p \<longrightarrow> \<sigma>(the (P i)) = P (i+1))"
 
-lemma (in "ParityGame") VV_cases:
+lemma (in ParityGame) VV_cases:
   assumes "v \<in> V"
   shows "v \<in> VV p \<longleftrightarrow> \<not>v \<in> VV p**"
   by (metis (full_types) Diff_iff assms local.VV.simps(1) local.VV.simps(2) other_player.simps(1) other_player.simps(2) winning_priority.cases)
 
-lemma (in "ParityGame") path_inf_is_nonempty:
+lemma (in ParityGame) path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
   shows "\<exists>v. v \<in> path_inf P"
   proof -
@@ -100,12 +100,12 @@ lemma (in "ParityGame") path_inf_is_nonempty:
     thus ?thesis by (simp add: path_inf_def)
   qed
 
-lemma (in "ParityGame") path_inf_priorities_is_nonempty:
+lemma (in ParityGame) path_inf_priorities_is_nonempty:
   assumes "valid_path P" "infinite_path P"
   shows "\<exists>a. a \<in> path_inf_priorities P"
   using assms path_inf_is_nonempty[of P] path_inf_priorities_def by auto
 
-lemma (in "ParityGame") path_inf_priorities_has_minimum:
+lemma (in ParityGame) path_inf_priorities_has_minimum:
   assumes "valid_path P" "infinite_path P"
   obtains a where "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)"
   proof -
@@ -121,7 +121,7 @@ definition (in ParityGame) winning_path :: "Player \<Rightarrow> 'a Path \<Right
     (infinite_path P \<and> (\<exists>a \<in> path_inf_priorities P. (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
     \<or> (finite_path P \<and> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV p**))"
 
-lemma (in "ParityGame") paths_are_winning_for_exactly_one_player:
+lemma (in ParityGame) paths_are_winning_for_exactly_one_player:
   assumes "valid_path P"
   shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
   proof (cases)
@@ -144,7 +144,7 @@ lemma (in "ParityGame") paths_are_winning_for_exactly_one_player:
     thus ?thesis using VV_cases `v \<in> V` by blast
   qed
 
-lemma (in "ParityGame") paths_are_winning_for_one_player:
+lemma (in ParityGame) paths_are_winning_for_one_player:
   assumes "valid_path P"
   shows "\<exists>!p. winning_path p P"
   by (metis (full_types) VV.elims assms paths_are_winning_for_exactly_one_player)
@@ -164,10 +164,10 @@ inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Righta
   "v \<in> VV p \<Longrightarrow> \<exists>w. (v,w) \<in> E \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
   "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
 
-lemma (in "ParityGame") attractor_is_superset [simp]:
+lemma (in ParityGame) attractor_is_superset [simp]:
   shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
 
-lemma (in "ParityGame") attractor_is_bounded_by_V:
+lemma (in ParityGame) attractor_is_bounded_by_V:
   assumes "W \<subseteq> V" shows "attractor p W \<subseteq> V"
   proof -
     { fix v assume "v \<in> attractor p W"
@@ -177,7 +177,7 @@ lemma (in "ParityGame") attractor_is_bounded_by_V:
     thus ?thesis by blast
   qed
 
-lemma (in "ParityGame") attractor_is_finite:
+lemma (in ParityGame) attractor_is_finite:
   assumes "W \<subseteq> V" shows "finite (attractor p W)" by (metis assms attractor_is_bounded_by_V finite_vertex_set rev_finite_subset)
 
 definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
@@ -185,16 +185,16 @@ definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<
     (v \<in> VV p \<longrightarrow> (\<exists>w. (v,w) \<in> E \<and> w \<in> W))
     \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> W))}"
 
-lemma (in "ParityGame") directly_attracted_is_bounded_by_V:
+lemma (in ParityGame) directly_attracted_is_bounded_by_V:
   shows "directly_attracted p W \<subseteq> V" using directly_attracted_def by blast
-lemma (in "ParityGame") directly_attracted_is_disjoint_from_W [simp]:
+lemma (in ParityGame) directly_attracted_is_disjoint_from_W [simp]:
   shows "W \<inter> directly_attracted p W = {}" using directly_attracted_def by blast
-lemma (in "ParityGame") directly_attracted_is_eventually_empty [simp]:
+lemma (in ParityGame) directly_attracted_is_eventually_empty [simp]:
   shows "directly_attracted p V = {}" using directly_attracted_def by blast
-lemma (in "ParityGame") directly_attracted_contains_no_deadends:
+lemma (in ParityGame) directly_attracted_contains_no_deadends:
   shows "v \<in> directly_attracted p W \<Longrightarrow> \<not>deadend v" using directly_attracted_def by blast
 
-lemma (in "ParityGame") attractor_contains_no_deadends:
+lemma (in ParityGame) attractor_contains_no_deadends:
   assumes "v \<in> attractor p W"
   shows "v \<in> W \<or> \<not>deadend v"
   using assms
@@ -213,7 +213,7 @@ definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> 'a set \<Ri
   "attractor_closed p W \<equiv> directly_attracted p W = {}"
 
 (* Show that the attractor set is indeed attractor closed. *)
-lemma (in "ParityGame") attractor_is_attractor_closed [simp]:
+lemma (in ParityGame) attractor_is_attractor_closed [simp]:
   shows "attractor_closed p (attractor p W)"
   proof -
     def A \<equiv> "attractor p W"
@@ -452,7 +452,7 @@ inductive_set (in ParityGame) attractor_pre_strategy :: "Player \<Rightarrow> 'a
   monos absorbed_mono
 *)
 
-theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
+theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
   and "\<forall>w \<in> V. \<omega>(w) = 0"
   shows "\<exists>p :: Player. \<exists>\<sigma> :: 'a Strategy. positional_strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
@@ -472,7 +472,7 @@ theorem (in "ParityGame") positional_strategy_exist_for_single_prio_games:
     show ?thesis sorry
   qed
 
-theorem (in "ParityGame") positional_strategy_exists:
+theorem (in ParityGame) positional_strategy_exists:
   assumes "v \<in> V"
   shows "\<exists>p :: Player. \<exists>\<sigma> :: Strategy. positional_strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
   proof -
