@@ -88,19 +88,75 @@ lemma (in ParityGame) strategy_on_empty_set [simp]: "strategy_on p \<sigma> {}"
 definition restrict_path :: "'a Path \<Rightarrow> 'a set \<Rightarrow> 'a Path" (infixl "\<restriction>\<^sub>P" 80) where
   "restrict_path P W \<equiv> \<lambda>i. if the (P i) \<in> W then P i else None"
 definition restrict_strategy :: "'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a Strategy" (infixl "\<restriction>\<^sub>S" 80) where
-  "restrict_strategy \<sigma> W \<equiv> \<lambda>v. if v = v then \<sigma> v else None"
+  "restrict_strategy \<sigma> W \<equiv> \<lambda>v. if v \<in> W \<and> the (\<sigma> v) \<in> W then \<sigma> v else None"
 
-lemma (in ParityGame) restricted_strategy [intro]:
+lemma (in ParityGame) restricted_strategy_invariant [simp]:
+  assumes "v \<in> W" "the (\<sigma> v) \<in> W"
+  shows "(\<sigma> \<restriction>\<^sub>S W) v = \<sigma> v"
+  by (simp add: assms restrict_strategy_def)
+
+(* lemma (in ParityGame) restricted_strategy [intro]:
   assumes "strategy_on p (\<sigma> :: 'a Strategy) (W :: 'a set)"
   shows "strategy_on p (\<sigma> \<restriction>\<^sub>S W) W"
-  by (metis assms restrict_strategy_def strategy_on_def)
+  using assms strategy_on_def by auto
+*)
+
+lemma (in ParityGame) restricted_path_invariant [simp]:
+  assumes "the (P i) \<in> W"
+  shows "(P \<restriction>\<^sub>P W) i = P i"
+  by (simp add: assms restrict_path_def)
+
+lemma (in ParityGame) restricted_path_dom [simp]:
+  assumes "i \<in> path_dom (P \<restriction>\<^sub>P W)"
+  shows "i \<in> path_dom P"
+  by (metis (mono_tags, lifting) assms mem_Collect_eq path_dom_def restrict_path_def)
 
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
 
 definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i \<in> path_dom P. the (P i) \<in> VV p \<longrightarrow> \<sigma>(the (P i)) = P (i+1))"
+  "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i \<in> path_dom P. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma>(the (P i)) = P (i+1))"
+
+lemma (in ParityGame) restricted_strategy_paths:
+  assumes "path_conforms_with_strategy p P \<sigma>"
+  shows "path_conforms_with_strategy p (P \<restriction>\<^sub>P W) (\<sigma> \<restriction>\<^sub>S W)"
+  proof (unfold path_conforms_with_strategy_def; clarify)
+    let ?P' = "P \<restriction>\<^sub>P W"
+    let ?\<sigma>' = "\<sigma> \<restriction>\<^sub>S W"
+    fix i v assume i: "i \<in> path_dom ?P'" and Pi: "the (?P' i) \<in> VV p" "?P' i = Some v"
+    hence "v \<in> W" by (metis option.distinct(1) option.sel restrict_path_def)
+    moreover
+    have Pii: "?P' i = P i" by (metis Pi(2) option.distinct(1) restrict_path_def)
+    moreover
+    hence "the (P i) \<in> VV p" using Pi(1) by auto
+    moreover
+    have "i \<in> path_dom P" using i restricted_path_dom by blast
+    ultimately have \<sigma>: "\<sigma>(the (P i)) = P (i+1)" using Pi(2) assms path_conforms_with_strategy_def by auto
+
+    show "?\<sigma>'(the (?P' i)) = ?P' (i+1)" proof (cases)
+      assume "the (P (i+1)) \<in> W" thus ?thesis using Pi(2) Pii \<sigma> `v \<in> W` by auto
+    next
+      assume "the (P (i+1)) \<notin> W" thus ?thesis using Pi(2) Pii \<sigma> `v \<in> W` by (simp add: restrict_path_def restrict_strategy_def)
+    qed
+  qed
+
+lemma (in ParityGame) restricted_strategy_paths_inv:
+  assumes "path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S W)"
+    "\<forall>i \<in> path_dom P. the (P i) \<in> W"
+  shows "path_conforms_with_strategy p P \<sigma>"
+  proof (unfold path_conforms_with_strategy_def; clarify)
+    fix i v assume i: "i \<in> path_dom P" and Pi: "the (P i) \<in> VV p" "P i = Some v"
+    hence "the (P i) \<in> W" using assms(2) by auto
+    { assume "P (i+1) = None"
+      have "\<sigma>(the (P i)) = P (i+1)" by sledgehamme
+      have "(\<sigma> \<restriction>\<^sub>S W)(the (P i)) = P (i+1)" using Pi(1) assms(1) i path_conforms_with_strategy_def by auto
+    }
+    { assume "P (i+1) \<noteq> None"
+      have "(\<sigma> \<restriction>\<^sub>S W)(the (P i)) = P (i+1)" using Pi(1) assms(1) i path_conforms_with_strategy_def by auto
+    }
+    show "\<sigma>(the (P i)) = P (i+1)" sorry
+  qed
 
 lemma (in ParityGame) VV_cases:
   assumes "v \<in> V"
@@ -334,9 +390,10 @@ lemma (in ParityGame) attractor_has_strategy:
   fixes p W
   assumes "W \<subseteq> V"
   defines "A \<equiv> attractor p W"
-  shows "\<exists>\<sigma>. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+  (* the assumption P = P \<restriction>\<^sub>P A is pointless, I need to fix this *)
+  shows "\<exists>\<sigma>. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. P = P \<restriction>\<^sub>P A \<and> valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
   proof -
-    let ?good_in = "\<lambda>\<sigma> A. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A)
+    let ?good_in = "\<lambda>\<sigma> A. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. P = P \<restriction>\<^sub>P A \<and> valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A)
       \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
     let "?P" = "\<lambda>A. \<exists>\<sigma>. ?good_in \<sigma> A"
     have "?P {}" sorry
@@ -357,15 +414,23 @@ lemma (in ParityGame) attractor_has_strategy:
           let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
           have "?good_in ?\<sigma>' (insert v W')" proof (rule)
             show "strategy_on p ?\<sigma>' (insert v W')" using \<sigma>_def local.positional_strategy_def by (simp add: strategy_on_def v(4))
-            show "\<forall>v' \<in> insert v W'. \<forall>P. valid_path P \<and> P 0 = Some v' \<and> path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W')) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
+            show "\<forall>v' \<in> insert v W'. \<forall>P. P = P \<restriction>\<^sub>P (insert v W') \<and> valid_path P \<and> P 0 = Some v' \<and> path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W')) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
               fix v' assume v': "v' \<in> insert v W'"
-              fix P assume P: "P 0 = Some v'" "valid_path P" "path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W'))"
+              fix P assume P: "P = P \<restriction>\<^sub>P (insert v W')" "P 0 = Some v'" "valid_path P" "path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W'))"
               show "\<exists>i \<in> path_dom P. the (P i) \<in> W" proof (cases)
                 assume "v' = v"
                 thus ?thesis sorry
               next
                 assume "v' \<noteq> v"
                 hence "v' \<in> W'" using v' by simp
+                (* We have:
+                1) \<sigma> is an attractor strategy for W'.
+                2) v\<rightarrow>w and w \<in> W' and v \<in> VV p - W'
+                3) P is a path starting in v' \<in> W'
+                4) P conforms with ?\<sigma>' \<restriction>\<^sub>S (insert v W')
+                5) P = P \<restriction>\<^sub>P (insert v W'), that is, P only visits (insert v W')
+                We want to show that P conforms with \<sigma> in order to use 1).
+                *)
                 have "?\<sigma>' \<restriction>\<^sub>S (insert v W') = \<sigma> \<restriction>\<^sub>S W'" by sledgehammer
                 hence "path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S (insert v W'))" using path_conforms_with_strategy_def sorry
                 thus ?thesis sorry
