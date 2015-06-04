@@ -82,9 +82,18 @@ definition (in ParityGame) strategy_on :: "Player \<Rightarrow> 'a Strategy \<Ri
 lemma (in ParityGame) strategy_subset [intro]:
   assumes "W' \<subseteq> W" and "strategy_on p \<sigma> W"
   shows "strategy_on p \<sigma> W'" using assms strategy_on_def by auto
-
 lemma (in ParityGame) strategy_on_empty_set [simp]: "strategy_on p \<sigma> {}"
   by (simp add: strategy_on_def)
+
+definition restrict_path :: "'a Path \<Rightarrow> 'a set \<Rightarrow> 'a Path" (infixl "\<restriction>\<^sub>P" 80) where
+  "restrict_path P W \<equiv> \<lambda>i. if the (P i) \<in> W then P i else None"
+definition restrict_strategy :: "'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a Strategy" (infixl "\<restriction>\<^sub>S" 80) where
+  "restrict_strategy \<sigma> W \<equiv> \<lambda>v. if v = v then \<sigma> v else None"
+
+lemma (in ParityGame) restricted_strategy [intro]:
+  assumes "strategy_on p (\<sigma> :: 'a Strategy) (W :: 'a set)"
+  shows "strategy_on p (\<sigma> \<restriction>\<^sub>S W) W"
+  by (metis assms restrict_strategy_def strategy_on_def)
 
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
@@ -306,9 +315,9 @@ lemma (in ParityGame) attractor_strategy_is_monotone:
   qed
 
 lemma (in ParityGame) attractor_induction:
-  fixes p :: Player and P :: "'a set \<Rightarrow> bool" and W :: "'a set"
-  assumes "P {}"
-  and "\<And>W' v. P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
+  fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
+  assumes "W \<subseteq> V" and "P {}"
+  and "\<And>W' v. W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
   shows "P (attractor p W)"
   proof -
     show ?thesis sorry
@@ -324,62 +333,58 @@ lemma (in ParityGame) path_updates_with_strategy:
 lemma (in ParityGame) attractor_has_strategy:
   fixes p W
   assumes "W \<subseteq> V"
-  shows "\<exists>\<sigma>. positional_strategy p \<sigma> \<and> (\<forall>v \<in> attractor p W. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+  defines "A \<equiv> attractor p W"
+  shows "\<exists>\<sigma>. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
   proof -
-    let ?good_in = "\<lambda>\<sigma> A. (\<forall>w \<in> W. \<sigma> w = None) \<and> positional_strategy p \<sigma> \<and> (\<forall>v \<in> A. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P \<sigma>
-      \<longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> A) \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
-    let "?P" = "\<lambda>A. \<not>(A \<subseteq> V) \<or> (\<exists>\<sigma>. ?good_in \<sigma> A)"
+    let ?good_in = "\<lambda>\<sigma> A. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A)
+      \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
+    let "?P" = "\<lambda>A. \<exists>\<sigma>. ?good_in \<sigma> A"
     have "?P {}" sorry
     moreover
-    have "\<And>W' v. ?P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> ?P (insert v W')" proof-
+    have "\<And>W' v. W' \<subseteq> V \<Longrightarrow> ?P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> ?P (insert v W')" proof -
       fix W' v
-      assume 0: "?P W'" and v_is_directly_attracted: "v \<in> directly_attracted p W'"
-      hence "v \<notin> W'" using local.directly_attracted_is_disjoint_from_W by blast
-      { assume "\<not>W' \<subseteq> V" hence "?P (insert v W')" by auto }
-      moreover
-      { assume "W' \<subseteq> V"
-        (* Obtain the strategy to reach W from anywhere in W'.
-        Next, we extend this strategy to handle v. *)
-        then obtain \<sigma> :: "'a Strategy" where \<sigma>_def: "?good_in \<sigma> W'" using 0 by auto
-        have \<sigma>_was_good: "\<And>v P. v \<in> W' \<Longrightarrow> valid_path P \<Longrightarrow> P 0 = Some v \<Longrightarrow> path_conforms_with_strategy p P \<sigma> \<Longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" using \<sigma>_def by blast
-        have "?P (insert v W')" proof (cases)
-          assume v_in_VVp: "v \<in> VV p"
-          then obtain w where w_def: "v\<rightarrow>w \<and> w \<in> W'" using v_is_directly_attracted directly_attracted_def v_in_VVp by blast
+      assume W': "W' \<subseteq> V" and IH: "\<exists>\<sigma>. ?good_in \<sigma> W'" and v: "v \<in> directly_attracted p W'"
+      hence "v \<in> V" using directly_attracted_is_bounded_by_V by auto
+      show "\<exists>\<sigma>. ?good_in \<sigma> (insert v W')" proof (cases)
+        assume "v \<in> W'" thus ?thesis using directly_attracted_is_disjoint_from_W v by blast
+      next
+        assume "v \<notin> W'"
+        note v = v `v \<in> V` this
+        from IH obtain \<sigma> where \<sigma>_def: "?good_in \<sigma> W'" by auto
+        thus ?thesis proof (cases)
+          assume "v \<in> VV p" note v = v this
+          then obtain w where w_def: "v\<rightarrow>w \<and> w \<in> W'" using directly_attracted_def by blast
           let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
-          have "?good_in ?\<sigma>' (insert v W')" proof (rule; rule)
-            show "\<And>w'. w' \<in> W \<Longrightarrow> (\<sigma>(v \<mapsto> w)) w' = None" using \<sigma>_def local.directly_attracted_contains_no_deadends local.positional_strategy_def v_in_VVp v_is_directly_attracted by auto
-            show "positional_strategy p ?\<sigma>'" using \<sigma>_def local.positional_strategy_def by auto
-            show "\<forall>v' \<in> insert v W'. \<forall>P. valid_path P \<and> P 0 = Some v' \<and> path_conforms_with_strategy p P (\<sigma>(v \<mapsto> w)) \<longrightarrow> (\<forall>i \<in> path_dom P. the (P i) \<in> insert v W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
-              fix v' assume v'_def: "v' \<in> insert v W'"
-              fix P
-              assume P_starts_at_v': "P 0 = Some v'"
-                and P_is_valid: "valid_path P"
-                and P_conforms_with_\<sigma>': "path_conforms_with_strategy p P ?\<sigma>'"
-              show "(\<forall>i \<in> path_dom P. the (P i) \<in> insert v W') \<and> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (cases)
+          have "?good_in ?\<sigma>' (insert v W')" proof (rule)
+            show "strategy_on p ?\<sigma>' (insert v W')" using \<sigma>_def local.positional_strategy_def by (simp add: strategy_on_def v(4))
+            show "\<forall>v' \<in> insert v W'. \<forall>P. valid_path P \<and> P 0 = Some v' \<and> path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W')) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
+              fix v' assume v': "v' \<in> insert v W'"
+              fix P assume P: "P 0 = Some v'" "valid_path P" "path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W'))"
+              show "\<exists>i \<in> path_dom P. the (P i) \<in> W" proof (cases)
                 assume "v' = v"
                 thus ?thesis sorry
               next
                 assume "v' \<noteq> v"
-                hence "v' \<in> W'" using v'_def by simp
-                hence "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_def by sledgehammer
-                thus ?thesis using \<sigma>_was_good[of v' P] path_assm0 path_assm1 by
+                hence "v' \<in> W'" using v' by simp
+                have "?\<sigma>' \<restriction>\<^sub>S (insert v W') = \<sigma> \<restriction>\<^sub>S W'" by sledgehammer
+                hence "path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S (insert v W'))" using path_conforms_with_strategy_def sorry
+                thus ?thesis sorry
               qed
             qed
           qed
           thus ?thesis by auto
         next
           assume "v \<notin> VV p"
-          have "\<not>deadend v" using v_is_directly_attracted directly_attracted_def by auto
-          have "?good_in \<sigma> (insert v W')" sorry
-          thus ?thesis by auto
+          hence "v \<in> VV p**" using VV_cases v by blast
+          note v = v this
+          show ?thesis sorry
         qed
-      }
-      ultimately show "?P (insert v W')" by auto
+      qed
     qed
-    ultimately have "?P (attractor p W)" using attractor_induction[of ?P] by auto
+    ultimately have "?P (attractor p W)" using assms attractor_induction[of W ?P] by force
     moreover
     have "attractor p W - V = {}" by (simp add: assms local.attractor_is_bounded_by_V)
-    ultimately show ?thesis by blast
+    ultimately show ?thesis using assms by blast
   qed
 
 (* unfinished *)
