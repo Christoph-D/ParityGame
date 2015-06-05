@@ -384,6 +384,12 @@ lemma (in ParityGame) attractor_contains_no_deadends:
     thus "v \<in> W \<or> \<not>deadend v" by simp
   qed
 
+lemma (in ParityGame) attractor_as_lfp:
+  "attractor p W = lfp (\<lambda>A. W \<union> A \<union> (directly_attracted p A))"
+  proof -
+    show ?thesis sorry
+  qed
+
 (* True iff the given set is attractor closed. *)
 definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_closed p W \<equiv> directly_attracted p W = {}"
@@ -423,18 +429,29 @@ lemma (in ParityGame) attractor_is_attractor_closed [simp]:
 lemma (in ParityGame) attractor_set_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
   assumes "W \<subseteq> V" and "P W"
-    and "\<And>W' v. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
+    and "\<And>W'. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
+    and "\<And>M. \<forall>W'\<in>M. W \<subseteq> W' \<and> W' \<subseteq> V \<and> P W' \<Longrightarrow> P (\<Union>M)"
   shows "P (attractor p W)"
   proof -
-    show ?thesis sorry
+    def f \<equiv> "\<lambda>A. W \<union> A \<union> (directly_attracted p A)"
+    have "P (lfp f)" proof (induct rule: lfp_ordinal_induct)
+      show "mono f" sorry
+      show "\<And>S. P S \<Longrightarrow> P (f S)" sorry
+      show "\<And>M. \<forall>S\<in>M. P S \<Longrightarrow> P (\<Union>M)" sorry
+    qed
+    thus ?thesis using attractor_as_lfp f_def by simp
   qed
 
 lemma (in ParityGame) attractor_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
   assumes "W \<subseteq> V" and "P W"
     and "\<And>W' v. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
+    and "\<And>M. \<forall>W'\<in>M. W \<subseteq> W' \<and> W' \<subseteq> V \<and> P W' \<Longrightarrow> P (\<Union>M)"
   shows "P (attractor p W)"
-  proof (induct rule: attractor_set_induction; simp add: assms)
+  proof (induct rule: attractor_set_induction)
+    show "W \<subseteq> V" using assms(1) .
+    show "P W" using assms(2) .
+    show "\<And>M. \<forall>W'\<in>M. W \<subseteq> W' \<and> W' \<subseteq> V \<and> P W' \<Longrightarrow> P (\<Union>M)" using assms(4) .
     fix W' assume IH: "W \<subseteq> W'" "W' \<subseteq> V" "P W'"
     hence "finite W'" using finite_vertex_set rev_finite_subset by blast
     thus "P (W' \<union> (directly_attracted p W'))" using IH proof (induct W' rule: finite_induct)
@@ -551,6 +568,9 @@ lemma (in ParityGame) attractor_has_strategy:
         qed
       qed
       thus "P (insert v W')" by (simp add: P_def)
+    next
+      fix M assume "\<forall>W' \<in> M. W \<subseteq> W' \<and> W' \<subseteq> V \<and> P W'"
+      show "P (\<Union>M)" sorry (* doesn't seem possible *)
     qed
     thus ?thesis using P_def A_def by simp
   qed
