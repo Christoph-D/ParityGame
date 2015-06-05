@@ -90,7 +90,7 @@ lemma (in ParityGame) strategy_subset [intro]:
   "\<lbrakk> W' \<subseteq> W; strategy_on p \<sigma> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" using strategy_on_def by auto
 lemma (in ParityGame) strategy_on_empty_set [simp]:
   "strategy_on p \<sigma> {}" by (simp add: strategy_on_def)
-lemma (in ParityGame) strategy_only_on_empty_set_exists [simp]:
+lemma (in ParityGame) strategy_only_on_empty_set_exists:
   "\<exists>\<sigma>. strategy_only_on p \<sigma> {}" proof -
     have "strategy_only_on p (\<lambda>_. None) {}" using strategy_only_on_def by auto
     thus ?thesis by auto
@@ -517,6 +517,7 @@ lemma (in ParityGame) attractor_has_strategy:
     thus ?thesis using P_def A_def by simp
   qed
 
+(*
 lemma (in ParityGame) attractor_strategy_domain_is_W:
   assumes "W \<subseteq> V" shows "strategy_on p (attractor_strategy p W) (attractor p W - W)"
   proof -
@@ -546,6 +547,7 @@ lemma (in ParityGame) attractor_strategy_domain_is_W:
     qed
     thus ?thesis by (simp add: P_def)
   qed
+*)
 
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
