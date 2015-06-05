@@ -402,7 +402,7 @@ lemma (in ParityGame) attractor_is_attractor_closed [simp]:
 
 lemma (in ParityGame) attractor_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
-  assumes "W \<subseteq> V" and "P {}"
+  assumes "W \<subseteq> V" and "P W"
   and "\<And>W' v. W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
   shows "P (attractor p W)"
   proof -
@@ -419,7 +419,15 @@ lemma (in ParityGame) attractor_has_strategy:
   proof -
     def P \<equiv> "\<lambda>A. \<exists>\<sigma>. strategy_only_on p \<sigma> (A - W) \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> A \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
     have "P (attractor p W)" proof (rule attractor_induction, simp add: assms)
-      show "P {}" by (simp add: P_def)
+      obtain \<sigma> where \<sigma>_empty: "strategy_only_on p \<sigma> {}" using strategy_only_on_empty_set_exists by auto
+      { fix \<sigma>' :: "'a Strategy" and P :: "'a Path"
+        assume "valid_path P"
+        hence "P 0 \<noteq> None" using valid_path_def by auto
+        moreover assume "the (P 0) \<in> W"
+        ultimately have "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" by auto
+      }
+      hence "\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> W \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)" by auto
+      thus "P W" using \<sigma>_empty P_def by auto
     next
       fix W' v assume W': "W' \<subseteq> V" "P W'" and v: "v \<in> directly_attracted p W'"
       then obtain \<sigma> where \<sigma>: "strategy_only_on p \<sigma> (W' - W)" "\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> W' \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)" using P_def W'(2) by blast
