@@ -60,6 +60,7 @@ lemma (in Digraph) maximal_infinite_path_tail [intro]:
 datatype Player = Even | Odd
 fun other_player :: "Player \<Rightarrow> Player" where "other_player Even = Odd" | "other_player Odd = Even"
 notation other_player ("(_**)" [1000] 1000)
+lemma [simp]: "p**** = p" by (metis other_player.elims)
 
 record 'a ParityGame = "'a Graph" +
   priority :: "'a \<Rightarrow> nat" ("\<omega>\<index>")
@@ -244,10 +245,13 @@ lemma (in ParityGame) restricted_strategy_paths_inv:
   qed
 *)
 
-lemma (in ParityGame) VV_cases [simp]:
+lemma (in ParityGame) VV_equivalence [iff]:
   assumes "v \<in> V"
-  shows "v \<in> VV p \<longleftrightarrow> \<not>v \<in> VV p**"
+  shows "v \<notin> VV p \<longleftrightarrow> v \<in> VV p**"
   by (metis (full_types) Diff_iff assms local.VV.simps(1) local.VV.simps(2) other_player.simps(1) other_player.simps(2) winning_priority.cases)
+lemma (in ParityGame) VV_cases:
+  "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P"
+  using assms VV_equivalence by auto
 
 lemma (in ParityGame) path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
@@ -304,7 +308,7 @@ lemma (in ParityGame) paths_are_winning_for_exactly_one_player:
       using not_infinite finite path_dom_ends_on_finite_paths i_def v_def by blast
     hence "v \<in> VV p** \<longleftrightarrow> \<not>v \<in> VV p \<Longrightarrow> ?thesis"
       by (metis (full_types) Player.exhaust other_player.simps(1) other_player.simps(2))
-    thus ?thesis using VV_cases `v \<in> V` by blast
+    thus ?thesis using VV_equivalence`v \<in> V` by blast
   qed
 
 lemma (in ParityGame) paths_are_winning_for_one_player:
@@ -495,7 +499,7 @@ lemma (in ParityGame) attractor_has_strategy:
                 assume "the (P 0) \<notin> W'"
                 hence "P 0 = Some v" using P(4) by (metis P(1) insertE option.collapse valid_paths_are_nonempty)
                 have "v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W')" using directly_attracted_def using v(1) by blast
-                hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W'" using VV_cases directly_attracted_is_bounded_by_V v(1) v(3) by blast
+                hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W'" using VV_equivalence directly_attracted_is_bounded_by_V v(1) v(3) by blast
                 have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` directly_attracted_contains_no_deadends insertE maximal_path_def v(1) valid_paths_are_nonempty)
                 have "\<not>deadend v" using directly_attracted_contains_no_deadends v(1) by blast
                 hence "the (P 0) \<rightarrow> the (P 1)" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` insertE maximal_path_def valid_path_def)
