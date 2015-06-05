@@ -355,6 +355,20 @@ lemma (in ParityGame) directly_attracted_is_eventually_empty [simp]:
   shows "directly_attracted p V = {}" using directly_attracted_def by blast
 lemma (in ParityGame) directly_attracted_contains_no_deadends [elim]:
   shows "v \<in> directly_attracted p W \<Longrightarrow> \<not>deadend v" using directly_attracted_def by blast
+lemma (in ParityGame) directly_attracted_empty_set:
+  shows "directly_attracted p {} = {}" proof (rule ccontr)
+    assume "directly_attracted p {} \<noteq> {}"
+    then obtain v where v: "v \<in> directly_attracted p {}" by auto
+    have "v \<in> V" using directly_attracted_def v by blast
+    thus False proof (cases rule: VV_cases)
+      assume "v \<in> VV p" thus "False" using directly_attracted_def v by blast
+    next
+      assume "v \<in> VV p**"
+      have "\<not>deadend v" using directly_attracted_def v by blast
+      moreover have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> {}" using directly_attracted_def v by blast
+      ultimately show "False" using deadend_def by blast
+    qed
+  qed
 
 lemma (in ParityGame) attractor_contains_no_deadends:
   assumes "v \<in> attractor p W"
