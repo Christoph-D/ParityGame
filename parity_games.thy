@@ -420,13 +420,31 @@ lemma (in ParityGame) attractor_is_attractor_closed [simp]:
   qed
 *)
 
-lemma (in ParityGame) attractor_induction:
+lemma (in ParityGame) attractor_set_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
   assumes "W \<subseteq> V" and "P W"
-  and "\<And>W' v. W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
+    and "\<And>W' v. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
   shows "P (attractor p W)"
   proof -
     show ?thesis sorry
+  qed
+
+lemma (in ParityGame) attractor_induction:
+  fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
+  assumes "W \<subseteq> V" and "P W"
+    and "\<And>W' v. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
+  shows "P (attractor p W)"
+  proof (induct rule: attractor_set_induction; simp add: assms)
+    fix W' assume IH: "W \<subseteq> W'" "W' \<subseteq> V" "P W'"
+    hence "finite W'" using finite_vertex_set rev_finite_subset by blast
+    thus "P (W' \<union> (directly_attracted p W'))" using IH proof (induct W' rule: finite_induct)
+      case empty
+      moreover have "directly_attracted p {} = {}" by (simp add: directly_attracted_empty_set)
+      ultimately show "P ({} \<union> directly_attracted p {})" by simp
+    next
+      case (insert v W')
+      show ?case sorry
+    qed
   qed
 
 lemma (in ParityGame) attractor_has_strategy:
