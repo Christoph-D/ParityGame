@@ -375,6 +375,7 @@ definition (in ParityGame) attractor_closed :: "Player \<Rightarrow> 'a set \<Ri
   "attractor_closed p W \<equiv> directly_attracted p W = {}"
 
 (* Show that the attractor set is indeed attractor closed. *)
+(*
 lemma (in ParityGame) attractor_is_attractor_closed [simp]:
   shows "attractor_closed p (attractor p W)"
   proof -
@@ -403,6 +404,7 @@ lemma (in ParityGame) attractor_is_attractor_closed [simp]:
     qed
     thus ?thesis by (simp add: A_def local.attractor_closed_def)
   qed
+*)
 
 lemma (in ParityGame) attractor_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
@@ -553,6 +555,7 @@ lemma (in ParityGame) attractor_strategy_domain_is_W:
   qed
 *)
 
+(*
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
   and "\<forall>w \<in> V. \<omega>(w) = 0"
@@ -579,5 +582,6 @@ theorem (in ParityGame) positional_strategy_exists:
   proof -
     show ?thesis sorry
   qed
+*)
 
 end
