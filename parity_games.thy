@@ -8,7 +8,6 @@ begin
 
 type_synonym 'a Edge = "'a \<times> 'a"
 type_synonym 'a Path = "nat \<Rightarrow> 'a option"
-type_synonym 'a FinitePath = "'a list"
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a option"
 definition infinite_path :: "'a Path \<Rightarrow> bool" where [simp]: "infinite_path P \<equiv> \<forall>i. P i \<noteq> None"
 definition finite_path :: "'a Path \<Rightarrow> bool" where [simp]: "finite_path P \<equiv> \<exists>i. \<forall>j. (j > i \<longleftrightarrow> P j = None)"
@@ -52,22 +51,7 @@ definition valid_path :: "'a Path \<Rightarrow> bool" where
       \<and> (\<forall>i. P i \<noteq> None \<and> P (i+1) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (i+1)))"
 definition maximal_path :: "'a Path \<Rightarrow> bool" where
   [simp]: "maximal_path P \<equiv> \<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<longrightarrow> P (i+1) \<noteq> None"
-
-(* A finite path is valid if it is non-empty, all entries are in V and there is an arc between adjacent entries. *)
-inductive valid_finite_path :: "'a FinitePath \<Rightarrow> bool" where
-  Base: "x \<in> V \<Longrightarrow> valid_finite_path [x]"
-  | Cons: "\<lbrakk> x \<in> V; y \<in> V; x \<rightarrow> y; valid_finite_path (y # xs) \<rbrakk> \<Longrightarrow> valid_finite_path (x # y # xs)"
 end
-
-inductive maximal_finite_path :: "'a FinitePath \<Rightarrow> bool" where
-  Base: "maximal_finite_path []"
-  | Base2: "deadend x \<Longrightarrow> maximal_finite_path [x]"
-  | Cons: "maximal_finite_path xs \<Longrightarrow> maximal_finite_path (x # xs)"
-
-lemma (in Digraph) maximal_finite_path_tail [simp]:
-  assumes "P \<noteq> []" "maximal_finite_path P"
-  shows "maximal_finite_path (tl P)"
-  by (metis assms(1) assms(2) list.sel(3) maximal_finite_path.simps)
 
 lemma (in Digraph) maximal_infinite_path_tail [intro]:
   "maximal_path P \<Longrightarrow> maximal_path (path_tail P)"
@@ -155,15 +139,9 @@ definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strat
 definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (i+1))"
 
-inductive (in ParityGame) finite_path_conforms_with_strategy :: "Player \<Rightarrow> 'a FinitePath \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  (* Nil: "finite_path_conforms_with_strategy p [] \<sigma>"
-  | *) Cons1: "\<lbrakk> x \<in> VV p; \<sigma> x = None; deadend x \<rbrakk> \<Longrightarrow> finite_path_conforms_with_strategy p [x] \<sigma>"
-  | Cons2: "\<lbrakk> x \<in> VV p; \<sigma> x = Some y; finite_path_conforms_with_strategy p (y # xs) \<sigma> \<rbrakk> \<Longrightarrow> finite_path_conforms_with_strategy p (x # y # xs) \<sigma>"
-  | Cons3: "\<lbrakk> x \<notin> VV p; finite_path_conforms_with_strategy p xs \<sigma> \<rbrakk> \<Longrightarrow> finite_path_conforms_with_strategy p (x # xs) \<sigma>"
-
 lemma (in ParityGame) infinite_path_tail [intro]:
   "infinite_path P \<Longrightarrow> infinite_path (path_tail P)" using assms by auto
-lemma (in ParityGame) finite_path_taill [intro]:
+lemma (in ParityGame) finite_path_tail [intro]:
   assumes "finite_path P" "P 1 \<noteq> None" shows "finite_path (path_tail P)"
   proof -
     obtain i where i_def: "\<forall>j. (i < j) = (P j = None)" using assms(1) finite_path_def by blast
@@ -181,55 +159,15 @@ lemma (in ParityGame) valid_path_tail [simp]:
     ultimately show ?thesis using assms by auto
   qed
 
-lemma (in ParityGame) valid_finite_path_tail [simp]:
-  assumes "valid_finite_path P" "tl P \<noteq> []"
-  shows "valid_finite_path (tl P)"
-  using assms proof (induct P rule: list.induct)
-    case Nil thus ?case by simp
-  next
-    case (Cons x xs)
-    thus ?case using Cons.prems(2) finite_path_conforms_with_strategy.cases by (metis list.sel(3) valid_finite_path.simps) (* TODO: make faster *)
-  qed
-
 lemma (in ParityGame) infinite_path_tail_conforms [intro]:
   assumes "path_conforms_with_strategy p P \<sigma>"
   shows "path_conforms_with_strategy p (path_tail P) \<sigma>"
   using assms path_conforms_with_strategy_def by auto
 
-lemma (in ParityGame) finite_path_tail [simp]:
-  assumes "finite_path_conforms_with_strategy p P \<sigma>" "tl P \<noteq> []"
-  shows "finite_path_conforms_with_strategy p (tl P) \<sigma>"
-  using assms proof (induct P rule: list.induct)
-    case Nil thus ?case by simp
-  next
-    case (Cons x xs)
-    thus ?case proof (cases "xs = []")
-      case True thus ?thesis using Cons.prems(2) by auto
-    next
-      case False thus ?thesis using Cons.prems(1) finite_path_conforms_with_strategy.cases by auto
-    qed
-  qed
-
 lemma (in ParityGame) infinite_path_tail_head [simp]:
   assumes "P 0 = Some v" "v \<in> VV p" "\<sigma> v = Some w" "path_conforms_with_strategy p P \<sigma>"
   shows "Some w = P 1"
   using assms by auto
-
-(* lemma (in ParityGame) finite_path_tail_conforms [simp]:
-  assumes "x \<in> VV p" "\<sigma> x = Some y" "finite_path_conforms_with_strategy p (x # xs) \<sigma>"
-  shows "y = hd xs"
-  using assms(3)
-  proof (cases rule: finite_path_conforms_with_strategy.cases)
-    assume "xs = []" "x \<in> VV p" "\<sigma> x = None" "deadend x"
-    thus ?thesis using assms(2) by auto
-  next
-    fix y ys assume "xs = y # ys" "x \<in> VV p" "\<sigma> x = Some y" "finite_path_conforms_with_strategy p (y # ys) \<sigma>"
-    thus ?thesis using assms(2) by auto
-  next
-    assume "x \<notin> VV p" "finite_path_conforms_with_strategy p xs \<sigma>"
-    thus ?thesis using assms(1) by blast
-  qed
-*)
 
 definition (in ParityGame) strategy_less_eq :: "'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy_less_eq \<sigma> \<sigma>' \<equiv> \<forall>v. case \<sigma> v of Some y \<Rightarrow> \<sigma>' v = Some y | None \<Rightarrow> True"
@@ -344,17 +282,6 @@ definition (in ParityGame) winning_path :: "Player \<Rightarrow> 'a Path \<Right
     (infinite_path P \<and> (\<exists>a \<in> path_inf_priorities P. (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
     \<or> (finite_path P \<and> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV p**))"
 
-definition (in ParityGame) finite_winning_path :: "Player \<Rightarrow> 'a FinitePath \<Rightarrow> bool" where
-  "finite_winning_path p P \<equiv> last P \<in> VV p**"
-
-lemma (in ParityGame) valid_finite_paths_are_nonempty:
-  "valid_finite_path P \<Longrightarrow> P \<noteq> []" by (rule valid_finite_path.induct; simp)
-lemma (in ParityGame) valid_finite_paths_are_in_V:
-  "\<lbrakk> valid_finite_path P ; v \<in> set P \<rbrakk> \<Longrightarrow> v \<in> V" by (induct P rule: valid_finite_path.induct; auto)
-lemma (in ParityGame) valid_finite_paths_have_last:
-  "valid_finite_path P \<Longrightarrow> last P \<in> V"
-  by (frule valid_finite_paths_are_nonempty; erule valid_finite_paths_are_in_V; simp)
-
 lemma (in ParityGame) valid_paths_are_nonempty: "valid_path P \<Longrightarrow> P 0 \<noteq> None" by auto
 
 lemma (in ParityGame) paths_are_winning_for_exactly_one_player:
@@ -379,11 +306,6 @@ lemma (in ParityGame) paths_are_winning_for_exactly_one_player:
       by (metis (full_types) Player.exhaust other_player.simps(1) other_player.simps(2))
     thus ?thesis using VV_cases `v \<in> V` by blast
   qed
-
-lemma (in ParityGame) finite_paths_are_winning_for_exactly_one_player:
-  assumes "valid_finite_path P"
-  shows "finite_winning_path p P \<longleftrightarrow> \<not>finite_winning_path p** P"
-  using assms valid_finite_paths_have_last VV_cases finite_winning_path_def by blast
 
 lemma (in ParityGame) paths_are_winning_for_one_player:
   assumes "valid_path P"
@@ -486,33 +408,6 @@ lemma (in ParityGame) attractor_induction:
   proof -
     show ?thesis sorry
   qed
-
-(* lemma (in ParityGame) path_updates_with_strategy:
-  assumes "P 0 = Some v"
-  shows "\<exists>P'. path_conforms_with_strategy p P' (\<sigma>(v := Some v'))"
-  proof -
-    show ?thesis sorry
-  qed
-
-function (in ParityGame) attractor_strategy :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a Strategy" where
-  "directly_attracted p W = {} \<Longrightarrow> attractor_strategy p W = (\<lambda>v. None)"
-  | "directly_attracted p W \<noteq> {} \<Longrightarrow> attractor_strategy p W =
-    (let v = (SOME v. v \<in> directly_attracted p W) in
-      if v \<in> VV p
-      then (let w = (SOME w. w \<in> W \<and> v \<rightarrow> w) in
-        attractor_strategy p (W \<union> {v})(v \<mapsto> w))
-      else attractor_strategy p (W \<union> {v}))"
-  by (auto, force)
-  termination (in ParityGame) proof (rule, blast)
-    let ?R = "measure (\<lambda>(_,W). card (V - W))"
-    fix p W v w assume "directly_attracted p W \<noteq> {}" and "v = (SOME v. v \<in> directly_attracted p W)"
-    hence "v \<in> directly_attracted p W" using tfl_some by force
-    hence "v \<in> V - W" using directly_attracted_def by auto
-    hence "card (V - (W \<union> {v})) < card (V - W)" by (metis Diff_insert Un_insert_right card_Suc_Diff1 finite_Diff finite_vertex_set lessI sup_bot.right_neutral)
-    thus "((p, W \<union> {v}), p, W) \<in> measure (\<lambda>(_, W). card (V - W))" by simp
-    thus "((p, W \<union> {v}), p, W) \<in> measure (\<lambda>(_, W). card (V - W))" by simp
-  qed
-*)
 
 lemma (in ParityGame) attractor_has_strategy:
   fixes W p v
@@ -643,161 +538,6 @@ lemma (in ParityGame) attractor_strategy_domain_is_W:
     qed
     thus ?thesis by (simp add: P_def)
   qed
-
-lemma (in ParityGame) attractor_has_strategy:
-  fixes p W
-  assumes "W \<subseteq> V"
-  defines "A \<equiv> attractor p W"
-  shows "\<exists>\<sigma>. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. valid_finite_path P \<and> hd P = v \<and> finite_path_conforms_with_strategy p P \<sigma> \<longrightarrow> (\<exists>v \<in> set P. v \<in> W))"
-  proof (induct P rule: )
-    show ?thesis sorry
-  qed
-
-lemma (in ParityGame) attractor_has_strategy:
-  fixes p W
-  assumes "W \<subseteq> V"
-  defines "A \<equiv> attractor p W"
-  (* the assumption P = P \<restriction>\<^sub>P A is pointless, I need to fix this *)
-  shows "\<exists>\<sigma>. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. P = P \<restriction>\<^sub>P A \<and> valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
-  proof -
-    let ?good_in = "\<lambda>\<sigma> A. strategy_on p \<sigma> A \<and> (\<forall>v \<in> A. \<forall>P. P = P \<restriction>\<^sub>P A \<and> valid_path P \<and> P 0 = Some v \<and> path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S A)
-      \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W))"
-    let "?P" = "\<lambda>A. \<exists>\<sigma>. ?good_in \<sigma> A"
-    have "?P {}" sorry
-    moreover
-    have "\<And>W' v. W' \<subseteq> V \<Longrightarrow> ?P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> ?P (insert v W')" proof -
-      fix W' v
-      assume W': "W' \<subseteq> V" and IH: "\<exists>\<sigma>. ?good_in \<sigma> W'" and v: "v \<in> directly_attracted p W'"
-      hence "v \<in> V" using directly_attracted_is_bounded_by_V by auto
-      show "\<exists>\<sigma>. ?good_in \<sigma> (insert v W')" proof (cases)
-        assume "v \<in> W'" thus ?thesis using directly_attracted_is_disjoint_from_W v by blast
-      next
-        assume "v \<notin> W'"
-        note v = v `v \<in> V` this
-        from IH obtain \<sigma> where \<sigma>_def: "?good_in \<sigma> W'" by auto
-        thus ?thesis proof (cases)
-          assume "v \<in> VV p" note v = v this
-          then obtain w where w_def: "v\<rightarrow>w \<and> w \<in> W'" using directly_attracted_def by blast
-          let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
-          have "?good_in ?\<sigma>' (insert v W')" proof (rule)
-            show "strategy_on p ?\<sigma>' (insert v W')" using \<sigma>_def local.positional_strategy_def by (simp add: strategy_on_def v(4))
-            show "\<forall>v' \<in> insert v W'. \<forall>P. P = P \<restriction>\<^sub>P (insert v W') \<and> valid_path P \<and> P 0 = Some v' \<and> path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W')) \<longrightarrow> (\<exists>i \<in> path_dom P. the (P i) \<in> W)" proof (clarify)
-              fix v' assume v': "v' \<in> insert v W'"
-              fix P assume P: "P = P \<restriction>\<^sub>P (insert v W')" "P 0 = Some v'" "valid_path P" "path_conforms_with_strategy p P (?\<sigma>' \<restriction>\<^sub>S (insert v W'))"
-              show "\<exists>i \<in> path_dom P. the (P i) \<in> W" proof (cases)
-                assume "v' = v"
-                thus ?thesis sorry
-              next
-                assume "v' \<noteq> v"
-                hence "v' \<in> W'" using v' by simp
-                (* We have:
-                1) \<sigma> is an attractor strategy for W'.
-                2) v\<rightarrow>w and w \<in> W' and v \<in> VV p - W'
-                3) P is a path starting in v' \<in> W'
-                4) P conforms with ?\<sigma>' \<restriction>\<^sub>S (insert v W')
-                5) P = P \<restriction>\<^sub>P (insert v W'), that is, P only visits (insert v W')
-                We want to show that P conforms with \<sigma> in order to use 1).
-                *)
-                have "?\<sigma>' \<restriction>\<^sub>S (insert v W') = \<sigma> \<restriction>\<^sub>S W'" by sledgehammer
-                hence "path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S (insert v W'))" using path_conforms_with_strategy_def sorry
-                thus ?thesis sorry
-              qed
-            qed
-          qed
-          thus ?thesis by auto
-        next
-          assume "v \<notin> VV p"
-          hence "v \<in> VV p**" using VV_cases v by blast
-          note v = v this
-          show ?thesis sorry
-        qed
-      qed
-    qed
-    ultimately have "?P (attractor p W)" using assms attractor_induction[of W ?P] by force
-    moreover
-    have "attractor p W - V = {}" by (simp add: assms local.attractor_is_bounded_by_V)
-    ultimately show ?thesis using assms by blast
-  qed
-
-(* unfinished *)
-lemma (in ParityGame)
-  assumes "v \<in> attractor p W"
-  shows "v \<in> W \<or> (\<exists>w. (v,w) \<in> attractor_strategy p W {})"
-  using assms
-  proof (induct rule: attractor.induct)
-    fix v assume "v \<in> W" thus "v \<in> W \<or> (\<exists>w. (v,w) \<in> attractor_strategy p W {})" by auto
-  next
-    fix v
-    assume v_in_VVp: "v \<in> VV p"
-    assume w_assm: "\<exists>w. (v,w) \<in> E \<and> w \<in> attractor p W \<and> (w \<in> W \<or> (\<exists>u. (w, u) \<in> attractor_strategy p W {}))"
-    show "v \<in> W \<or> (\<exists>w. (v,w) \<in> attractor_strategy p W {})" proof (cases)
-      assume "v \<in> W" hence ?thesis by auto
-    next
-      assume "v \<notin> W"
-      hence v_dom: "v \<in> V - W" using local.valid_edge_set w_assm by auto
-      then obtain w where w_def: "(v,w) \<in> E \<and> w \<in> attractor p W \<and> (w \<in> W \<or> (\<exists>u. (w, u) \<in> attractor_strategy p W {}))" using w_assm by blast
-      hence edge_exists: "(v,w) \<in> E" by simp
-      hence no_deadend: "\<not>deadend v" using local.deadend_def local.valid_edge_set by blast
-      have "\<And>\<sigma>. (v,w) \<in> attractor_strategy p W \<sigma>" proof (induct rule: attractor_strategy.induct)
-        fix p W \<sigma>'
-        assume "\<And>\<sigma>. directly_attracted p W \<noteq> {} \<Longrightarrow> (v, w) \<in> attractor_strategy p (W \<union> directly_attracted p W) \<sigma>"
-        thus "(v, w) \<in> attractor_strategy p W \<sigma>'" using attractor_strategy_grows attractor_strategy_is_monotone by sledgehammer
-      qed
-      have "(v,w) \<in> attractor_strategy p W {}" proof (cases)
-        assume case1: "w \<in> W"
-
-        hence "v \<in> VV p - W \<longrightarrow> (\<exists>w. (v,w) \<in> E \<and> w \<in> W)" using w_def by blast
-        moreover
-        have "v \<in> VV p** - W \<longrightarrow> (\<forall>w. (v,w) \<in> E \<longrightarrow> w \<in> W)" by (metis (mono_tags, lifting) Diff_iff local.VV.elims local.VV.simps(1) local.VV.simps(2) other_player.simps(1) other_player.simps(2) v_in_VVp)
-        ultimately have v_is_directly_attracted: "v \<in> directly_attracted p W" using no_deadend directly_attracted_def v_dom by auto
-
-        hence "directly_attracted p W \<noteq> {}" by auto
-        hence "{(v,w) | v w. v \<in> directly_attracted p W \<and> (v,w) \<in> E \<and> w \<in> W} \<subseteq> attractor_strategy p W {}"
-          (is "?\<sigma> \<subseteq> _") using attractor_strategy_grows by auto
-        moreover
-        have "(v,w) \<in> ?\<sigma>" using v_is_directly_attracted edge_exists case1 by blast
-        ultimately show ?thesis by blast
-      next
-        assume case2: "w \<notin> W"
-        show ?thesis sorry
-      qed
-      show ?thesis sorry
-    qed
-  next
-    fix v assume "\<not>deadend v" and "v \<in> VV p**"
-    thus "v \<in> W \<or> (\<exists>w. (v,w) \<in> attractor_strategy p W {})" sorry
-  qed
-
-(*
-definition (in ParityGame) absorbed :: "'a \<Rightarrow> ('a list) set \<Rightarrow> bool" where
-  "absorbed v T \<equiv> (\<exists>q \<in> T. hd q = v) \<or> (\<forall>(v,w) \<in> E. \<exists>q \<in> T. hd q = w)"
-
-lemma (in ParityGame) absorbed_mono:
-  assumes "A \<subseteq> B"
-  shows "absorbed v A \<longrightarrow> absorbed v B"
-  proof-
-    { fix v assume 0: "absorbed v A"
-      have "absorbed v B" proof cases
-        assume "\<exists>q \<in> A. hd q = v"
-        thus ?thesis using absorbed_def assms by blast
-      next
-        assume "\<not>(\<exists>q \<in> A. hd q = v)"
-        thus ?thesis using 0 absorbed_def assms by fastforce
-      qed
-    }
-    thus ?thesis using assms by blast
-  qed
-
-inductive_set (in ParityGame) attractor_pre_strategy :: "Player \<Rightarrow> 'a set \<Rightarrow> ('a list) set"
-  for p :: Player and W :: "'a set" where
-  "v \<in> W \<Longrightarrow> [v] \<in> attractor_pre_strategy p W" |
-  "w#rest \<in> attractor_pre_strategy p W \<Longrightarrow> v \<in> VV p \<Longrightarrow> (v,w) \<in> E
-    \<Longrightarrow> v#(w#rest) \<in> attractor_pre_strategy p W" |
-  "w#rest \<in> attractor_pre_strategy p W \<Longrightarrow> v \<in> VV p** \<Longrightarrow> (v,w) \<in> E
-    \<Longrightarrow> absorbed v (attractor_pre_strategy p W)
-    \<Longrightarrow> v#(w#rest) \<in> attractor_pre_strategy p W"
-  monos absorbed_mono
-*)
 
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
