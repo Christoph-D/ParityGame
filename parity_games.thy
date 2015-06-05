@@ -253,11 +253,11 @@ lemma (in ParityGame) path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
   shows "\<exists>v. v \<in> path_inf P"
   proof -
-    from assms have P_total: "\<forall>i v. the (P i) = v \<longleftrightarrow> P i = Some v" by auto
+    from assms have P_total: "\<And>i v. the (P i) = v \<longleftrightarrow> P i = Some v" by auto
     from assms have "\<forall>i. the (P i) \<in> V" by simp
     hence "\<exists>v. (\<exists>i. the (P i) = v) \<and> (\<forall>i. (the (P i) = v \<longrightarrow> (\<exists>j > i. the (P j) = v)))"
       using pigeon_hole_principle[of "V" "\<lambda>i. the (P i)"] finite_vertex_set by blast
-    hence "\<exists>v. (\<exists>i. P i = Some v) \<and> (\<forall>i. (P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v)))" using P_total by force
+    hence "\<exists>v. (\<exists>i. P i = Some v) \<and> (\<forall>i. (P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v)))" using P_total by auto
     thus ?thesis by (simp add: path_inf_def)
   qed
 
