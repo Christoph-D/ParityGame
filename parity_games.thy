@@ -532,17 +532,15 @@ lemma (in ParityGame) attractor_set_fun_attractor:
         hence v2: "v \<in> VV p \<and> (\<exists>w \<in> V. v \<rightarrow> w \<and> w \<in> attractor_set_fun n p W)" using v(1) w by blast
         hence "v \<notin> VV p**" using VV_impl2 by blast
         hence v3: "\<not>deadend v" using `w \<in> V` deadend_def w by blast
-        { assume "v \<notin> attractor_set_fun n p W"
-          hence "v \<in> V - attractor_set_fun n p W" by (meson DiffI `W \<subseteq> V` attractor.VVp attractor_is_bounded_by_V subsetCE v(1) w)
+        have "v \<in> attractor_set_fun (Suc n) p W" proof (rule ccontr)
+          assume assm: "v \<notin> attractor_set_fun (Suc n) p W"
+          hence "v \<notin> attractor_set_fun n p W" using n_def by blast
+          hence "v \<in> V - attractor_set_fun n p W" using v(1) by blast
           hence "v \<in> directly_attracted p (attractor_set_fun n p W)"
             using v2 v3 `v \<notin> VV p**` directly_attracted_def[of p "attractor_set_fun n p W"] by blast
           hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_directly_attracted by fastforce
-        }
-        moreover { assume "v \<in> attractor_set_fun n p W"
-          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_monotone by blast
-        }
-        ultimately have "v \<in> attractor_set_fun (Suc n) p W" by blast
-        (* this could also be ccontr *)
+          thus "False" using assm by simp
+        qed
         thus "v \<in> attractor_set_fun n p W" using n_def by blast
       next
         case VVpstar
@@ -550,16 +548,15 @@ lemma (in ParityGame) attractor_set_fun_attractor:
         hence "v \<in> V" by blast
         hence "v \<notin> VV p" using v(2) by simp
         have w: "\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> attractor_set_fun n p W" by (simp add: v(3))
-        { assume "v \<notin> attractor_set_fun n p W"
+        have "v \<in> attractor_set_fun (Suc n) p W" proof (rule ccontr)
+          assume assm: "v \<notin> attractor_set_fun (Suc n) p W"
+          hence "v \<notin> attractor_set_fun n p W" using n_def by blast
           hence "v \<in> V - attractor_set_fun n p W" by (simp add: `v \<in> V`)
           hence "v \<in> directly_attracted p (attractor_set_fun n p W)"
             using v(1) w `v \<notin> VV p` directly_attracted_def[of p "attractor_set_fun n p W"] by blast
           hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_directly_attracted by fastforce
-        }
-        moreover { assume "v \<in> attractor_set_fun n p W"
-          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_monotone by blast
-        }
-        ultimately have "v \<in> attractor_set_fun (Suc n) p W" by blast
+          thus "False" using assm by auto
+        qed
         thus "v \<in> attractor_set_fun n p W" using n_def by blast
       qed
       } thus ?thesis by auto
