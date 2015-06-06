@@ -326,9 +326,9 @@ definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> 'a Strategy
 (* The attractor set of a given set of vertices. *)
 inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
   for p :: Player and W :: "'a set" where
-  [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
-  "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
-  "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
+  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
+  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
+  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
 
 lemma (in ParityGame) attractor_is_superset [simp]:
   shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
