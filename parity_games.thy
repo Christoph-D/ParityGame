@@ -353,6 +353,8 @@ definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<
 
 lemma (in ParityGame) directly_attracted_is_bounded_by_V:
   shows "directly_attracted p W \<subseteq> V" using directly_attracted_def by blast
+lemma (in ParityGame) directly_attracted_is_finite [simp]:
+  shows "finite (directly_attracted p W)" using directly_attracted_is_bounded_by_V finite_subset finite_vertex_set by blast
 lemma (in ParityGame) directly_attracted_is_disjoint_from_W [simp]:
   shows "W \<inter> directly_attracted p W = {}" using directly_attracted_def by blast
 lemma (in ParityGame) directly_attracted_is_eventually_empty [simp]:
