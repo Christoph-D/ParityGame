@@ -77,6 +77,7 @@ locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) 
   assumes valid_player0_set: "V0 \<subseteq> V"
 
 fun (in ParityGame) VV :: "Player \<Rightarrow> 'a set" where "VV Even = V0" | "VV Odd = V - V0"
+lemma (in ParityGame) [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" by (metis (full_types) Diff_subset VV.elims subsetCE valid_player0_set)
 
 (* The set of priorities that occur infinitely often on a given path. *)
 definition (in ParityGame) path_inf_priorities :: "'a Path \<Rightarrow> nat set" where
@@ -245,13 +246,16 @@ lemma (in ParityGame) restricted_strategy_paths_inv:
   qed
 *)
 
-lemma (in ParityGame) VV_equivalence [iff]:
-  assumes "v \<in> V"
-  shows "v \<notin> VV p \<longleftrightarrow> v \<in> VV p**"
+lemma (in ParityGame) VV_impl1 [intro]: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**"
+  by (metis (full_types) Diff_iff VV.elims VV.simps(1) VV.simps(2) other_player.simps(1) other_player.simps(2))
+lemma (in ParityGame) VV_impl2 [intro]: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p"
+  using VV_impl1 by blast
+lemma (in ParityGame) VV_equivalence [simp]:
+  "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**"
   by (metis (full_types) Diff_iff assms local.VV.simps(1) local.VV.simps(2) other_player.simps(1) other_player.simps(2) winning_priority.cases)
 lemma (in ParityGame) VV_cases:
   "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P"
-  using assms VV_equivalence by auto
+  using assms by (metis (full_types) Diff_iff VV.elims VV.simps(1) VV.simps(2) other_player.simps(1) other_player.simps(2))
 
 lemma (in ParityGame) path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
