@@ -432,19 +432,162 @@ lemma (in ParityGame) attractor_is_attractor_closed [simp]:
   qed
 *)
 
+function (in ParityGame) attractor_set_fun :: "nat \<Rightarrow> Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
+  "attractor_set_fun 0 p W = W"
+  | "attractor_set_fun (Suc n) p W = (if directly_attracted p W = {} then W else attractor_set_fun n p (W \<union> directly_attracted p W))"
+  by pat_completeness auto
+  termination (in ParityGame) by lexicographic_order
+  (*termination (in ParityGame) proof
+    let ?R = "measure (\<lambda>(n,p,W). card (V - W))"
+    show "wf ?R" by auto
+    fix p W assume "directly_attracted p W \<noteq> {}"
+    then obtain v where v_def: "v \<in> directly_attracted p W" by auto
+    moreover hence "v \<in> V - W" by (metis Diff_iff Int_iff directly_attracted_is_bounded_by_V directly_attracted_is_disjoint_from_W subsetCE)
+    moreover have "v \<notin> V - (W \<union> directly_attracted p W)" using v_def by auto
+    ultimately have "card (V - (W \<union> directly_attracted p W)) < card (V - W)" by (metis Diff_idemp Diff_mono Diff_subset Un_upper1 finite_Diff finite_vertex_set psubsetI psubset_card_mono)
+    thus "((p, W \<union> directly_attracted p W), p, W) \<in> ?R" by auto
+  qed *)
+
+lemma (in ParityGame) attractor_set_fun_subset [simp]:
+  "W \<subseteq> attractor_set_fun n p W" proof (induct n arbitrary: W)
+    case 0 thus ?case by auto
+    case (Suc n) thus ?case by (metis Un_subset_iff attractor_set_fun.simps(2) eq_iff)
+  qed
+lemma (in ParityGame) attractor_set_fun_monotone:
+  "attractor_set_fun n p W \<subseteq> attractor_set_fun (Suc n) p W" by (induct n arbitrary: W; auto)
+lemma (in ParityGame) attractor_set_fun_monotone_generalized [simp]:
+  "attractor_set_fun n p W \<subseteq> attractor_set_fun (n + m) p W" by (induct n arbitrary: W m; simp)
+lemma (in ParityGame) attractor_set_fun_bounded_by_V:
+  "attractor_set_fun n p W \<subseteq> V \<union> W" proof (induct n arbitrary: W)
+    case 0 thus ?case by auto
+    case (Suc n)
+    have "directly_attracted p W \<subseteq> V" by (simp add: directly_attracted_is_bounded_by_V)
+    thus ?case using Suc.hyps by auto
+  qed
+lemma (in ParityGame) attractor_set_fun_finite:
+  "finite W \<Longrightarrow> finite (attractor_set_fun n p W)" by (metis attractor_set_fun_bounded_by_V finite_UnI finite_vertex_set rev_finite_subset)
+lemma (in ParityGame) attractor_set_fun_equivalence [iff]:
+  "attractor_set_fun (Suc n) p W = attractor_set_fun n p (W \<union> directly_attracted p W)"
+  by (metis Un_empty_right attractor_set_fun.elims attractor_set_fun.simps(2))
+
+lemma (in ParityGame) attractor_set_fun_directly_attracted:
+  "attractor_set_fun n p W \<union> directly_attracted p (attractor_set_fun n p W) = attractor_set_fun (Suc n) p W"
+  by (induct n arbitrary: W; auto)
+
+lemma (in ParityGame) attractor_set_fun_eventually_constant:
+  assumes "W \<subseteq> V"
+  shows "\<exists>n. attractor_set_fun n p W = attractor_set_fun (Suc n) p W"
+  proof-
+    have finite: "finite W" using assms finite_vertex_set rev_finite_subset by blast
+    have "card (attractor_set_fun 0 p W) \<ge> 0" by auto
+    {
+    fix n :: nat and W :: "'a set"
+    assume finite: "finite W"
+    have "attractor_set_fun n p W \<noteq> attractor_set_fun (Suc n) p W \<Longrightarrow>
+      card (attractor_set_fun n p W) < card (attractor_set_fun (Suc n) p W)" proof (induct n)
+      case 0
+      have "attractor_set_fun 1 p W = W \<union> directly_attracted p W" by auto
+      hence "W \<noteq> W \<union> directly_attracted p W" using "0.prems" by fastforce
+      hence "card W < card (W \<union> directly_attracted p W)" by (simp add: finite psubsetI psubset_card_mono)
+      thus ?case by auto
+    next
+      case (Suc n)
+      assume IH: "attractor_set_fun n p W \<noteq> attractor_set_fun (Suc n) p W \<Longrightarrow>
+          card (attractor_set_fun n p W) < card (attractor_set_fun (Suc n) p W)"
+        "attractor_set_fun (Suc n) p W \<noteq> attractor_set_fun (Suc (Suc n)) p W"
+      let ?DA = "directly_attracted p W"
+      from IH(2) have "?DA \<noteq> {}" by auto
+      have "attractor_set_fun (Suc n) p W \<subseteq> attractor_set_fun (Suc (Suc n)) p W" using attractor_set_fun_monotone by blast
+      moreover have "finite (attractor_set_fun (Suc n) p W)" using finite attractor_set_fun_finite by blast
+      ultimately show ?case by (metis Suc.prems attractor_set_fun_finite local.finite psubsetI psubset_card_mono)
+    qed
+    } note lemma1 = this
+    show ?thesis proof (rule ccontr)
+      assume contr: "\<not>(\<exists>n. attractor_set_fun n p W = attractor_set_fun (Suc n) p W)"
+      hence "\<forall>n. attractor_set_fun n p W < attractor_set_fun (Suc n) p W" using attractor_set_fun_monotone by (metis psubsetI)
+      { fix n
+      have "card (attractor_set_fun n p W) \<ge> n" proof (induct n)
+        case 0 thus ?case by simp
+        case (Suc n) thus ?case by (metis Suc_leI contr add_lessD1 le_Suc_ex lemma1 local.finite)
+      qed
+      }
+      thus False by (metis assms attractor_set_fun_bounded_by_V attractor_set_fun_monotone card_seteq contr finite_vertex_set subset_antisym sup.orderE)
+    qed
+  qed
+
+lemma (in ParityGame) attractor_set_fun_attractor:
+  assumes "W \<subseteq> V"
+  shows "\<exists>n. attractor_set_fun n p W = attractor p W"
+  proof -
+    obtain n where n_def: "attractor_set_fun n p W = attractor_set_fun (Suc n) p W" using assms attractor_set_fun_eventually_constant by blast
+    hence "attractor p W \<subseteq> attractor_set_fun n p W" proof -
+      {fix v
+      have "v \<in> attractor p W \<Longrightarrow> v \<in> attractor_set_fun n p W" proof (induct rule: attractor.induct)
+        case Base thus ?case using attractor_set_fun_subset by blast
+      next
+        case VVp
+        fix v assume v: "v \<in> VV p" "\<exists>w. v \<rightarrow> w \<and> w \<in> attractor p W \<and> w \<in> attractor_set_fun n p W"
+        then obtain w where w: "v \<rightarrow> w \<and> w \<in> attractor p W \<and> w \<in> attractor_set_fun n p W" by auto
+        hence "w \<in> V" using `W \<subseteq> V` attractor_is_bounded_by_V by blast
+        hence v2: "v \<in> VV p \<and> (\<exists>w \<in> V. v \<rightarrow> w \<and> w \<in> attractor_set_fun n p W)" using v(1) w by blast
+        hence "v \<notin> VV p**" using VV_impl2 by blast
+        hence v3: "\<not>deadend v" using `w \<in> V` deadend_def w by blast
+        { assume "v \<notin> attractor_set_fun n p W"
+          hence "v \<in> V - attractor_set_fun n p W" by (meson DiffI `W \<subseteq> V` attractor.VVp attractor_is_bounded_by_V subsetCE v(1) w)
+          hence "v \<in> directly_attracted p (attractor_set_fun n p W)"
+            using v2 v3 `v \<notin> VV p**` directly_attracted_def[of p "attractor_set_fun n p W"] by blast
+          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_directly_attracted by fastforce
+        }
+        moreover { assume "v \<in> attractor_set_fun n p W"
+          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_monotone by blast
+        }
+        ultimately have "v \<in> attractor_set_fun (Suc n) p W" by blast
+        (* this could also be ccontr *)
+        thus "v \<in> attractor_set_fun n p W" using n_def by blast
+      next
+        case VVpstar
+        fix v assume v: "\<not>deadend v" "v \<in> VV p**" "\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> attractor p W \<and> w \<in> attractor_set_fun n p W"
+        hence "v \<in> V" by blast
+        hence "v \<notin> VV p" using v(2) by simp
+        have w: "\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> attractor_set_fun n p W" by (simp add: v(3))
+        { assume "v \<notin> attractor_set_fun n p W"
+          hence "v \<in> V - attractor_set_fun n p W" by (simp add: `v \<in> V`)
+          hence "v \<in> directly_attracted p (attractor_set_fun n p W)"
+            using v(1) w `v \<notin> VV p` directly_attracted_def[of p "attractor_set_fun n p W"] by blast
+          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_directly_attracted by fastforce
+        }
+        moreover { assume "v \<in> attractor_set_fun n p W"
+          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_monotone by blast
+        }
+        ultimately have "v \<in> attractor_set_fun (Suc n) p W" by blast
+        thus "v \<in> attractor_set_fun n p W" using n_def by blast
+      qed
+      } thus ?thesis by auto
+    qed
+    moreover
+    have "attractor_set_fun n p W \<subseteq> attractor p W" proof -
+      show ?thesis sorry
+    qed
+    ultimately show ?thesis by auto
+  qed
+
 lemma (in ParityGame) attractor_set_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
-  assumes "W \<subseteq> V" and "P W"
-    and "\<And>W'. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
-    and "\<And>M. \<forall>W'\<in>M. W \<subseteq> W' \<and> W' \<subseteq> V \<and> P W' \<Longrightarrow> P (\<Union>M)"
+  assumes "W \<subseteq> V" "P W"
+    "\<And>W'. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
   shows "P (attractor p W)"
   proof -
-    def f \<equiv> "\<lambda>A. W \<union> A \<union> (directly_attracted p A)"
-    have "P (lfp f)" proof (induct rule: lfp_ordinal_induct)
-      show "mono f" sorry
-      show "\<And>S. P S \<Longrightarrow> P (f S)" sorry
-      show "\<And>M. \<forall>S\<in>M. P S \<Longrightarrow> P (\<Union>M)" sorry
-    qed
+    { fix n have "P (attractor_set_fun n p W)" proof (induct n)
+        case 0 thus ?case by (simp add: assms(2))
+        case (Suc n)
+        let ?W' = "attractor_set_fun n p W"
+        have "W \<subseteq> ?W'" by simp
+        moreover have "?W' \<subseteq> V" using attractor_set_fun_bounded_by_V assms(1) by blast
+        moreover have "P ?W'" by (simp add: Suc.hyps)
+        ultimately show ?case by (metis attractor_set_fun_directly_attracted assms(3))
+      qed
+    }
+    obtain n where "attractor_set_fun n p W = attractor_set_fun (Suc n) p W" using assms(1) attractor_set_fun_eventually_constant by blast
     thus ?thesis using attractor_as_lfp f_def by simp
   qed
 
