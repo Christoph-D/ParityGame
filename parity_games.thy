@@ -661,9 +661,9 @@ lemma (in ParityGame) attractor_induction:
   qed
 
 lemma (in ParityGame) attractor_has_strategy:
-  fixes W p v
+  fixes W p
   defines "A \<equiv> attractor p W"
-  assumes "W \<subseteq> V" "v \<in> A"
+  assumes "W \<subseteq> V"
   shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W)
     \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> A
       \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
@@ -769,9 +769,9 @@ lemma (in ParityGame) attractor_has_strategy:
   qed
 
 lemma (in ParityGame) attractor_has_strategy_weak:
-  fixes W p v
+  fixes W p
   defines "A \<equiv> attractor p W"
-  assumes "W \<subseteq> V" "v \<in> A"
+  assumes "W \<subseteq> V"
   shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W)
     \<and> (\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
       \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
