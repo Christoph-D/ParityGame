@@ -204,6 +204,9 @@ lemma (in ParityGame) strategy_less_eq_tran:
     qed
   qed
 
+lemma (in ParityGame) strategy_less_eq_refl [simp]:
+  shows "strategy_less_eq \<sigma> \<sigma>" by (simp add: option.case_eq_if strategy_less_eq_def)
+
 (*
 lemma (in ParityGame) restricted_strategy_paths:
   assumes "path_conforms_with_strategy p P \<sigma>"
