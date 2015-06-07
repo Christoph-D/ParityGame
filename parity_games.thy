@@ -780,38 +780,6 @@ lemma (in ParityGame) attractor_has_strategy_weak:
   qed
 
 (*
-lemma (in ParityGame) attractor_strategy_domain_is_W:
-  assumes "W \<subseteq> V" shows "strategy_on p (attractor_strategy p W) (attractor p W - W)"
-  proof -
-    def P \<equiv> "\<lambda>W'. strategy_on p (attractor_strategy p W) (W' - W)"
-    let ?\<sigma> = "attractor_strategy p W"
-    have "P (attractor p W)" proof (induct rule: attractor_induction, simp add: assms)
-      show "P {}" by (simp add: P_def)
-    next
-      fix W' v assume W': "W' \<subseteq> V" "P W'" and v: "v \<in> directly_attracted p W'"
-      have "strategy_on p ?\<sigma> ((insert v W') - W)" proof (unfold strategy_on_def, clarify)
-        fix v' assume v': "v' \<in> VV p" "v' \<in> insert v W'" "v' \<notin> W" "\<not>deadend v'"
-        show "\<exists>y. ?\<sigma> v' = Some y" proof (cases)
-          assume "v' = v"
-          have "directly_attracted p W' \<noteq> {}" using v by auto
-          hence "attractor_strategy p W' = "
-            using attractor_strategy_def by sledgehamme
-          show ?thesis sledgehamme
-        next
-          assume "v' \<noteq> v"
-          hence "v' \<in> W' - W" using v' by auto note v' = v' this
-          have "strategy_on p ?\<sigma> (W' - W)" using W'(2) P_def by auto
-          hence "?\<sigma> v' \<noteq> None" using strategy_on_def v' by force
-          thus ?thesis by simp
-        qed
-      qed
-      thus "P (insert v W')" by (simp add: P_def)
-    qed
-    thus ?thesis by (simp add: P_def)
-  qed
-*)
-
-(*
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   assumes "v \<in> V"
   and "\<forall>w \<in> V. \<omega>(w) = 0"
