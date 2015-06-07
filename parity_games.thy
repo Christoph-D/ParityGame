@@ -764,11 +764,22 @@ lemma (in ParityGame) attractor_has_strategy:
         qed
       qed
       thus "P (insert v W')" by (simp add: P_def)
-    next
-      fix M assume "\<forall>W' \<in> M. W \<subseteq> W' \<and> W' \<subseteq> V \<and> P W'"
-      show "P (\<Union>M)" sorry (* doesn't seem possible *)
     qed
     thus ?thesis using P_def A_def by simp
+  qed
+
+lemma (in ParityGame) attractor_has_strategy_weak:
+  fixes W p v
+  defines "A \<equiv> attractor p W"
+  assumes "W \<subseteq> V" "v \<in> A"
+  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W)
+    \<and> (\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
+      \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
+  proof -
+    obtain \<sigma> where "strategy_only_on p \<sigma> (A - W)
+      \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> A
+        \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))" using assms attractor_has_strategy by blast
+    thus ?thesis using strategy_less_eq_refl by blast
   qed
 
 (*
