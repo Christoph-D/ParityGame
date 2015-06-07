@@ -248,16 +248,10 @@ lemma (in ParityGame) restricted_strategy_paths_inv:
   qed
 *)
 
-lemma (in ParityGame) VV_impl1 [intro]: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**"
-  by auto
-lemma (in ParityGame) VV_impl2 [intro]: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p"
-  by auto
-lemma (in ParityGame) VV_equivalence [simp]:
-  "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**"
-  by auto
-lemma (in ParityGame) VV_cases:
-  "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P"
-  by fastforce
+lemma (in ParityGame) VV_impl1 [intro]: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**" by auto
+lemma (in ParityGame) VV_impl2 [intro]: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by auto
+lemma (in ParityGame) VV_equivalence [simp]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
+lemma (in ParityGame) VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by fastforce
 
 lemma (in ParityGame) path_inf_is_nonempty:
   assumes "valid_path P" "infinite_path P"
