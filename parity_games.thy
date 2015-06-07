@@ -593,14 +593,14 @@ lemma (in ParityGame) attractor_set_fun_attractor:
       have "directly_attracted p (attractor_set_fun n p W) \<subseteq> attractor p W" proof (intro subsetI)
         fix v assume v_direct: "v \<in> directly_attracted p (attractor_set_fun n p W)"
         hence no_deadend: "\<not>deadend v" using directly_attracted_contains_no_deadends by blast
-        show "v \<in> attractor p W" proof (cases)
+        have "v \<in> V" using v_direct directly_attracted_def by auto
+        thus "v \<in> attractor p W" proof (cases rule: VV_cases)
           assume "v \<in> VV p"
           hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_set_fun n p W" using v_direct directly_attracted_def by blast
           hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W" using IH by auto
           thus ?thesis by (simp add: `v \<in> VV p` attractor.VVp)
         next
-          assume "v \<notin> VV p"
-          hence "v \<in> VV p**" by (metis VV_cases directly_attracted_is_bounded_by_V subsetCE v_direct)
+          assume "v \<in> VV p**"
           hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_set_fun n p W" using v_direct directly_attracted_def by blast
           hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W" using IH by (metis subsetCE)
           thus ?thesis by (simp add: `v \<in> VV p**` attractor.VVpstar no_deadend)
@@ -636,19 +636,28 @@ lemma (in ParityGame) attractor_induction:
   assumes "W \<subseteq> V" and "P W"
     and "\<And>W' v. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
   shows "P (attractor p W)"
-  proof (induct rule: attractor_set_induction)
-    show "W \<subseteq> V" using assms(1) .
-    show "P W" using assms(2) .
+  using assms(1) assms(2) proof (induct rule: attractor_set_induction; simp)
     fix W' assume IH: "W \<subseteq> W'" "W' \<subseteq> V" "P W'"
-    hence "finite W'" using finite_vertex_set rev_finite_subset by blast
-    thus "P (W' \<union> (directly_attracted p W'))" using IH proof (induct W' rule: finite_induct)
-      case empty
-      moreover have "directly_attracted p {} = {}" by (simp add: directly_attracted_empty_set)
-      ultimately show "P ({} \<union> directly_attracted p {})" by simp
+    def D \<equiv> "directly_attracted p W'"
+    hence "finite D" by auto
+    hence "D \<subseteq> directly_attracted p W' \<Longrightarrow> P (W' \<union> D)" using IH proof (induct D rule: finite_induct)
+      case empty thus "P (W' \<union> {})" by simp
     next
-      case (insert v W')
-      show ?case sorry
+      case (insert v D)
+      assume D: "finite D" "v \<notin> D"
+        "\<lbrakk> D \<subseteq> directly_attracted p W'; W \<subseteq> W'; W' \<subseteq> V; P W' \<rbrakk> \<Longrightarrow> P (W' \<union> D)"
+        "insert v D \<subseteq> directly_attracted p W'"
+        "W \<subseteq> W'" "W' \<subseteq> V" "P W'"
+      hence "D \<subseteq> directly_attracted p W'" by auto
+      hence "P (W' \<union> D)" by (simp add: insert.hyps(3) insert.prems(2) insert.prems(3) insert.prems(4))
+      moreover have "v \<in> directly_attracted p W'" using D(4) by auto
+      moreover have "W \<subseteq> W' \<union> D" by (simp add: insert.prems(2) le_supI1)
+      moreover have "W' \<union> D \<subseteq> V" using `D \<subseteq> directly_attracted p W'` directly_attracted_is_bounded_by_V insert.prems(3) by blast 
+      moreover have "v \<in> directly_attracted p (W' \<union> D)" by (simp add: directly_attracted_union calculation(2) insert.hyps(2))
+      ultimately have "P (insert v (W' \<union> D))" using assms(3)[of "W' \<union> D" v] by blast
+      thus "P (W' \<union> (insert v D))" by auto
     qed
+    thus "P (W' \<union> D)" by (simp add: D_def)
   qed
 
 lemma (in ParityGame) attractor_has_strategy:
