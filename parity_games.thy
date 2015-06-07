@@ -374,7 +374,7 @@ lemma (in ParityGame) directly_attracted_empty_set:
     next
       assume "v \<in> VV p**"
       have "\<not>deadend v" using directly_attracted_def v by blast
-      moreover have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> {}" using directly_attracted_def v by blast
+      moreover have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> {}" using directly_attracted_def v `v \<in> VV p**` by blast
       ultimately show "False" using deadend_def by blast
     qed
   qed
