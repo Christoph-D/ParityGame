@@ -177,7 +177,6 @@ lemma (in ParityGame) strategy_less_eq_updates:
   assumes "\<sigma> v = None"
   shows "strategy_less_eq \<sigma> (\<sigma>(v \<mapsto> w))"
   by (simp add: assms option.case_eq_if strategy_less_eq_def)
-
 lemma (in ParityGame) strategy_on_is_monotone:
   assumes "strategy_less_eq \<sigma> \<sigma>'" "strategy_on p \<sigma> W"
   shows "strategy_on p \<sigma>' W"
@@ -188,7 +187,6 @@ lemma (in ParityGame) strategy_on_is_monotone:
     }
     thus ?thesis by (simp add: strategy_on_def)
   qed
-
 lemma (in ParityGame) strategy_less_eq_tran:
   assumes "strategy_less_eq \<sigma> \<sigma>'" "strategy_less_eq \<sigma>' \<sigma>''"
   shows "strategy_less_eq \<sigma> \<sigma>''" proof (unfold strategy_less_eq_def; clarify)
@@ -202,9 +200,10 @@ lemma (in ParityGame) strategy_less_eq_tran:
       thus ?thesis by (simp add: y_def)
     qed
   qed
-
 lemma (in ParityGame) strategy_less_eq_refl [simp]:
-  shows "strategy_less_eq \<sigma> \<sigma>" by (simp add: option.case_eq_if strategy_less_eq_def)
+  "strategy_less_eq \<sigma> \<sigma>" by (simp add: option.case_eq_if strategy_less_eq_def)
+lemma (in ParityGame) strategy_less_eq_least [simp]:
+  "strategy_only_on p \<sigma> {} \<Longrightarrow> strategy_less_eq \<sigma> \<sigma>'" by (simp add: strategy_less_eq_def strategy_only_on_elements)
 
 (*
 lemma (in ParityGame) restricted_strategy_paths:
@@ -647,129 +646,108 @@ lemma (in ParityGame) attractor_induction:
     thus "P (W' \<union> D)" by (simp add: D_def)
   qed
 
+definition (in ParityGame) strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "strategy_attracts_from_to p \<sigma> A W \<equiv> (\<forall>P.
+      valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
+    \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
+lemma (in ParityGame) strategy_attracts_from_to_trivial [simp]:
+  "strategy_attracts_from_to p \<sigma> W W" by (meson strategy_attracts_from_to_def valid_paths_are_nonempty)
+
+abbreviation (in ParityGame) attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "attractor_strategy_on p \<sigma> A W \<equiv> strategy_only_on p \<sigma> (A - W) \<and>
+    (\<forall>\<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' A W)"
+
 lemma (in ParityGame) attractor_has_strategy:
   fixes W p
-  defines "A \<equiv> attractor p W"
   assumes "W \<subseteq> V"
-  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W)
-    \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> A
-      \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
+  shows "\<exists>\<sigma>. attractor_strategy_on p \<sigma> (attractor p W) W"
   proof -
-    def P \<equiv> "\<lambda>A. \<exists>\<sigma>. strategy_only_on p \<sigma> (A - W) \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> A \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
-    have "P (attractor p W)" proof (rule attractor_induction, simp add: assms)
+    def strategy_exists_for \<equiv> "\<lambda>A. \<exists>\<sigma>. attractor_strategy_on p \<sigma> A W"
+    have "strategy_exists_for (attractor p W)" proof (rule attractor_induction, simp add: assms)
       obtain \<sigma> where \<sigma>_empty: "strategy_only_on p \<sigma> {}" using strategy_only_on_empty_set_exists by auto
-      { fix \<sigma>' :: "'a Strategy" and P :: "'a Path"
-        assume "valid_path P"
-        hence "P 0 \<noteq> None" using valid_path_def by auto
-        moreover assume "the (P 0) \<in> W"
-        ultimately have "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" by auto
-      }
-      hence 0: "\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> W \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)" by auto
-      have "strategy_only_on p \<sigma> (W - W)" using \<sigma>_empty by simp
-      thus "P W" using P_def 0 by blast
+      hence "\<forall>\<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<and> strategy_attracts_from_to p \<sigma>' W W" by auto
+      moreover have "strategy_only_on p \<sigma> (W - W)" using \<sigma>_empty by simp
+      ultimately show "strategy_exists_for W" unfolding strategy_exists_for_def by blast
     next
-      fix W' v assume W': "W' \<subseteq> V" "P W'" and v: "v \<in> directly_attracted p W'"
-      then obtain \<sigma> where \<sigma>: "strategy_only_on p \<sigma> (W' - W)" "\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> W' \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)" using P_def W'(2) by blast
-      have "\<exists>\<sigma>. strategy_only_on p \<sigma> ((insert v W') - W) \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> (insert v W') \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))" proof (cases)
-        assume "v \<in> W'"
-        hence 0: "insert v W' = W'" by auto
-        hence "strategy_only_on p \<sigma> ((insert v W') - W)" using \<sigma>(1) by auto
-        moreover hence "\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> (insert v W') \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)"
-          using 0 \<sigma>(2) by blast
-        ultimately show ?thesis by blast
-      next
-        assume "v \<notin> W'" note v = v this
-        show ?thesis proof(cases)
-          assume "v \<in> VV p" note v = v this
-          show ?thesis proof (cases)
-            assume "v \<in> W" thus ?thesis by (metis \<sigma>(1) \<sigma>(2) insert_Diff_if insert_iff valid_paths_are_nonempty)
+      fix W' v assume W': "W \<subseteq> W'" "W' \<subseteq> V" "strategy_exists_for W'" and v: "v \<in> directly_attracted p W'"
+      then obtain \<sigma> where \<sigma>: "attractor_strategy_on p \<sigma> W' W" using strategy_exists_for_def W'(2) by blast
+      have "v \<notin> W'" using directly_attracted_is_disjoint_from_W v by blast
+      hence "v \<notin> W" using W'(1) by auto
+      show "strategy_exists_for (insert v W')" proof (cases)
+        assume "v \<in> VV p" note v = v this
+        then obtain w where w: "w \<in> W'" "v \<rightarrow> w" using directly_attracted_def by blast
+        let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
+        have "\<sigma> v = None" using \<sigma> `v \<notin> W'` by blast
+        hence \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> ?\<sigma>'" using strategy_less_eq_updates by blast
+        hence "strategy_attracts_from_to p ?\<sigma>' W' W" using \<sigma> by blast
+        have "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if `v \<notin> W`)
+        moreover have "strategy_only_on p ?\<sigma>' (insert v (W' - W))" using strategy_only_on_case_rule using \<sigma> v(2) `v \<notin> W'` by blast
+        ultimately have "strategy_only_on p ?\<sigma>' ((insert v W') - W)" by simp
+        moreover
+        have "\<forall>\<sigma>'. strategy_less_eq ?\<sigma>' \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' (insert v W') W" proof (unfold strategy_attracts_from_to_def, clarify)
+          fix \<sigma>'' assume \<sigma>'_less_eq_\<sigma>'': "strategy_less_eq ?\<sigma>' \<sigma>''"
+          fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>''" "the (P 0) \<in> insert v W'"
+          have \<sigma>_less_eq_\<sigma>'': "strategy_less_eq \<sigma> \<sigma>''" using strategy_less_eq_tran using \<sigma>_less_eq_\<sigma>' \<sigma>'_less_eq_\<sigma>'' by blast
+          thus "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" proof (cases)
+            assume "the (P 0) \<in> W'" thus ?thesis using P(1) P(2) P(3) \<sigma> \<sigma>_less_eq_\<sigma>'' strategy_attracts_from_to_def by blast
           next
-            assume "v \<notin> W" note v = v this
-            then obtain w where w: "w \<in> W'" "v \<rightarrow> w" using directly_attracted_def by blast
-            let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
-            have \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> ?\<sigma>'" by (metis DiffE IntI \<sigma>(1) directly_attracted_is_disjoint_from_W empty_iff strategy_less_eq_updates strategy_only_on_elements v(1))
-            hence "\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P ?\<sigma>' \<and> the (P 0) \<in> W' \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)" using \<sigma> by blast
-            have insert_eq: "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if v(4))
-            have "strategy_only_on p ?\<sigma>' (insert v (W' - W))" using strategy_only_on_case_rule by (simp add: v(2) v(3) \<sigma>(1))
-            hence "strategy_only_on p ?\<sigma>' ((insert v W') - W)" by (simp add: insert_eq)
-            moreover
-            have "\<forall>\<sigma>'. strategy_less_eq ?\<sigma>' \<sigma>' \<longrightarrow> (\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> insert v W' \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))" proof (clarify)
-              fix \<sigma>'' assume \<sigma>'_less_eq_\<sigma>'': "strategy_less_eq ?\<sigma>' \<sigma>''"
-              fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>''" "the (P 0) \<in> insert v W'"
-              have \<sigma>_less_eq_\<sigma>'': "strategy_less_eq \<sigma> \<sigma>''" using strategy_less_eq_tran using \<sigma>_less_eq_\<sigma>' \<sigma>'_less_eq_\<sigma>'' by blast
-              thus "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" proof (cases)
-                assume "the (P 0) \<in> W'" thus ?thesis using P(1) P(2) P(3) \<sigma>(2) \<sigma>_less_eq_\<sigma>'' by blast
-              next
-                assume "the (P 0) \<notin> W'"
-                hence "the (P 0) = v" using P(4) by blast
-                have "\<sigma>'' v = ?\<sigma>' v" using \<sigma>'_less_eq_\<sigma>'' by (simp add: option.case_eq_if strategy_less_eq_def)
-                hence "\<sigma>'' v = Some w" by simp
-                have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) Suc_eq_plus1 `the (P 0) = v` directly_attracted_contains_no_deadends maximal_path_def v(1) valid_paths_are_nonempty)
-                hence "\<sigma>'' v = P 1" by (metis P(1) P(3) `\<sigma>'' v = Some w` `the (P 0) = v` infinite_path_tail_head option.collapse v(3) valid_paths_are_nonempty)
-                hence "w = the (P 1)" using `\<sigma>'' v = Some w` by (metis option.sel)
-                hence "the (P 1) \<in> W'" using w(1) by blast
-                hence "the (path_tail P 0) \<in> W'" by simp
-                moreover have "valid_path (path_tail P)" using P(1) `P 1 \<noteq> None` valid_path_tail by blast
-                moreover have "maximal_path (path_tail P)" using P(2) by blast
-                moreover have "path_conforms_with_strategy p (path_tail P) \<sigma>''" using P(3) by blast
-                ultimately have "\<exists>i. path_tail P i \<noteq> None \<and> the (path_tail P i) \<in> W" using \<sigma>(2) \<sigma>_less_eq_\<sigma>'' by blast
-                thus ?thesis by auto
-              qed
-            qed
-            ultimately show ?thesis by blast
-          qed
-        next
-          assume "v \<notin> VV p" note v = v this
-          show ?thesis proof (cases)
-            assume "v \<in> W" thus ?thesis by (metis \<sigma>(1) \<sigma>(2) insert_Diff_if insert_iff valid_paths_are_nonempty)
-          next
-            assume "v \<notin> W" note v = v this
-            have insert_eq: "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if v(4))
-            hence "strategy_only_on p \<sigma> ((insert v W') - W)" by (simp add: \<sigma>(1) strategy_only_on_case_rule2 v(3))
-            moreover
-            have "\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> insert v W' \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W)" proof (clarify)
-              fix \<sigma>' assume \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
-              fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "the (P 0) \<in> insert v W'"
-              thus "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" proof (cases "the (P 0) \<in> W'")
-                assume "the (P 0) \<in> W'"
-                thus ?thesis using P(1) P(2) P(3) \<sigma>(2) \<sigma>_less_eq_\<sigma>' by blast
-              next
-                assume "the (P 0) \<notin> W'"
-                hence "P 0 = Some v" using P(4) by (metis P(1) insertE option.collapse valid_paths_are_nonempty)
-                have "v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W')" using directly_attracted_def using v(1) by blast
-                hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W'" using VV_equivalence directly_attracted_is_bounded_by_V v(1) v(3) by blast
-                have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` directly_attracted_contains_no_deadends insertE maximal_path_def v(1) valid_paths_are_nonempty)
-                have "\<not>deadend v" using directly_attracted_contains_no_deadends v(1) by blast
-                hence "the (P 0) \<rightarrow> the (P 1)" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` insertE maximal_path_def valid_path_def)
-                hence "the (P 1) \<in> W'" using P(4) `\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> W'` `the (P 0) \<notin> W'` by blast
-                hence "the (path_tail P 0) \<in> W'" by simp
-                moreover have "valid_path (path_tail P)" using P(1) `P 1 \<noteq> None` valid_path_tail by blast
-                moreover have "maximal_path (path_tail P)" using P(2) by blast
-                moreover have "path_conforms_with_strategy p (path_tail P) \<sigma>'" using P(3) by blast
-                ultimately have "\<exists>i. path_tail P i \<noteq> None \<and> the (path_tail P i) \<in> W" using \<sigma>(2) \<sigma>_less_eq_\<sigma>' by blast
-                thus ?thesis by auto
-              qed
-            qed
-            ultimately show ?thesis by blast
+            assume "the (P 0) \<notin> W'"
+            hence "the (P 0) = v" using P(4) by blast
+            have "\<sigma>'' v = ?\<sigma>' v" using \<sigma>'_less_eq_\<sigma>'' by (simp add: option.case_eq_if strategy_less_eq_def)
+            hence "\<sigma>'' v = Some w" by simp
+            have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) Suc_eq_plus1 `the (P 0) = v` directly_attracted_contains_no_deadends maximal_path_def v(1) valid_paths_are_nonempty)
+            hence "\<sigma>'' v = P 1" by (metis P(1) P(3) `\<sigma>'' v = Some w` `the (P 0) = v` infinite_path_tail_head option.collapse v(2) valid_paths_are_nonempty)
+            hence "w = the (P 1)" using `\<sigma>'' v = Some w` by (metis option.sel)
+            hence "the (P 1) \<in> W'" using w(1) by blast
+            hence "the (path_tail P 0) \<in> W'" by simp
+            moreover have "valid_path (path_tail P)" using P(1) `P 1 \<noteq> None` valid_path_tail by blast
+            moreover have "maximal_path (path_tail P)" using P(2) by blast
+            moreover have "path_conforms_with_strategy p (path_tail P) \<sigma>''" using P(3) by blast
+            ultimately have "\<exists>i. path_tail P i \<noteq> None \<and> the (path_tail P i) \<in> W" using \<sigma> \<sigma>_less_eq_\<sigma>'' strategy_attracts_from_to_def by blast
+            thus ?thesis by auto
           qed
         qed
+        ultimately show ?thesis using strategy_exists_for_def by blast
+      next
+        assume "v \<notin> VV p" note v = v this
+        have insert_eq: "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if `v \<notin> W`)
+        hence "strategy_only_on p \<sigma> ((insert v W') - W)" by (simp add: \<sigma>(1) strategy_only_on_case_rule2 v)
+        moreover
+        have "\<forall>\<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' (insert v W') W" proof (unfold strategy_attracts_from_to_def, clarify)
+          fix \<sigma>' assume \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
+          fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "the (P 0) \<in> insert v W'"
+          thus "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" proof (cases "the (P 0) \<in> W'")
+            assume "the (P 0) \<in> W'" thus ?thesis using P(1) P(2) P(3) \<sigma> \<sigma>_less_eq_\<sigma>' strategy_attracts_from_to_def by blast
+          next
+            assume "the (P 0) \<notin> W'"
+            hence "P 0 = Some v" using P(4) by (metis P(1) insertE option.collapse valid_paths_are_nonempty)
+            have "v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W')" using directly_attracted_def using v(1) by blast
+            hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W'" using VV_equivalence directly_attracted_is_bounded_by_V v(1) `v \<notin> VV p` by blast
+            have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` directly_attracted_contains_no_deadends insertE maximal_path_def v(1) valid_paths_are_nonempty)
+            have "\<not>deadend v" using directly_attracted_contains_no_deadends v(1) by blast
+            hence "the (P 0) \<rightarrow> the (P 1)" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` insertE maximal_path_def valid_path_def)
+            hence "the (P 1) \<in> W'" using P(4) `\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> W'` `the (P 0) \<notin> W'` by blast
+            hence "the (path_tail P 0) \<in> W'" by simp
+            moreover have "valid_path (path_tail P)" using P(1) `P 1 \<noteq> None` valid_path_tail by blast
+            moreover have "maximal_path (path_tail P)" using P(2) by blast
+            moreover have "path_conforms_with_strategy p (path_tail P) \<sigma>'" using P(3) by blast
+            ultimately have "\<exists>i. path_tail P i \<noteq> None \<and> the (path_tail P i) \<in> W" using \<sigma> \<sigma>_less_eq_\<sigma>' strategy_attracts_from_to_def by blast
+            thus ?thesis by auto
+          qed
+        qed
+        ultimately show ?thesis using strategy_exists_for_def by blast
       qed
-      thus "P (insert v W')" using P_def by blast
     qed
-    thus ?thesis using P_def A_def by blast
+    thus ?thesis using strategy_exists_for_def by blast
   qed
 
 lemma (in ParityGame) attractor_has_strategy_weak:
   fixes W p
   defines "A \<equiv> attractor p W"
   assumes "W \<subseteq> V"
-  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W)
-    \<and> (\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
-      \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
+  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W"
   proof -
-    obtain \<sigma> where "strategy_only_on p \<sigma> (A - W)
-      \<and> (\<forall>\<sigma>' P. strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma>' \<and> the (P 0) \<in> A
-        \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))" using assms attractor_has_strategy by blast
+    obtain \<sigma> where "strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W" using assms attractor_has_strategy by (metis (full_types) strategy_less_eq_refl)
     thus ?thesis using strategy_less_eq_refl by blast
   qed
 
