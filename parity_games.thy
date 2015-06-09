@@ -766,213 +766,150 @@ primrec (in ParityGame) path_avoiding_a_set :: "nat \<Rightarrow> Player \<Right
         then None
         else Some (SOME w. w \<in> V - A \<and> (the (path_avoiding_a_set n p \<sigma> v0 A))\<rightarrow>w))"
 
+(* If A is the p-attractor of a set W, then p** has a strategy on V - A such that p** always
+   has a way to avoid going to A. *)
 theorem (in ParityGame) attractor_has_outside_strategy:
   fixes W p
   defines "A \<equiv> attractor p** W"
-  assumes "W \<subseteq> V" "V \<noteq> A"
-  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (V - A) \<and> \<not>strategy_attracts_from_to p \<sigma> (V - A) A"
-  proof -
-    def \<sigma> \<equiv> "\<lambda>v. (if v \<in> (V - A) \<and> v \<in> VV p \<and> \<not>deadend v then Some (SOME w. w \<notin> A \<and> v\<rightarrow>w) else None)"
-    hence 0: "strategy_only_on p \<sigma> (V - A)" using strategy_only_on_def[of "p" \<sigma> "V - A"] by auto
-    have lemma1: "\<And>v w. \<sigma> v = Some w \<Longrightarrow> w \<notin> A \<and> v\<rightarrow>w" using \<sigma>_def proof-
+  assumes "W \<subseteq> V" and v0_def: "v0 \<in> V - A"
+  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (V - A) \<and> \<not>strategy_attracts_from_to p \<sigma> {v0} A"
+  proof (intro exI conjI)
+    (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
+    the successor. *)
+    def \<sigma> \<equiv> "\<lambda>v. (
+      if v \<in> (V - A) \<and> v \<in> VV p \<and> \<not>deadend v
+        then Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)
+        else None)"
+    (* We need to show that \<sigma> is well-defined.  This means we have to show that \<sigma> always applies
+    the SOME quantifier to a non-empty set. *)
+    have \<sigma>_correct: "\<And>v w. \<sigma> v = Some w \<Longrightarrow> w \<notin> A \<and> v\<rightarrow>w" using \<sigma>_def proof-
       fix v w assume assm: "\<sigma> v = Some w"
       have "\<not>(v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v) \<Longrightarrow> \<sigma> v = None" using \<sigma>_def by auto
-      hence v: "v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v" by (metis assm option.distinct(1))
-      have *: "\<exists>w. w \<notin> A \<and> v\<rightarrow>w" proof (rule ccontr)
+      hence v_not_in_A_no_deadend: "v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v" by (metis assm option.distinct(1))
+      hence "\<sigma> v = Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)" using \<sigma>_def by auto
+      hence "Some w = Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)" using assm by metis
+      hence *: "w = (SOME w. w \<notin> A \<and> v\<rightarrow>w)" by auto
+      have "\<exists>w. w \<notin> A \<and> v\<rightarrow>w" proof (rule ccontr)
         assume "\<not>(\<exists>w. w \<notin> A \<and> v\<rightarrow>w)"
         hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> A" by auto
         hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p** W" using A_def by simp
-        hence "v \<in> attractor p** W" using v attractor.VVpstar by auto
+        hence "v \<in> attractor p** W" using v_not_in_A_no_deadend attractor.VVpstar by auto
         hence "v \<in> A" using A_def by simp
-        thus False using v by blast
+        thus False using v_not_in_A_no_deadend by blast
       qed
-      have "\<sigma> v = Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)" using \<sigma>_def v by auto
-      hence "Some w = Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)" using assm by metis
-      hence "w = (SOME w. w \<notin> A \<and> v\<rightarrow>w)" by auto
       thus "w \<notin> A \<and> v\<rightarrow>w" using * by (metis (mono_tags, lifting) someI_ex)
     qed
-    obtain v0 where v0_def: "v0 \<in> V - A" using assms(2) by (metis A_def Diff_eq_empty_iff assms(3) attractor_is_bounded_by_V ex_in_conv set_eq_subset)
+
+    (* First, the easy part of the thesis. *)
+    show "strategy_only_on p \<sigma> (V - A)" using \<sigma>_def strategy_only_on_def[of p \<sigma> "V - A"] by auto
+
+    (* To show the second part, we recursively construct a path starting from v0 that avoids A.
+    Then we prove that P is valid, maximal \<sigma>-conforming path avoiding A. *)
     def P \<equiv> "\<lambda>i. path_avoiding_a_set i p \<sigma> v0 A"
-    have P_simp1 [simp]: "P 0 = Some v0" unfolding P_def by auto
-    have P_simp2 [simp]: "\<And>n. P (Suc n) = (
+    (* We need a simplification rule on P (not on path_avoiding_a_set) for the proofs below. *)
+    have P_simp [simp]: "\<And>n. P (Suc n) = (
       if P n = None
       then None
       else if (the (P n)) \<in> VV p
         then \<sigma> (the (P n))
         else if deadend (the (P n)) then None else Some (SOME w. w \<in> V - A \<and> (the (P n))\<rightarrow>w))"
         apply (subst P_def)+ by simp
-    have P_conforms: "path_conforms_with_strategy p P \<sigma>" proof-
-      { fix i assume i_assm: "P i \<noteq> None" "the (P i) \<in> VV p"
-        then obtain v where P_i_Some_v: "P i = Some v" by blast
-        hence v_in_VV_p: "v \<in> VV p" using i_assm(2) by (metis option.sel)
-        hence "\<sigma> (the (P i)) = P (Suc i)" by (simp add: i_assm(1) i_assm(2))
-      }
-      thus ?thesis using path_conforms_with_strategy_def by blast
-    qed
-    moreover have P_valid_start: "the (P 0) \<in> V - A" using v0_def by auto
-    moreover have P_dom_is_V: "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" proof (intro allI impI)
-      fix i assume "P i \<noteq> None"
-      hence "the (P i) \<in> V - A" proof (induct i)
-        case 0 thus ?case using v0_def P_def by auto
-      next
-        case (Suc i)
-        hence "P i \<noteq> None" by (metis (no_types, lifting) path_avoiding_a_set.simps(2) P_def)
-        moreover hence "the (P i) \<in> V" using Suc.hyps by blast
-        ultimately obtain v where P_i_Some_v: "P i = Some v" and "v \<in> V" by auto
-        obtain w where w_def: "P (Suc i) = Some w" using Suc.prems by blast
-        show ?case proof (cases rule: VV_cases)
-          from `v \<in> V` show "v \<in> V" .
-        next
-          assume "v \<in> VV p"
-          hence "P (Suc i) = \<sigma> v" using P_conforms by (metis P_i_Some_v `P i \<noteq> None` option.sel path_conforms_with_strategy_def)
-          moreover hence "\<sigma> v = Some w" using w_def by presburger
-          moreover hence "w \<notin> A \<and> v\<rightarrow>w" using lemma1 by blast
-          moreover hence "w \<in> V - A" using valid_edge_set by auto
-          ultimately show ?thesis by (metis option.sel)
-        next
-          assume "v \<in> VV p**"
-          hence "the (P i) \<notin> VV p" by (metis DiffD2 P_i_Some_v Player.distinct(1) option.sel)
-          hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" apply (subst P_simp2) using P_simp2 Suc.prems by presburger
-          hence P_Suc_i_is_Some: "P (Suc i) = Some (SOME w. w \<in> V - A \<and> v\<rightarrow>w)" using P_i_Some_v by (metis option.sel)
-          hence w_is_some: "w = (SOME w. w \<in> V - A \<and> v\<rightarrow>w)" using w_def by (metis (no_types, lifting) option.inject)
-          have "v \<notin> A" by (metis DiffD2 P_i_Some_v Suc.hyps `P i \<noteq> None` option.sel)
-          hence "v \<notin> attractor p** W" using A_def by simp
-          have "\<not>deadend v" by (metis (no_types, lifting) P_i_Some_v P_simp2 Suc.prems `the (P i) \<notin> VV p` option.sel)
-          have "\<not>(\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p** W)" proof
-            assume "\<exists>w. v \<rightarrow> w \<and> w \<in> attractor p** W"
-            hence "v \<in> attractor p** W" by (simp add: `v \<in> VV p**` attractor.VVp)
-            thus False using `v \<notin> attractor p** W` by simp
-          qed
-          hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<notin> A" using A_def by simp
-          hence "\<exists>w. w \<in> V - A \<and> v\<rightarrow>w" using `\<not>deadend v` by auto
-          hence "w \<in> V - A \<and> v\<rightarrow>w" using w_is_some by (metis (mono_tags, lifting) someI_ex)
-          thus ?thesis by (metis P_Suc_i_is_Some option.sel w_is_some)
-        qed
-      qed
-      thus "the (P i) \<in> V" by simp
-    qed
-    moreover have edges_exists: "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V - A \<and> (P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i)))" proof (intro allI impI)
-      {
+
+    have P_valid_start: "the (P 0) = v0" unfolding P_def using v0_def by auto
+
+    (* The key lemma.  We show simultaneously that
+      1) the path is only in V - A and
+      2) there is an edge between every two successive entries. *)
+    moreover have edges_exist: "\<And>i. P i \<noteq> None \<Longrightarrow> the (P i) \<in> V - A \<and> (P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i)))" proof-
+      have *:
+        "\<And>i. \<lbrakk> P i \<noteq> None; the (P i) \<in> V - A; P (Suc i) \<noteq> None \<rbrakk> \<Longrightarrow> the (P (Suc i)) \<in> V - A \<and> the (P i)\<rightarrow>the (P (Suc i))" proof-
         fix i
         assume P_i: "P i \<noteq> None" "the (P i) \<in> V - A" and P_Suc_i: "P (Suc i) \<noteq> None"
-        have v_no_deadend: "\<not>deadend (the (P i))" by (metis (no_types, lifting) P_Suc_i P_simp2 \<sigma>_def)
-        obtain v where v_def: "P i = Some v" using P_i(1) by blast
+        have no_deadend: "\<not>deadend (the (P i))" by (metis (no_types, lifting) P_Suc_i P_simp \<sigma>_def)
         obtain w where w_def: "P (Suc i) = Some w" using P_Suc_i by blast
-        have "the (P i) \<in> V" using P_dom_is_V P_i(1) by blast
-        have "the (P (Suc i)) \<in> V" using P_dom_is_V P_Suc_i by blast
-        hence "w \<in> V" using w_def by (metis option.sel)
-        have "the (P (Suc i)) \<in> V - A \<and> the (P i)\<rightarrow>the (P (Suc i))" proof
-          have "w \<notin> A" proof (cases)
-            assume "the (P i) \<in> VV p"
-            hence "P (Suc i) = \<sigma> (the (P i))" by (simp add: P_i(1))
-            hence "\<sigma> (the (P i)) = Some w" using w_def by presburger
-            thus "w \<notin> A" using lemma1 by blast
-          next
-            assume "the (P i) \<notin> VV p"
-            hence "P (Suc i) = (if deadend (the (P i)) then None else Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w))" by (simp add: P_i)
-            hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" using v_no_deadend by auto
-            hence "w = (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" by (metis (no_types, lifting) option.inject w_def)
-            moreover have "\<exists>w. w \<in> V - A \<and> the (P i)\<rightarrow>w" proof (rule ccontr)
-              assume "\<not>(\<exists>w. w \<in> V - A \<and> the (P i)\<rightarrow>w)"
-              hence "\<forall>w. the (P i)\<rightarrow>w \<longrightarrow> w \<notin> V - A" by auto
-              hence "\<forall>w. the (P i)\<rightarrow>w \<longrightarrow> w \<in> A" using valid_edge_set by auto
-              hence w_attracted: "\<exists>w. the (P i)\<rightarrow>w \<and> w \<in> A" using v_no_deadend by blast
-              have "the (P i) \<in> VV p**" using `the (P i) \<in> V - A` `the (P i) \<notin> VV p` by auto
-              hence "the (P i) \<in> A" apply (insert w_attracted; unfold A_def) by (simp add: attractor.VVp)
-              thus False using P_i(2) by simp
-            qed
-            ultimately have "w \<in> V - A \<and> (the (P i))\<rightarrow>w" by (metis (no_types, lifting) someI_ex)
-            thus "w \<notin> A" by simp
-          qed
-          hence "w \<in> V - A" using `w \<in> V` by simp
-          thus "the (P (Suc i)) \<in> V - A" using w_def by (metis option.sel)
+
+        show "the (P (Suc i)) \<in> V - A \<and> the (P i)\<rightarrow>the (P (Suc i))" proof(cases)
+          assume "the (P i) \<in> VV p"
+          hence "P (Suc i) = \<sigma> (the (P i))" by (simp add: P_i(1))
+          hence "\<sigma> (the (P i)) = Some w" using w_def by presburger
+          hence "w \<notin> A \<and> the (P i)\<rightarrow>w" using \<sigma>_correct by blast
+          hence "w \<in> V - A \<and> the (P i)\<rightarrow>w" using valid_edge_set by auto
+          thus ?thesis using w_def by (metis option.sel)
         next
-          have "the (P i)\<rightarrow>w" proof (cases)
-            assume "the (P i) \<in> VV p"
-            hence "P (Suc i) = \<sigma> (the (P i))" by (simp add: P_i(1))
-            hence "\<sigma> (the (P i)) = Some w" using w_def by presburger
-            thus ?thesis using lemma1 by blast
-          next
-            assume "the (P i) \<notin> VV p"
-            hence "P (Suc i) = (if deadend (the (P i)) then None else Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w))" by (simp add: P_i)
-            hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" using v_no_deadend by auto
-            hence "w = (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" by (metis (no_types, lifting) option.inject w_def)
-            moreover have "\<exists>w. w \<in> V - A \<and> the (P i)\<rightarrow>w" proof (rule ccontr)
-              assume "\<not>(\<exists>w. w \<in> V - A \<and> the (P i)\<rightarrow>w)"
-              hence "\<forall>w. the (P i)\<rightarrow>w \<longrightarrow> w \<notin> V - A" by auto
-              hence "\<forall>w. the (P i)\<rightarrow>w \<longrightarrow> w \<in> A" using valid_edge_set by auto
-              hence w_attracted: "\<exists>w. the (P i)\<rightarrow>w \<and> w \<in> A" using v_no_deadend by blast
-              have "the (P i) \<in> VV p**" using `the (P i) \<in> V - A` `the (P i) \<notin> VV p` by auto
-              hence "the (P i) \<in> A" apply (insert w_attracted; unfold A_def) by (simp add: attractor.VVp)
-              thus False using P_i(2) by simp
-            qed
-            ultimately show ?thesis by (metis (no_types, lifting) someI_ex)
+          assume "the (P i) \<notin> VV p"
+          hence "P (Suc i) = (if deadend (the (P i)) then None else Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w))" by (simp add: P_i)
+          hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" using no_deadend by auto
+          hence "w = (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" by (metis (no_types, lifting) option.inject w_def)
+          moreover have "\<exists>w. w \<in> V - A \<and> the (P i)\<rightarrow>w" proof (rule ccontr)
+            assume "\<not>(\<exists>w. w \<in> V - A \<and> the (P i)\<rightarrow>w)"
+            hence "\<forall>w. the (P i)\<rightarrow>w \<longrightarrow> w \<notin> V - A" by auto
+            hence "\<forall>w. the (P i)\<rightarrow>w \<longrightarrow> w \<in> A" using valid_edge_set by auto
+            hence w_attracted: "\<exists>w. the (P i)\<rightarrow>w \<and> w \<in> A" using no_deadend by blast
+            have "the (P i) \<in> VV p**" using `the (P i) \<in> V - A` `the (P i) \<notin> VV p` by auto
+            hence "the (P i) \<in> A" apply (insert w_attracted; unfold A_def) by (simp add: attractor.VVp)
+            thus False using P_i(2) by simp
           qed
-          thus "the (P i)\<rightarrow>the (P (Suc i))" using w_def by (metis option.sel)
+          ultimately have "w \<in> V - A \<and> (the (P i))\<rightarrow>w" by (metis (no_types, lifting) someI_ex)
+          thus ?thesis using w_def by (metis option.sel)
         qed
-      } note lemma_edge_exists = this
+      qed
       fix i show "P i \<noteq> None \<Longrightarrow> the (P i) \<in> V - A \<and> (P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i)))" proof (induct i)
-        case 0 thus ?case using P_valid_start lemma_edge_exists by blast
+        case 0 thus ?case using P_valid_start v0_def * by blast
       next
-        case (Suc i) thus ?case using lemma_edge_exists by (meson P_simp2)
+        case (Suc i) thus ?case using * by (meson DiffD1 P_simp)
       qed
     qed
+
+    moreover have P_conforms: "path_conforms_with_strategy p P \<sigma>" proof (unfold path_conforms_with_strategy_def; intro allI impI; elim conjE)
+      fix i assume i_def: "P i \<noteq> None" "the (P i) \<in> VV p"
+      show "\<sigma> (the (P i)) = P (Suc i)" by (simp add: i_def)
+    qed
+
     moreover have P_valid: "valid_path P" proof (unfold valid_path_def; intro conjI)
       show P_0_not_None: "P 0 \<noteq> None" using P_def by auto
-      show "infinite_path P \<or> finite_path P" proof-
+      show "infinite_path P \<or> finite_path P" proof (subst disj_comms; rule disjCI)
         let ?Q = "{i. P i = None}"
-        {
-          assume "\<not>infinite_path P"
-          hence "\<exists>i. P i = None" using infinite_path_def by simp
-          then obtain i where "i \<in> ?Q" by auto
-          then obtain i where i_def: "i \<in> ?Q" and i_min: "\<And>j. j < i \<longrightarrow> j \<notin> ?Q" by (meson less_than_iff wf_less_than wfE_min)
-          hence "i \<noteq> 0" using P_0_not_None by (meson CollectD)
-          then obtain n where n_def: "Suc n = i" using gr0_conv_Suc by auto
-          have "\<forall>j. (j > n \<longleftrightarrow> P j = None)" proof
-            fix j
-            { assume "j > n"
-              hence "P j = None" proof (induct j)
-                case 0 thus ?case by simp
-              next
-                case (Suc j)
-                show ?case proof (cases)
-                  assume "j = n" thus ?thesis using i_def n_def by auto
-                next
-                  assume "j \<noteq> n" thus ?thesis using Suc.hyps Suc.prems P_def by auto
-                qed
-              qed
-            }
-            moreover
-            { assume "\<not>j > n"
-              hence "j < i" using n_def by auto
-              hence "P j \<noteq> None" using i_min by auto
-            }
-            ultimately show "j > n \<longleftrightarrow> P j = None" by blast
+        assume "\<not>infinite_path P"
+        then obtain i where "i \<in> ?Q" by auto
+        then obtain i where i_def: "i \<in> ?Q" and i_min: "\<And>j. j < i \<longrightarrow> j \<notin> ?Q" by (meson less_than_iff wf_less_than wfE_min)
+        hence "i \<noteq> 0" using P_0_not_None by (meson CollectD)
+        then obtain n where n_def: "Suc n = i" using gr0_conv_Suc by auto
+        show "finite_path P" proof (unfold finite_path_def; rule_tac x="n" in exI; intro allI)
+          fix j
+          have "j > n \<Longrightarrow> P j = None" proof (induct j, simp)
+            case (Suc j)
+            show ?case proof (cases)
+              assume "j = n" thus ?thesis using i_def n_def by auto
+            next
+              assume "j \<noteq> n" thus ?thesis using Suc.hyps Suc.prems P_def by auto
+            qed
           qed
-          hence "finite_path P" by auto
-        }
-        thus ?thesis by blast
+          moreover have "\<not>j > n \<Longrightarrow> P j \<noteq> None" using n_def i_min by auto
+          ultimately show "j > n \<longleftrightarrow> P j = None" by blast
+        qed
       qed
-      show "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" using P_dom_is_V .
-      show "\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i))" using edges_exists by simp
+      show "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" using edges_exist by simp
+      show "\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i))" using edges_exist by simp
     qed
+
     moreover have "maximal_path P" proof (unfold maximal_path_def; intro allI impI; elim conjE)
       fix i assume P_i: "P i \<noteq> None" and P_i_no_deadend: "\<not>deadend (the (P i))"
       show "P (Suc i) \<noteq> None" proof (cases)
         assume P_i_VV_p: "the (P i) \<in> VV p"
-        hence "\<sigma> (the (P i)) \<noteq> None" by (metis (no_types, lifting) P_i \<sigma>_def edges_exists option.distinct(1) P_i_no_deadend)
+        hence "\<sigma> (the (P i)) \<noteq> None" by (metis (no_types, lifting) P_i \<sigma>_def edges_exist option.distinct(1) P_i_no_deadend)
         moreover have "P (Suc i) = \<sigma> (the (P i))" by (simp add: P_i P_i_VV_p)
         ultimately show "P (Suc i) \<noteq> None" by simp
       next
         assume "the (P i) \<notin> VV p"
-        hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" using P_i P_i_no_deadend P_simp2 by presburger
+        hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" using P_i P_i_no_deadend P_simp by presburger
         thus "P (Suc i) \<noteq> None" by auto
       qed
     qed
-    ultimately have "\<exists>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> V - A
+
+    ultimately have "\<exists>P. valid_path P \<and> maximal_path P
+      \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v0
       \<and> \<not>(\<exists>i. P i \<noteq> None \<and> the (P i) \<in> A)" by blast
-    hence "\<not>strategy_attracts_from_to p \<sigma> (V - A) A" using strategy_attracts_from_to_def by presburger
-    thus ?thesis using 0 by auto
+    thus "\<not>strategy_attracts_from_to p \<sigma> {v0} A" using strategy_attracts_from_to_def by blast
   qed
 
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
@@ -1002,7 +939,7 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
         have "P (Suc i) = None" by (metis (no_types, lifting) i_def CollectD P(1) valid_path_def)
         moreover hence "finite_path P" using infinite_path_def P_infinite_or_finite by blast
         moreover have "i \<in> path_dom P \<and> the (P i) \<in> VV p**" using i_def by blast
-        ultimately show "winning_path p P" using winning_path_def by blast
+        ultimately show "winning_path p P" using winning_path_def sorry
       qed
       hence "\<exists>\<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v" using \<sigma>' by blast
     } note lemma1 = this
