@@ -30,6 +30,10 @@ lemma path_dom_ends_on_finite_paths:
     thus ?thesis
       by (metis (mono_tags, lifting) One_nat_def add.right_neutral add_Suc_right finite finite_path_def less_Suc_eq mem_Collect_eq)
   qed
+lemma path_inf_is_from_P:
+  assumes "v \<in> path_inf P"
+  shows "\<exists>i. P i = Some v"
+  using assms apply (unfold path_inf_def; fastforce) done
 
 record 'a Graph =
   verts :: "'a set" ("V\<index>")
@@ -646,10 +650,6 @@ definition (in ParityGame) strategy_attracts_from_to :: "Player \<Rightarrow> 'a
     \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
 lemma (in ParityGame) strategy_attracts_from_to_trivial [simp]:
   "strategy_attracts_from_to p \<sigma> W W" by (meson strategy_attracts_from_to_def valid_paths_are_nonempty)
-definition (in ParityGame) strategy_does_not_attract_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_does_not_attract_from_to p \<sigma> A W \<equiv>
-    \<exists>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
-      \<longrightarrow> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<notin> W)"
 
 abbreviation (in ParityGame) attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_strategy_on p \<sigma> A W \<equiv> strategy_only_on p \<sigma> (A - W) \<and>
@@ -918,13 +918,13 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   shows "\<exists>p \<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v"
   proof -
     let ?deadends = "\<lambda>p. {v \<in> VV p. deadend v}"
+    have deadends_in_V: "\<And>p. ?deadends p \<subseteq> V" by auto
     { fix p
       def A \<equiv> "attractor p (?deadends p**)"
       obtain \<sigma> where \<sigma>: "attractor_strategy_on p \<sigma> A (?deadends p**)"
         using attractor_has_strategy[of "?deadends p**" "p"] A_def by auto
 
-      have "?deadends p** \<subseteq> V" by auto
-      hence "A \<subseteq> V" using A_def using attractor_is_bounded_by_V by blast
+      have "A \<subseteq> V" using A_def using attractor_is_bounded_by_V deadends_in_V by blast
       hence "A - ?deadends p** \<subseteq> V" by auto
       moreover have "strategy_on p \<sigma> (A - ?deadends p**)" using \<sigma> by blast
       ultimately obtain \<sigma>' where \<sigma>': "strategy_on p \<sigma>' V" "strategy_less_eq \<sigma> \<sigma>'"
@@ -939,12 +939,44 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
         have "P (Suc i) = None" by (metis (no_types, lifting) i_def CollectD P(1) valid_path_def)
         moreover hence "finite_path P" using infinite_path_def P_infinite_or_finite by blast
         moreover have "i \<in> path_dom P \<and> the (P i) \<in> VV p**" using i_def by blast
-        ultimately show "winning_path p P" using winning_path_def sorry
+        ultimately show "winning_path p P" using winning_path_def by (metis One_nat_def add.right_neutral add_Suc_right)
       qed
       hence "\<exists>\<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v" using \<sigma>' by blast
     } note lemma1 = this
     {
-      assume "v \<notin> attractor Odd (?deadends Even)"
+      def W \<equiv> "?deadends Even"
+      hence W_in_V: "W \<subseteq> V" by auto
+      let ?A = "attractor Even** W"
+      assume "v \<in> V - ?A"
+      then obtain \<sigma> where "strategy_only_on Even \<sigma> (V - ?A) \<and> \<not>strategy_attracts_from_to Even \<sigma> {v} ?A"
+        using W_in_V attractor_has_outside_strategy[of W v Even] by fastforce
+
+      hence "\<not>(\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy Even P \<sigma> \<and> the (P 0) = v
+        \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))" using strategy_attracts_from_to_def by blast
+      then obtain P where P_def: "valid_path P" "maximal_path P" "path_conforms_with_strategy Even P \<sigma>" "the (P 0) = v"
+        "\<And>i. P i \<noteq> None \<Longrightarrow> the (P i) \<notin> W" by blast
+      hence "\<And>i. P i \<noteq> None \<Longrightarrow> the (P i) \<notin> W" by blast
+
+      have "winning_path Even P" proof (cases)
+        assume infinite: "infinite_path P"
+        have *: "\<And>a. a \<in> path_inf_priorities P \<Longrightarrow> winning_priority Even a" proof-
+          fix a assume "a \<in> path_inf_priorities P"
+          then obtain w where w_def: "w \<in> path_inf P" "a = \<omega> w" using path_inf_priorities_def by blast
+          then obtain i where i_def: "P i = Some w" using path_inf_is_from_P[of w] by blast
+          hence "the (P i) \<in> V" by (meson P_def(1) domI domIff valid_path_def)
+          hence "w \<in> V" using i_def by simp
+          hence "a = 0" using assms w_def(2) by simp
+          thus "winning_priority Even a" using assms by simp
+        qed
+        obtain a where a_def: "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)" using P_def(1) infinite path_inf_priorities_has_minimum by blast
+        hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P" using infinite winning_path_def by (metis (no_types, lifting) infinite_path_def le_antisym)
+        thus ?thesis using * a_def by blast
+      next
+        assume "\<not>infinite_path P"
+        hence "finite_path P" using P_def(1) valid_path_def by blast
+        show ?thesis sorry
+      qed
+
       have "\<exists>\<sigma>. strategy_on Even \<sigma> V \<and> winning_strategy Even \<sigma> v" sorry
     }
     thus ?thesis using lemma1[of Odd] by meson
