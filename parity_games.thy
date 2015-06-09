@@ -15,7 +15,7 @@ abbreviation path_dom :: "'a Path \<Rightarrow> nat set" where "path_dom P \<equ
 (* The set of nodes that occur infinitely often on a given path. *)
 definition path_inf :: "'a Path \<Rightarrow> 'a set" where
   "path_inf P \<equiv> {v. (\<exists>i. P i = Some v) \<and> (\<forall>i. P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v))}"
-abbreviation path_tail :: "'a Path \<Rightarrow> 'a Path" where "path_tail P \<equiv> \<lambda>i. P (i+1)"
+abbreviation path_tail :: "'a Path \<Rightarrow> 'a Path" where "path_tail P \<equiv> \<lambda>i. P (Suc i)"
 
 lemma paths_are_contiguous:
   assumes "infinite_path P \<or> finite_path P"
@@ -48,9 +48,9 @@ abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>
 definition valid_path :: "'a Path \<Rightarrow> bool" where
   [simp]: "valid_path P \<equiv> P 0 \<noteq> None \<and> (infinite_path P \<or> finite_path P)
       \<and> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V)
-      \<and> (\<forall>i. P i \<noteq> None \<and> P (i+1) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (i+1)))"
+      \<and> (\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i)))"
 definition maximal_path :: "'a Path \<Rightarrow> bool" where
-  [simp]: "maximal_path P \<equiv> \<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<longrightarrow> P (i+1) \<noteq> None"
+  [simp]: "maximal_path P \<equiv> \<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<longrightarrow> P (Suc i) \<noteq> None"
 end
 
 lemma (in Digraph) maximal_infinite_path_tail [intro]:
@@ -132,7 +132,7 @@ definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strat
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
 
 definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (i+1))"
+  [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
 
 lemma (in ParityGame) infinite_path_tail [intro]:
   "infinite_path P \<Longrightarrow> infinite_path (path_tail P)" using assms by auto
@@ -306,7 +306,7 @@ lemma (in ParityGame) paths_are_winning_for_exactly_one_player:
     hence finite: "finite_path P" using assms valid_path_def by blast
     then obtain i where i_def: "i \<in> path_dom P \<and> P (i+1) = None" using assms path_dom_ends_on_finite_paths by metis
     def v \<equiv> "the (P i)" (* the last vertex in the path *)
-    hence "v \<in> V" using valid_path_def using assms i_def by auto
+    hence "v \<in> V" using valid_path_def using assms i_def by auto (* TODO: make faster *)
     have "\<And>q. winning_path q P \<longleftrightarrow> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV q**)"
       using not_infinite finite winning_path_def by metis
     hence "\<And>q. winning_path q P \<longleftrightarrow> v \<in> VV q**"
@@ -687,7 +687,7 @@ proof-
         hence "the (P 0) = v" using P(4) by blast
         have "\<sigma>'' v = ?\<sigma>' v" using \<sigma>'_less_eq_\<sigma>'' by (simp add: option.case_eq_if strategy_less_eq_def)
         hence "\<sigma>'' v = Some w" by simp
-        have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) Suc_eq_plus1 `the (P 0) = v` directly_attracted_contains_no_deadends maximal_path_def v_directly_attracted valid_paths_are_nonempty)
+        have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) `the (P 0) = v` directly_attracted_contains_no_deadends maximal_path_def v_directly_attracted valid_paths_are_nonempty)
         hence "\<sigma>'' v = P 1" by (metis P(1) P(3) `\<sigma>'' v = Some w` `the (P 0) = v` infinite_path_tail_head option.collapse v valid_paths_are_nonempty)
         hence "w = the (P 1)" using `\<sigma>'' v = Some w` by (metis option.sel)
         hence "the (P 1) \<in> W'" using w(1) by blast
@@ -714,9 +714,9 @@ proof-
         assume "the (P 0) \<notin> W'"
         hence "P 0 = Some v" using P(4) by (metis P(1) insertE option.collapse valid_paths_are_nonempty)
         have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W'" using directly_attracted_def `v \<in> VV p**` v_directly_attracted by blast
-        have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` directly_attracted_contains_no_deadends insertE maximal_path_def v_directly_attracted valid_paths_are_nonempty)
+        have "P 1 \<noteq> None" by (metis One_nat_def P(1) P(2) P(4) `the (P 0) \<notin> W'` directly_attracted_contains_no_deadends insertE maximal_path_def v_directly_attracted valid_paths_are_nonempty)
         have "\<not>deadend v" using directly_attracted_contains_no_deadends v_directly_attracted by blast
-        hence "the (P 0) \<rightarrow> the (P 1)" by (metis One_nat_def P(1) P(2) P(4) Suc_eq_plus1 `the (P 0) \<notin> W'` insertE maximal_path_def valid_path_def)
+        hence "the (P 0) \<rightarrow> the (P 1)" by (metis One_nat_def P(1) P(2) P(4) `the (P 0) \<notin> W'` insertE maximal_path_def valid_path_def)
         hence "the (P 1) \<in> W'" using P(4) `\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> W'` `the (P 0) \<notin> W'` by blast
         hence "the (path_tail P 0) \<in> W'" by simp
         moreover have "valid_path (path_tail P)" using P(1) `P 1 \<noteq> None` valid_path_tail by blast
@@ -805,9 +805,9 @@ theorem (in ParityGame) attractor_has_outside_strategy:
       { fix i assume i_assm: "P i \<noteq> None" "the (P i) \<in> VV p"
         then obtain v where P_i_Some_v: "P i = Some v" by blast
         hence v_in_VV_p: "v \<in> VV p" using i_assm(2) by (metis option.sel)
-        hence "\<sigma> (the (P i)) = P (i+1)" by (simp add: i_assm(1) i_assm(2))
+        hence "\<sigma> (the (P i)) = P (Suc i)" by (simp add: i_assm(1) i_assm(2))
       }
-      thus ?thesis using path_conforms_with_strategy_def by presburger
+      thus ?thesis using path_conforms_with_strategy_def by blast
     qed
     moreover have P_valid_start: "the (P 0) \<in> V - A" using v0_def by auto
     moreover have P_dom_is_V: "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" proof (intro allI impI)
@@ -824,7 +824,7 @@ theorem (in ParityGame) attractor_has_outside_strategy:
           from `v \<in> V` show "v \<in> V" .
         next
           assume "v \<in> VV p"
-          hence "P (Suc i) = \<sigma> v" using P_conforms by (metis P_i_Some_v Suc_eq_plus1 `P i \<noteq> None` option.sel path_conforms_with_strategy_def)
+          hence "P (Suc i) = \<sigma> v" using P_conforms by (metis P_i_Some_v `P i \<noteq> None` option.sel path_conforms_with_strategy_def)
           moreover hence "\<sigma> v = Some w" using w_def by presburger
           moreover hence "w \<notin> A \<and> v\<rightarrow>w" using lemma1 by blast
           moreover hence "w \<in> V - A" using valid_edge_set by auto
@@ -954,11 +954,11 @@ theorem (in ParityGame) attractor_has_outside_strategy:
         thus ?thesis by blast
       qed
       show "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" using P_dom_is_V .
-      show "\<forall>i. P i \<noteq> None \<and> P (i+1) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (i+1))" using edges_exists by simp
+      show "\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i))" using edges_exists by simp
     qed
     moreover have "maximal_path P" proof (unfold maximal_path_def; intro allI impI; elim conjE)
       fix i assume P_i: "P i \<noteq> None" and P_i_no_deadend: "\<not>deadend (the (P i))"
-      have "P (Suc i) \<noteq> None" proof (cases)
+      show "P (Suc i) \<noteq> None" proof (cases)
         assume P_i_VV_p: "the (P i) \<in> VV p"
         hence "\<sigma> (the (P i)) \<noteq> None" by (metis (no_types, lifting) P_i \<sigma>_def edges_exists option.distinct(1) P_i_no_deadend)
         moreover have "P (Suc i) = \<sigma> (the (P i))" by (simp add: P_i P_i_VV_p)
@@ -968,7 +968,6 @@ theorem (in ParityGame) attractor_has_outside_strategy:
         hence "P (Suc i) = Some (SOME w. w \<in> V - A \<and> (the (P i))\<rightarrow>w)" using P_i P_i_no_deadend P_simp2 by presburger
         thus "P (Suc i) \<noteq> None" by auto
       qed
-      thus "P (i+1) \<noteq> None" using Suc_eq_plus1 by fastforce
     qed
     ultimately have "\<exists>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> V - A
       \<and> \<not>(\<exists>i. P i \<noteq> None \<and> the (P i) \<in> A)" by blast
@@ -1000,7 +999,7 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
         fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "v = the (P 0)"
         have P_infinite_or_finite: "infinite_path P \<or> finite_path P" using P(1) valid_path_def by blast
         obtain i where i_def: "P i \<noteq> None \<and> the (P i) \<in> ?deadends p**" using \<sigma>'_attracts A_def v_in_attractor strategy_attracts_from_to_def P by blast
-        have "P (i+1) = None" by (metis (no_types, lifting) i_def CollectD P(1) valid_path_def)
+        have "P (Suc i) = None" by (metis (no_types, lifting) i_def CollectD P(1) valid_path_def)
         moreover hence "finite_path P" using infinite_path_def P_infinite_or_finite by blast
         moreover have "i \<in> path_dom P \<and> the (P i) \<in> VV p**" using i_def by blast
         ultimately show "winning_path p P" using winning_path_def by blast
