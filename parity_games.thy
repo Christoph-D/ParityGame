@@ -158,11 +158,6 @@ definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 
   [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
 definition (in ParityGame) path_conforms_with_strategy_up_to :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> nat \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy_up_to p P \<sigma> n \<equiv> (\<forall>i \<le> n. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
-definition (in ParityGame) path_weakly_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  [simp]: "path_weakly_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
-lemma (in ParityGame) path_conforms_strongly_implies_weakly:
-  "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_weakly_conforms_with_strategy p P \<sigma>"
-  using path_conforms_with_strategy_def path_weakly_conforms_with_strategy_def by auto
 lemma (in ParityGame) path_conforms_with_strategy_approximations:
   "(\<And>n. path_conforms_with_strategy_up_to p P \<sigma> n) \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by fastforce
 lemma (in ParityGame) path_conforms_up_to_VVpstar:
@@ -170,8 +165,9 @@ lemma (in ParityGame) path_conforms_up_to_VVpstar:
   shows "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" by (metis assms le_SucE path_conforms_with_strategy_up_to_def)
 
 definition (in ParityGame) valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  "valid_strategy p \<sigma> v0 \<equiv> (\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v)) \<and>
-    (\<forall>P n. valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) = v0 \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))
+  "valid_strategy p \<sigma> v0 \<equiv> (\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v))
+    \<and> (v0 \<in> VV p \<and> \<not>deadend v0 \<longrightarrow> \<sigma> v0 \<noteq> None)
+    \<and> (\<forall>P n. valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) = v0 \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))
       \<longrightarrow> \<sigma> (the (P (Suc n))) \<noteq> None)"
 
 lemma (in ParityGame) path_conforms_up_to_deadends:
@@ -192,54 +188,24 @@ lemma (in ParityGame) path_conforms_up_to_deadends:
   qed
 
 lemma (in ParityGame) one_element_path_exists:
-  assumes "v0 \<in> V"
-  shows "\<exists>P. valid_path P \<and> finite_path P \<and> path_weakly_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v0 \<and> path_last P = v0"
+  assumes "v0 \<in> V" "valid_strategy p \<sigma> v0"
+  shows "\<exists>P. valid_path P \<and> finite_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> 0 \<and> the (P 0) = v0"
   proof (rule exI; intro conjI)
-    def P \<equiv> "\<lambda>i :: nat. if i = 0 then Some v0 else None"
-    show "finite_path P" unfolding P_def finite_path_def by auto
-    show "valid_path P" unfolding valid_path_def P_def using assms by auto
-    show "path_weakly_conforms_with_strategy p P \<sigma>" using path_weakly_conforms_with_strategy_def by (simp add: P_def)
+    def P \<equiv> "\<lambda>i :: nat. if i = 0 then Some v0 else (if i = 1 \<and> v0\<rightarrow>the (\<sigma> v0) then \<sigma> v0 else None)"
+    show "finite_path P" unfolding P_def finite_path_def by (metis One_nat_def Suc_lessI less_imp_Suc_add less_numeral_extra(4) nat.distinct(1) not_gr0 option.distinct(1))
+    show "valid_path P" proof (unfold valid_path_def; intro conjI)
+      show "P 0 \<noteq> None" by (simp add: P_def)
+      show "infinite_path P \<or> finite_path P" using `finite_path P` by blast
+      show "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" using P_def assms valid_edge_set by auto
+      show "\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i) \<rightarrow> the (P (Suc i))" by (simp add: P_def)
+    qed
+    show "path_conforms_with_strategy_up_to p P \<sigma> 0" using P_def assms(2) valid_strategy_def by auto
     show "the (P 0) = v0" using P_def by simp
-    show "path_last P = v0" using P_def path_last_def by auto
   qed
 lemma (in ParityGame) valid_strategy_starts_correctly:
   assumes "valid_strategy p \<sigma> v0" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 \<noteq> None"
-  proof-
-    obtain P where P_def: "valid_path P" "finite_path P" "path_weakly_conforms_with_strategy p P \<sigma>" "the (P 0) = v0" "path_last P = v0"
-      using one_element_path_exists using assms(2) by blast
-    hence "path_last P \<in> VV p" using assms(2) by simp
-    hence "\<sigma> (path_last P) \<noteq> None" sorry
-    thus ?thesis using P_def(5) by simp
-  qed
-
-lemma (in ParityGame) finite_path_prefix_exists:
-  fixes v0 i
-  assumes \<sigma>_valid: "valid_strategy p \<sigma> v0"
-    and P_valid: "valid_path P"
-    and P_conforms: "path_weakly_conforms_with_strategy p P \<sigma>"
-    and P_valid_start: "the (P 0) = v0"
-    and P_still_there: "P i \<noteq> None"
-  shows "\<exists>Q. valid_path Q \<and> finite_path Q \<and> path_weakly_conforms_with_strategy p Q \<sigma> \<and> path_last Q = the (P i) \<and> (\<forall>j \<le> i. P i = Q i)"
-  using assms proof (intro exI; intro conjI)
-    def Q \<equiv> "\<lambda>j. if j \<le> i then P j else None"
-    show "finite_path Q" proof (cases)
-    (* Note: This proof is stronger than necessary, it works without P_still_there. *)
-      assume "finite_path P"
-      then obtain k where "\<forall>j. (j > k \<longleftrightarrow> P j = None)" using finite_path_def by blast
-      thus ?thesis by (unfold finite_path_def Q_def; cases "k > i"; meson le_less_trans less_asym' not_less)
-    next
-      assume "\<not>finite_path P"
-      hence "\<And>i. P i \<noteq> None" by (meson P_valid finite_path_def infinite_path_def valid_path_is_infinite_or_finite)
-      thus ?thesis by (unfold finite_path_def Q_def; rule_tac x="i" in exI; simp)
-    qed
-    show "valid_path Q" using P_valid Q_def `finite_path Q` by auto
-    show "path_weakly_conforms_with_strategy p Q \<sigma>" using P_conforms Q_def by auto
-    have "Q i \<noteq> None" using P_still_there Q_def by simp
-    moreover have "Q (Suc i) = None" using Q_def by simp
-    ultimately show "path_last Q = the (P i)" by (metis Q_def `finite_path Q` finite_path_def less_antisym path_last_exists)
-    show "\<forall>j \<le> i. P i = Q i" using Q_def by simp
-  qed
+  using assms(1) assms(2) assms(3) valid_strategy_def by blast
 
 lemma (in ParityGame) infinite_path_tail [intro]:
   "infinite_path P \<Longrightarrow> infinite_path (path_tail P)" using assms by auto
