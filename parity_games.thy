@@ -21,6 +21,10 @@ lemma paths_are_contiguous:
   assumes "infinite_path P \<or> finite_path P"
   shows "P i \<noteq> None \<Longrightarrow> j \<le> i \<Longrightarrow> P j \<noteq> None"
   by (metis assms finite_path_def infinite_path_def leD le_less_linear le_trans)
+lemma paths_are_contiguous_suc:
+  assumes "infinite_path P \<or> finite_path P"
+  shows "P (Suc i) \<noteq> None \<Longrightarrow> P i \<noteq> None"
+  using assms paths_are_contiguous[of _ "Suc i" i] le_Suc_eq by blast
 lemma path_dom_ends_on_finite_paths:
   assumes finite: "finite_path P"
   shows "\<exists>!i \<in> path_dom P. P (i + 1) = None"
@@ -57,9 +61,9 @@ definition maximal_path :: "'a Path \<Rightarrow> bool" where
   [simp]: "maximal_path P \<equiv> \<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<longrightarrow> P (Suc i) \<noteq> None"
 end
 
-lemma (in Digraph) maximal_infinite_path_tail [intro]:
-  "maximal_path P \<Longrightarrow> maximal_path (path_tail P)"
-  using assms by auto
+lemma (in Digraph) maximal_infinite_path_tail [intro]: "maximal_path P \<Longrightarrow> maximal_path (path_tail P)" by auto
+lemma (in Digraph) valid_path_is_infinite_or_finite: "valid_path P \<Longrightarrow> infinite_path P \<or> finite_path P" by simp
+lemma (in Digraph) valid_path_is_contiguous_suc: "valid_path P \<Longrightarrow> P (Suc i) \<noteq> None \<Longrightarrow> P i \<noteq> None" using paths_are_contiguous_suc valid_path_is_infinite_or_finite by blast
 
 datatype Player = Even | Odd
 abbreviation other_player :: "Player \<Rightarrow> Player" where "other_player p \<equiv> (if p = Even then Odd else Even)"
@@ -350,6 +354,8 @@ lemma (in ParityGame) attractor_is_bounded_by_V:
 
 lemma (in ParityGame) attractor_is_finite:
   "W \<subseteq> V \<Longrightarrow> finite (attractor p W)" by (metis assms attractor_is_bounded_by_V finite_vertex_set rev_finite_subset)
+
+lemma (in ParityGame) attractor_outside: "\<lbrakk> v \<notin> attractor p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor p W" by (metis attractor.VVp)
 
 definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
   "directly_attracted p W \<equiv> {v \<in> V - W. \<not>deadend v \<and>
@@ -650,6 +656,12 @@ definition (in ParityGame) strategy_attracts_from_to :: "Player \<Rightarrow> 'a
     \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
 lemma (in ParityGame) strategy_attracts_from_to_trivial [simp]:
   "strategy_attracts_from_to p \<sigma> W W" by (meson strategy_attracts_from_to_def valid_paths_are_nonempty)
+definition (in ParityGame) strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P.
+      valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
+    \<longrightarrow> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<notin> W))"
+lemma (in ParityGame) strategy_avoids_trivial [simp]:
+  "strategy_avoids p \<sigma> {} W" by (meson empty_iff strategy_avoids_def)
 
 abbreviation (in ParityGame) attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_strategy_on p \<sigma> A W \<equiv> strategy_only_on p \<sigma> (A - W) \<and>
@@ -766,9 +778,74 @@ primrec (in ParityGame) path_avoiding_a_set :: "nat \<Rightarrow> Player \<Right
         then None
         else Some (SOME w. w \<in> V - A \<and> (the (path_avoiding_a_set n p \<sigma> v0 A))\<rightarrow>w))"
 
-(* If A is the p-attractor of a set W, then p** has a strategy on V - A such that p** always
-   has a way to avoid going to A. *)
+(* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A. *)
 theorem (in ParityGame) attractor_has_outside_strategy:
+  fixes W p
+  defines "A \<equiv> attractor p** W"
+  assumes "W \<subseteq> V"
+  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (V - A) \<and> strategy_avoids p \<sigma> (V - A) A"
+  proof (intro exI conjI)
+    (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
+    the successor. *)
+    def \<sigma> \<equiv> "\<lambda>v. (
+      if v \<in> (V - A) \<and> v \<in> VV p \<and> \<not>deadend v
+        then Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)
+        else None)"
+    (* We need to show that \<sigma> is well-defined.  This means we have to show that \<sigma> always applies
+    the SOME quantifier to a non-empty set. *)
+    have \<sigma>_correct: "\<And>v. \<sigma> v \<noteq> None \<Longrightarrow> the (\<sigma> v) \<notin> A \<and> v\<rightarrow>(the (\<sigma> v))" using \<sigma>_def proof-
+      fix v assume \<sigma>_v_not_None: "\<sigma> v \<noteq> None"
+      have "\<not>(v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v) \<Longrightarrow> \<sigma> v = None" using \<sigma>_def by auto
+      hence v_not_in_A_no_deadend: "v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v" using \<sigma>_v_not_None by blast
+      hence "the (\<sigma> v) = (SOME w. w \<notin> A \<and> v\<rightarrow>w)" using \<sigma>_def by auto
+      moreover have "\<exists>w. w \<notin> A \<and> v\<rightarrow>w" proof (rule ccontr)
+        assume "\<not>(\<exists>w. w \<notin> A \<and> v\<rightarrow>w)"
+        hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> A" by auto
+        hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p** W" using A_def by simp
+        hence "v \<in> attractor p** W" using v_not_in_A_no_deadend attractor.VVpstar by auto
+        hence "v \<in> A" using A_def by simp
+        thus False using v_not_in_A_no_deadend by blast
+      qed
+      ultimately show "the (\<sigma> v) \<notin> A \<and> v\<rightarrow>(the (\<sigma> v))" by (metis (mono_tags, lifting) someI_ex)
+    qed
+
+    show "strategy_only_on p \<sigma> (V - A)" using \<sigma>_def strategy_only_on_def[of p \<sigma> "V - A"] by auto
+
+    show "strategy_avoids p \<sigma> (V - A) A" proof (cases)
+      assume "V - A = {}"
+      show ?thesis by (simp add: `V - A = {}`)
+    next
+      assume "V - A \<noteq> {}"
+      show ?thesis proof (unfold strategy_avoids_def; intro allI impI; elim conjE)
+        fix P i
+        assume P_valid: "valid_path P"
+          (* We don't need "maximal_path P". *)
+          and P_conforms: "path_conforms_with_strategy p P \<sigma>"
+          and P_valid_start: "the (P 0) \<in> V - A"
+        show "P i \<noteq> None \<Longrightarrow> the (P i) \<notin> A" proof (induct i)
+          case 0 thus ?case using P_valid_start by auto
+        next
+          case (Suc i)
+          have P_i_not_None: "P i \<noteq> None" using Suc.prems P_valid valid_path_is_contiguous_suc by blast
+          hence P_i_not_in_A: "the (P i) \<notin> A" using Suc.hyps by blast
+          have "the (P i) \<in> V" using P_i_not_None P_valid valid_path_def by blast
+          thus "the (P (Suc i)) \<notin> A" proof (cases rule: VV_cases)
+            assume "the (P i) \<in> VV p"
+            hence *: "\<sigma> (the (P i)) = P (Suc i)" using P_conforms P_i_not_None path_conforms_with_strategy_def by blast
+            hence "\<sigma> (the (P i)) \<noteq> None" by (simp add: Suc.prems)
+            hence "the (\<sigma> (the (P i))) \<notin> A" using \<sigma>_correct[of "the (P i)"] by blast
+            thus ?thesis by (simp add: *)
+          next
+            assume "the (P i) \<in> VV p**"
+            moreover have "the (P i)\<rightarrow>the (P (Suc i))" using P_i_not_None P_valid Suc.prems valid_path_def by blast
+            ultimately show "the (P (Suc i)) \<notin> A" apply (insert P_i_not_in_A; unfold A_def) using attractor_outside[of "the (P i)" "p**" W "the (P (Suc i))"] by simp
+          qed
+        qed
+      qed
+    qed
+  qed
+
+theorem (in ParityGame) attractor_has_outside_strategy2:
   fixes W p
   defines "A \<equiv> attractor p** W"
   assumes "W \<subseteq> V" and v0_def: "v0 \<in> V - A"
