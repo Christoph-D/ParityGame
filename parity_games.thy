@@ -1196,8 +1196,7 @@ theorem (in ParityGame) strategy_conforming_path_exists:
   qed
 
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
-  assumes "v0 \<in> V"
-  and "\<forall>w \<in> V. \<omega>(w) = n"
+  assumes "v0 \<in> V" and "\<forall>v \<in> V. \<omega>(v) = n"
   shows "\<exists>p \<sigma>. valid_strategy_from p \<sigma> v0 \<and> strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0"
   proof -
     let ?deadends = "\<lambda>p. {v \<in> VV p. deadend v}"
