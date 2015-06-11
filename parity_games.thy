@@ -1105,9 +1105,9 @@ theorem (in ParityGame) strategy_conforming_path_exists:
   qed
 
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
-  assumes "v \<in> V"
+  assumes "v0 \<in> V"
   and "\<forall>w \<in> V. \<omega>(w) = 0"
-  shows "\<exists>p \<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v"
+  shows "\<exists>p \<sigma>. valid_strategy p \<sigma> v0 \<and> winning_strategy p \<sigma> v0"
   proof -
     let ?deadends = "\<lambda>p. {v \<in> VV p. deadend v}"
     have deadends_in_V: "\<And>p. ?deadends p \<subseteq> V" by auto
@@ -1123,9 +1123,9 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
         using strategy_less_eq_extensible[of "A - ?deadends p**" "V"] by blast
       hence \<sigma>'_attracts: "strategy_attracts_from_to p \<sigma>' A (?deadends p**)" using \<sigma> by blast
 
-      assume v_in_attractor: "v \<in> attractor p (?deadends p**)"
-      have "winning_strategy p \<sigma>' v" proof (unfold winning_strategy_def, clarify)
-        fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "v = the (P 0)"
+      assume v_in_attractor: "v0 \<in> attractor p (?deadends p**)"
+      have "winning_strategy p \<sigma>' v0" proof (unfold winning_strategy_def, clarify)
+        fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "v0 = the (P 0)"
         have P_infinite_or_finite: "infinite_path P \<or> finite_path P" using P(1) valid_path_def by blast
         obtain i where i_def: "P i \<noteq> None \<and> the (P i) \<in> ?deadends p**" using \<sigma>'_attracts A_def v_in_attractor strategy_attracts_from_to_def P by blast
         have "P (Suc i) = None" by (metis (no_types, lifting) i_def CollectD P(1) valid_path_def)
@@ -1133,7 +1133,8 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
         moreover have "i \<in> path_dom P \<and> the (P i) \<in> VV p**" using i_def by blast
         ultimately show "winning_path p P" using winning_path_def by (metis One_nat_def add.right_neutral add_Suc_right)
       qed
-      hence "\<exists>\<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v" using \<sigma>' by blast
+      hence "\<exists>\<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0" using \<sigma>' by blast
+      hence "\<exists>\<sigma>. valid_strategy p \<sigma> v0 \<and> winning_strategy p \<sigma> v0" using \<sigma>' by blast
     } note lemma1 = this
     {
       def W \<equiv> "?deadends Even"
