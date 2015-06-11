@@ -432,9 +432,14 @@ lemma (in ParityGame) winning_strategy_preserved_under_extension:
               fix i assume i_def: "i \<le> 0" "P i \<noteq> None" "the (P i) \<in> VV p"
               hence "i = 0" by blast
               hence "the (P 0) \<in> VV p" using i_def(3) by auto
-              moreover have no_deadend: "\<not>deadend (the (P 0))" sorry
-              ultimately have "\<sigma> (the (P 0)) \<noteq> None" using valid_strategy_starts_correctly[of p \<sigma> "the (P 0)"] no_deadend \<sigma>_valid P_valid_start by fastforce
-              thus "\<sigma> (the (P i)) = P (Suc i)" by (metis (mono_tags) i_def(2) P_conforms \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def)
+              show "\<sigma> (the (P i)) = P (Suc i)" proof (cases)
+                assume deadend: "deadend (the (P 0))"
+                thus ?thesis by (metis (no_types, lifting) P_conforms P_valid \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def valid_path_def)
+              next
+                assume no_deadend: "\<not>deadend (the (P 0))"
+                hence "\<sigma> (the (P 0)) \<noteq> None" using valid_strategy_starts_correctly[of p \<sigma> "the (P 0)"] no_deadend \<sigma>_valid P_valid_start using `the (P 0) \<in> VV p` by fastforce
+                thus ?thesis by (metis (mono_tags) i_def(2) P_conforms \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def)
+              qed
             qed
           next
             case (Suc n)
