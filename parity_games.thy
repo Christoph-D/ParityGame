@@ -4,8 +4,9 @@ imports
   pigeon_hole_principle
 begin
 
-(* 'a is the vertex type. *)
+lemma option_the_simp: "x = Some y \<Longrightarrow> the x = y" by simp
 
+(* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
 type_synonym 'a Path = "nat \<Rightarrow> 'a option"
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a option"
