@@ -397,88 +397,88 @@ lemma (in ParityGame) paths_are_winning_for_one_player:
 definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v \<longrightarrow> winning_path p P"
 
-lemma (in ParityGame) winning_strategy_preserved_under_extension:
-  assumes \<sigma>_valid: "valid_strategy p \<sigma> v0" and \<sigma>'_valid: "valid_strategy p \<sigma>' v0"
-    and \<sigma>_winning: "winning_strategy p \<sigma> v0"
+lemma (in ParityGame) path_conforms_preserved_under_extension:
+  assumes \<sigma>_valid: "valid_strategy p \<sigma> v0"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
-  shows "winning_strategy p \<sigma>' v0"
-  proof (unfold winning_strategy_def; intro allI impI; elim conjE)
-    fix P
-    assume P_valid: "valid_path P"
-      and P_maximal: "maximal_path P"
-      and P_conforms: "path_conforms_with_strategy p P \<sigma>'"
-      and P_valid_start: "the (P 0) = v0"
-    have "v0 \<in> V" using P_valid_start P_valid valid_path_def by blast
-    have "path_conforms_with_strategy p P \<sigma>" proof (unfold path_conforms_with_strategy_def; intro allI impI; elim conjE)
-      fix i
-      assume P: "P i \<noteq> None" "the (P i) \<in> VV p"
-      show "\<sigma> (the (P i)) = P (Suc i)" proof (cases)
-        assume deadend: "deadend (the (P i))"
-        hence "P (Suc i) = None" using P_valid valid_path_is_contiguous_suc valid_path_def by meson
-        moreover have "\<sigma> (the (P i)) = None" proof (rule ccontr)
-          assume "\<sigma> (the (P i)) \<noteq> None"
-          hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using valid_strategy_def \<sigma>_valid P(2) by blast
-          thus False using deadend using valid_edge_set by auto
-        qed
-        ultimately show ?thesis by simp
-      next
-        assume no_deadend: "\<not>deadend (the (P i))"
-        hence \<sigma>'_next: "\<sigma>' (the (P i)) = P (Suc i)" using P_conforms P path_conforms_with_strategy_def by blast
-        {
-          fix n
-          have "path_conforms_with_strategy_up_to p P \<sigma> n" proof (induct n)
-            case 0
-            show ?case proof (unfold path_conforms_with_strategy_up_to_def; intro allI impI; elim conjE)
-              fix i assume i_def: "i \<le> 0" "P i \<noteq> None" "the (P i) \<in> VV p"
-              hence "i = 0" by blast
-              hence "the (P 0) \<in> VV p" using i_def(3) by auto
+    and P_valid: "valid_path P"
+    and P_conforms: "path_conforms_with_strategy p P \<sigma>'"
+    and P_valid_start: "the (P 0) = v0"
+  shows "path_conforms_with_strategy p P \<sigma>"
+  proof (unfold path_conforms_with_strategy_def; intro allI impI; elim conjE)
+    fix i
+    assume P: "P i \<noteq> None" "the (P i) \<in> VV p"
+    show "\<sigma> (the (P i)) = P (Suc i)" proof (cases)
+      assume deadend: "deadend (the (P i))"
+      hence "P (Suc i) = None" using P_valid valid_path_is_contiguous_suc valid_path_def by meson
+      moreover have "\<sigma> (the (P i)) = None" proof (rule ccontr)
+        assume "\<sigma> (the (P i)) \<noteq> None"
+        hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using valid_strategy_def \<sigma>_valid P(2) by blast
+        thus False using deadend using valid_edge_set by auto
+      qed
+      ultimately show ?thesis by simp
+    next
+      assume no_deadend: "\<not>deadend (the (P i))"
+      hence \<sigma>'_next: "\<sigma>' (the (P i)) = P (Suc i)" using P_conforms P path_conforms_with_strategy_def by blast
+      {
+        fix n
+        have "path_conforms_with_strategy_up_to p P \<sigma> n" proof (induct n)
+          case 0
+          show ?case proof (unfold path_conforms_with_strategy_up_to_def; intro allI impI; elim conjE)
+            fix i assume i_def: "i \<le> 0" "P i \<noteq> None" "the (P i) \<in> VV p"
+            hence "i = 0" by blast
+            hence "the (P 0) \<in> VV p" using i_def(3) by auto
+            show "\<sigma> (the (P i)) = P (Suc i)" proof (cases)
+              assume deadend: "deadend (the (P 0))"
+              thus ?thesis by (metis (no_types, lifting) P_conforms P_valid \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def valid_path_def)
+            next
+              assume no_deadend: "\<not>deadend (the (P 0))"
+              hence "\<sigma> (the (P 0)) \<noteq> None" using valid_strategy_starts_correctly[of p \<sigma> "the (P 0)"] no_deadend \<sigma>_valid P_valid_start using `the (P 0) \<in> VV p` by fastforce
+              thus ?thesis by (metis (mono_tags) i_def(2) P_conforms \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def)
+            qed
+          qed
+        next
+          case (Suc n)
+          thus ?case proof (cases)
+            assume assm: "P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))"
+            hence "\<sigma> (the (P (Suc n))) \<noteq> None" using \<sigma>_valid P_valid Suc.hyps P_valid_start valid_strategy_def by blast
+            hence "\<sigma> (the (P (Suc n))) = \<sigma>' (the (P (Suc n)))" using \<sigma>_less_eq_\<sigma>' using strategy_less_eq_def by blast
+            moreover have "\<sigma>' (the (P (Suc n))) = P (Suc (Suc n))" using P_conforms assm path_conforms_with_strategy_def by blast
+            ultimately have *: "\<sigma> (the (P (Suc n))) = P (Suc (Suc n))" by simp
+            thus ?thesis proof (unfold path_conforms_with_strategy_up_to_def; intro allI impI)
+              fix i assume i_def: "i \<le> Suc n" "P i \<noteq> None \<and> the (P i) \<in> VV p"
               show "\<sigma> (the (P i)) = P (Suc i)" proof (cases)
-                assume deadend: "deadend (the (P 0))"
-                thus ?thesis by (metis (no_types, lifting) P_conforms P_valid \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def valid_path_def)
+                assume "i < Suc n"
+                hence "i \<le> n" by auto
+                hence "P i \<noteq> None \<Longrightarrow> the (P i) \<in> VV p \<Longrightarrow> \<sigma> (the (P i)) = P (Suc i)" using Suc.hyps path_conforms_with_strategy_up_to_def by blast
+                thus ?thesis using i_def(2) by blast
               next
-                assume no_deadend: "\<not>deadend (the (P 0))"
-                hence "\<sigma> (the (P 0)) \<noteq> None" using valid_strategy_starts_correctly[of p \<sigma> "the (P 0)"] no_deadend \<sigma>_valid P_valid_start using `the (P 0) \<in> VV p` by fastforce
-                thus ?thesis by (metis (mono_tags) i_def(2) P_conforms \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def)
+                assume "\<not>i < Suc n"
+                hence "i = Suc n" using i_def(1) by auto
+                thus ?thesis using * by blast
               qed
             qed
           next
-            case (Suc n)
-            thus ?case proof (cases)
-              assume assm: "P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))"
-              hence "\<sigma> (the (P (Suc n))) \<noteq> None" using \<sigma>_valid P_valid Suc.hyps P_valid_start valid_strategy_def by blast
-              hence "\<sigma> (the (P (Suc n))) = \<sigma>' (the (P (Suc n)))" using \<sigma>_less_eq_\<sigma>' using strategy_less_eq_def by blast
-              moreover have "\<sigma>' (the (P (Suc n))) = P (Suc (Suc n))" using P_conforms assm path_conforms_with_strategy_def by blast
-              ultimately have *: "\<sigma> (the (P (Suc n))) = P (Suc (Suc n))" by simp
-              thus ?thesis proof (unfold path_conforms_with_strategy_up_to_def; intro allI impI)
-                fix i assume i_def: "i \<le> Suc n" "P i \<noteq> None \<and> the (P i) \<in> VV p"
-                show "\<sigma> (the (P i)) = P (Suc i)" proof (cases)
-                  assume "i < Suc n"
-                  hence "i \<le> n" by auto
-                  hence "P i \<noteq> None \<Longrightarrow> the (P i) \<in> VV p \<Longrightarrow> \<sigma> (the (P i)) = P (Suc i)" using Suc.hyps path_conforms_with_strategy_up_to_def by blast
-                  thus ?thesis using i_def(2) by blast
-                next
-                  assume "\<not>i < Suc n"
-                  hence "i = Suc n" using i_def(1) by auto
-                  thus ?thesis using * by blast
-                qed
-              qed
-            next
-              assume "\<not>(P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n))))"
-              moreover { assume "P (Suc n) = None" hence ?thesis by (metis Suc.hyps le_SucE path_conforms_with_strategy_up_to_def) }
-              moreover { assume "the (P (Suc n)) \<notin> VV p" hence ?thesis using Suc.hyps path_conforms_up_to_VVpstar by blast }
-              moreover { assume "deadend (the (P (Suc n)))" hence ?thesis using P_valid Suc.hyps \<sigma>_valid path_conforms_up_to_deadends by blast }
-              ultimately show ?thesis by blast
-            qed
+            assume "\<not>(P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n))))"
+            moreover { assume "P (Suc n) = None" hence ?thesis by (metis Suc.hyps le_SucE path_conforms_with_strategy_up_to_def) }
+            moreover { assume "the (P (Suc n)) \<notin> VV p" hence ?thesis using Suc.hyps path_conforms_up_to_VVpstar by blast }
+            moreover { assume "deadend (the (P (Suc n)))" hence ?thesis using P_valid Suc.hyps \<sigma>_valid path_conforms_up_to_deadends by blast }
+            ultimately show ?thesis by blast
           qed
-        }
-        hence "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_approximations by blast
+        qed
+      }
+      hence "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_approximations by blast
 
-        hence "\<sigma> (the (P i)) = \<sigma>' (the (P i))" using strategy_less_eq_def \<sigma>_less_eq_\<sigma>' by (metis (mono_tags, hide_lams) P(1) P(2) \<sigma>'_next path_conforms_with_strategy_def)
-        thus ?thesis by (simp add: \<sigma>'_next)
-      qed
+      hence "\<sigma> (the (P i)) = \<sigma>' (the (P i))" using strategy_less_eq_def \<sigma>_less_eq_\<sigma>' by (metis (mono_tags, hide_lams) P(1) P(2) \<sigma>'_next path_conforms_with_strategy_def)
+      thus ?thesis by (simp add: \<sigma>'_next)
     qed
-    thus "winning_path p P" using P_valid P_maximal P_valid_start \<sigma>_winning winning_strategy_def by blast
   qed
+
+lemma (in ParityGame) winning_strategy_preserved_under_extension:
+  assumes \<sigma>_valid: "valid_strategy p \<sigma> v0"
+    and \<sigma>_winning: "winning_strategy p \<sigma> v0"
+    and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
+  shows "winning_strategy p \<sigma>' v0"
+  using assms path_conforms_preserved_under_extension winning_strategy_def by blast
 
 (* The attractor set of a given set of vertices. *)
 inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
