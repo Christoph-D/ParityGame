@@ -28,17 +28,13 @@ lemma paths_are_contiguous_suc:
   using assms paths_are_contiguous[of _ "Suc i" i] le_Suc_eq by blast
 lemma path_dom_ends_on_finite_paths:
   assumes finite: "finite_path P"
-  shows "\<exists>!i \<in> path_dom P. P (i + 1) = None"
+  shows "\<exists>!i \<in> path_dom P. P (Suc i) = None"
   proof -
-    obtain i where "\<forall>j. (j > i \<longleftrightarrow> P j = None)" using finite by fastforce
-    hence "i \<in> path_dom P \<and> P (i + 1) = None" by auto
-    thus ?thesis
-      by (metis (mono_tags, lifting) One_nat_def add.right_neutral add_Suc_right finite finite_path_def less_Suc_eq mem_Collect_eq)
+    obtain i where i_def: "\<forall>j. (j > i \<longleftrightarrow> P j = None)" using finite by fastforce
+    hence "i \<in> path_dom P \<and> P (Suc i) = None" by auto
+    thus ?thesis by (metis (mono_tags, lifting) i_def le_imp_less_or_eq less_Suc_eq_le mem_Collect_eq)
   qed
-lemma path_inf_is_from_P:
-  assumes "v \<in> path_inf P"
-  shows "\<exists>i. P i = Some v"
-  using assms apply (unfold path_inf_def; fastforce) done
+lemma path_inf_is_from_P: "v \<in> path_inf P \<Longrightarrow> \<exists>i. P i = Some v" apply (unfold path_inf_def; fastforce) done
 
 record 'a Graph =
   verts :: "'a set" ("V\<index>")
@@ -64,7 +60,8 @@ end
 
 lemma (in Digraph) maximal_infinite_path_tail [intro]: "maximal_path P \<Longrightarrow> maximal_path (path_tail P)" by auto
 lemma (in Digraph) valid_path_is_infinite_or_finite: "valid_path P \<Longrightarrow> infinite_path P \<or> finite_path P" by simp
-lemma (in Digraph) valid_path_is_contiguous_suc: "valid_path P \<Longrightarrow> P (Suc i) \<noteq> None \<Longrightarrow> P i \<noteq> None" using paths_are_contiguous_suc valid_path_is_infinite_or_finite by blast
+lemma (in Digraph) valid_path_is_contiguous_suc: "valid_path P \<Longrightarrow> P (Suc i) \<noteq> None \<Longrightarrow> P i \<noteq> None"
+  using paths_are_contiguous_suc valid_path_is_infinite_or_finite by blast
 
 datatype Player = Even | Odd
 abbreviation other_player :: "Player \<Rightarrow> Player" where "other_player p \<equiv> (if p = Even then Odd else Even)"
@@ -77,9 +74,7 @@ record 'a ParityGame = "'a Graph" +
 
 abbreviation winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
   "winning_priority p \<equiv> (if p = Even then even else odd)"
-lemma winning_priority_for_one_player:
-  shows "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i"
-  by auto
+lemma winning_priority_for_one_player: "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i" by simp
 
 locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) +
   assumes valid_player0_set: "V0 \<subseteq> V"
@@ -111,27 +106,7 @@ definition (in ParityGame) strategy_on :: "Player \<Rightarrow> 'a Strategy \<Ri
 definition (in ParityGame) strategy_only_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_only_on p \<sigma> W \<equiv> (\<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None) \<and> (\<forall>v. v \<notin> W \<inter> VV p \<longrightarrow> \<sigma> v = None)"
 
-lemma (in ParityGame) strategy_subset [intro]:
-  "\<lbrakk> W' \<subseteq> W; strategy_on p \<sigma> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" using strategy_on_def by auto
-lemma (in ParityGame) strategy_on_empty_set [simp]:
-  "strategy_on p \<sigma> {}" by (simp add: strategy_on_def)
-lemma (in ParityGame) strategy_only_on_empty_set_exists:
-  "\<exists>\<sigma>. strategy_only_on p \<sigma> {}" proof -
-    have "strategy_only_on p (\<lambda>_. None) {}" using strategy_only_on_def by auto
-    thus ?thesis by auto
-  qed
-lemma (in ParityGame) strategy_only_on_on [intro]:
-  "strategy_only_on p \<sigma> W \<Longrightarrow> strategy_on p \<sigma> W" by (simp add: strategy_on_def strategy_only_on_def)
-lemma (in ParityGame) strategy_only_on_on_subset [intro]:
-  "\<lbrakk> strategy_only_on p \<sigma> W; W' \<subseteq> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" by (simp add: strategy_only_on_on strategy_subset)
-lemma (in ParityGame) strategy_only_on_elements [intro]:
-  "\<lbrakk> strategy_only_on p \<sigma> W; v \<notin> W \<rbrakk> \<Longrightarrow> \<sigma> v = None" using strategy_only_on_def by auto
-lemma (in ParityGame) strategy_only_on_case_rule [intro]:
-  "\<lbrakk> strategy_only_on p \<sigma> W; v \<in> VV p - W \<rbrakk> \<Longrightarrow> strategy_only_on p (\<sigma>(v \<mapsto> w)) (insert v W)" using strategy_only_on_def by auto
-lemma (in ParityGame) strategy_only_on_case_rule2 [intro]:
-  "\<lbrakk> strategy_only_on p \<sigma> W; v \<notin> VV p \<rbrakk> \<Longrightarrow> strategy_only_on p \<sigma> (insert v W)" using strategy_only_on_def by auto
-
-definition restrict_path :: "'a Path \<Rightarrow> 'a set \<Rightarrow> 'a Path" (infixl "\<restriction>\<^sub>P" 80) where
+(*definition restrict_path :: "'a Path \<Rightarrow> 'a set \<Rightarrow> 'a Path" (infixl "\<restriction>\<^sub>P" 80) where
   "restrict_path P W \<equiv> \<lambda>i. if the (P i) \<in> W then P i else None"
 definition restrict_strategy :: "'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a Strategy" (infixl "\<restriction>\<^sub>S" 80) where
   "restrict_strategy \<sigma> W \<equiv> \<lambda>v. if v \<in> W \<and> the (\<sigma> v) \<in> W then \<sigma> v else None"
@@ -150,6 +125,7 @@ lemma (in ParityGame) restricted_path_dom [simp]:
   assumes "i \<in> path_dom (P \<restriction>\<^sub>P W)"
   shows "i \<in> path_dom P"
   by (metis (mono_tags, lifting) assms mem_Collect_eq restrict_path_def)
+*)
 
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
@@ -165,18 +141,39 @@ lemma (in ParityGame) path_conforms_up_to_VVpstar:
   assumes "path_conforms_with_strategy_up_to p P \<sigma> n" "the (P (Suc n)) \<notin> VV p"
   shows "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" by (metis assms le_SucE path_conforms_with_strategy_up_to_def)
 
-definition (in ParityGame) valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  "valid_strategy p \<sigma> v0 \<equiv> (\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v))
+definition (in ParityGame) valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+  "valid_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v)"
+definition (in ParityGame) valid_strategy_from :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
+  "valid_strategy_from p \<sigma> v0 \<equiv> (\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v))
     \<and> (v0 \<in> VV p \<and> \<not>deadend v0 \<longrightarrow> \<sigma> v0 \<noteq> None)
-    \<and> (\<forall>P n. valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) = v0 \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))
-      \<longrightarrow> \<sigma> (the (P (Suc n))) \<noteq> None)"
+    \<and> (\<forall>P n. valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) = v0
+        \<and> P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))
+        \<longrightarrow> \<sigma> (the (P (Suc n))) \<noteq> None)"
+
+lemma (in ParityGame) strategy_subset [intro]:
+  "\<lbrakk> W' \<subseteq> W; strategy_on p \<sigma> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" using strategy_on_def by auto
+lemma (in ParityGame) strategy_on_empty_set [simp]:
+  "strategy_on p \<sigma> {}" by (simp add: strategy_on_def)
+lemma (in ParityGame) strategy_only_on_empty_set_exists:
+  "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> {}"
+  by (rule exI [of _ "\<lambda>_.None"]; simp add: valid_strategy_def strategy_only_on_def)
+lemma (in ParityGame) strategy_only_on_on [intro]:
+  "strategy_only_on p \<sigma> W \<Longrightarrow> strategy_on p \<sigma> W" by (simp add: strategy_on_def strategy_only_on_def)
+lemma (in ParityGame) strategy_only_on_on_subset [intro]:
+  "\<lbrakk> strategy_only_on p \<sigma> W; W' \<subseteq> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" by (simp add: strategy_only_on_on strategy_subset)
+lemma (in ParityGame) strategy_only_on_elements [intro]:
+  "\<lbrakk> strategy_only_on p \<sigma> W; v \<notin> W \<rbrakk> \<Longrightarrow> \<sigma> v = None" using strategy_only_on_def by auto
+lemma (in ParityGame) strategy_only_on_case_rule [intro]:
+  "\<lbrakk> strategy_only_on p \<sigma> W; v \<in> VV p - W; v\<rightarrow>w \<rbrakk> \<Longrightarrow> strategy_only_on p (\<sigma>(v \<mapsto> w)) (insert v W)" using strategy_only_on_def by auto
+lemma (in ParityGame) strategy_only_on_case_rule2 [intro]:
+  "\<lbrakk> strategy_only_on p \<sigma> W; v \<notin> VV p \<rbrakk> \<Longrightarrow> strategy_only_on p \<sigma> (insert v W)" using strategy_only_on_def by auto
 
 lemma (in ParityGame) path_conforms_up_to_deadends:
-  assumes "path_conforms_with_strategy_up_to p P \<sigma> n" "valid_path P" "valid_strategy p \<sigma> v0" "deadend (the (P (Suc n)))"
+  assumes "path_conforms_with_strategy_up_to p P \<sigma> n" "valid_path P" "valid_strategy_from p \<sigma> v0" "deadend (the (P (Suc n)))"
   shows "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" proof-
     {
       assume VVp: "the (P (Suc n)) \<in> VV p"
-      have "\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v)" using assms(3) valid_strategy_def by blast
+      have "\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v)" using assms(3) valid_strategy_from_def by blast
       hence "\<sigma> (the (P (Suc n))) \<noteq> None \<longrightarrow> the (P (Suc n))\<rightarrow>the (\<sigma> (the (P (Suc n))))" using VVp by blast
       hence "\<sigma> (the (P (Suc n))) = None" using assms(4) using valid_edge_set by auto
       { assume "P (Suc n) \<noteq> None" "the (P (Suc n)) \<in> VV p"
@@ -189,7 +186,7 @@ lemma (in ParityGame) path_conforms_up_to_deadends:
   qed
 
 lemma (in ParityGame) one_element_path_exists:
-  assumes "v0 \<in> V" "valid_strategy p \<sigma> v0"
+  assumes "v0 \<in> V" "valid_strategy p \<sigma>"
   shows "\<exists>P. valid_path P \<and> finite_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> 0 \<and> the (P 0) = v0"
   proof (rule exI; intro conjI)
     def P \<equiv> "\<lambda>i :: nat. if i = 0 then Some v0 else (if i = 1 \<and> v0\<rightarrow>the (\<sigma> v0) then \<sigma> v0 else None)"
@@ -203,10 +200,10 @@ lemma (in ParityGame) one_element_path_exists:
     show "path_conforms_with_strategy_up_to p P \<sigma> 0" using P_def assms(2) valid_strategy_def by auto
     show "the (P 0) = v0" using P_def by simp
   qed
-lemma (in ParityGame) valid_strategy_starts_correctly:
-  assumes "valid_strategy p \<sigma> v0" "v0 \<in> VV p" "\<not>deadend v0"
+lemma (in ParityGame) valid_strategy_from_starts_correctly:
+  assumes "valid_strategy_from p \<sigma> v0" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 \<noteq> None"
-  using assms(1) assms(2) assms(3) valid_strategy_def by blast
+  using assms(1) assms(2) assms(3) valid_strategy_from_def by blast
 
 lemma (in ParityGame) infinite_path_tail [intro]:
   "infinite_path P \<Longrightarrow> infinite_path (path_tail P)" using assms by auto
@@ -263,8 +260,8 @@ lemma (in ParityGame) strategy_less_eq_refl [simp]:
 lemma (in ParityGame) strategy_less_eq_least [simp]:
   "strategy_only_on p \<sigma> {} \<Longrightarrow> strategy_less_eq \<sigma> \<sigma>'" by (simp add: strategy_less_eq_def strategy_only_on_elements)
 lemma (in ParityGame) strategy_less_eq_extensible:
-  assumes "W \<subseteq> W'" "strategy_on p \<sigma> W"
-  shows "\<exists>\<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<and> strategy_on p \<sigma>' W'" proof-
+  assumes "W \<subseteq> W'" "strategy_on p \<sigma> W" "valid_strategy p \<sigma>"
+  shows "\<exists>\<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> strategy_on p \<sigma>' W'" proof-
     let ?\<sigma>' = "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else (if v \<in> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None)"
     have "strategy_less_eq \<sigma> ?\<sigma>'" proof-
       have "\<And>v. \<sigma> v \<noteq> None \<Longrightarrow> \<sigma> v = ?\<sigma>' v" by simp
@@ -281,6 +278,24 @@ lemma (in ParityGame) strategy_less_eq_extensible:
         moreover hence "?\<sigma>' v = \<sigma> v" by auto
         ultimately show ?thesis by auto
       qed
+    qed
+    moreover have "valid_strategy p ?\<sigma>'" proof-
+      {
+        fix v assume v_def: "v \<in> VV p" "?\<sigma>' v \<noteq> None"
+        have "v \<rightarrow> the (?\<sigma>' v)" proof (cases)
+          assume "\<sigma> v = None"
+          hence "?\<sigma>' v = Some (SOME w. v\<rightarrow>w)" using v_def(2) by presburger
+          hence *: "the (?\<sigma>' v) = (SOME w. v\<rightarrow>w)" by (rule option_the_simp)
+          have "\<not>deadend v" using v_def(2) `\<sigma> v = None` by presburger
+          hence "\<exists>w. v\<rightarrow>w" by auto
+          thus ?thesis using * by (metis (mono_tags, lifting) someI)
+        next
+          assume "\<sigma> v \<noteq> None"
+          moreover hence "v \<rightarrow> the (\<sigma> v)" using assms(3) `v \<in> VV p` valid_strategy_def by blast
+          ultimately show ?thesis by simp
+        qed
+      }
+      thus ?thesis using valid_strategy_def by blast
     qed
     ultimately show ?thesis by auto
   qed
@@ -363,7 +378,7 @@ lemma (in ParityGame) path_inf_priorities_has_minimum:
 definition (in ParityGame) winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" where
   [simp]: "winning_path p P \<equiv>
     (infinite_path P \<and> (\<exists>a \<in> path_inf_priorities P. (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
-    \<or> (finite_path P \<and> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV p**))"
+    \<or> (finite_path P \<and> (\<exists>i \<in> path_dom P. P (Suc i) = None \<and> the (P i) \<in> VV p**))"
 
 lemma (in ParityGame) valid_paths_are_nonempty: "valid_path P \<Longrightarrow> P 0 \<noteq> None" by auto
 
@@ -378,10 +393,10 @@ lemma (in ParityGame) paths_are_winning_for_exactly_one_player:
   next
     assume not_infinite: "\<not>infinite_path P"
     hence finite: "finite_path P" using assms valid_path_def by blast
-    then obtain i where i_def: "i \<in> path_dom P \<and> P (i+1) = None" using assms path_dom_ends_on_finite_paths by metis
+    then obtain i where i_def: "i \<in> path_dom P \<and> P (Suc i) = None" using assms path_dom_ends_on_finite_paths by metis
     def v \<equiv> "the (P i)" (* the last vertex in the path *)
     hence "v \<in> V" using valid_path_def using assms i_def by auto (* TODO: make faster *)
-    have "\<And>q. winning_path q P \<longleftrightarrow> (\<exists>i \<in> path_dom P. P (i+1) = None \<and> the (P i) \<in> VV q**)"
+    have "\<And>q. winning_path q P \<longleftrightarrow> (\<exists>i \<in> path_dom P. P (Suc i) = None \<and> the (P i) \<in> VV q**)"
       using not_infinite finite winning_path_def by metis
     hence "\<And>q. winning_path q P \<longleftrightarrow> v \<in> VV q**"
       using not_infinite finite path_dom_ends_on_finite_paths i_def v_def by blast
@@ -399,7 +414,7 @@ definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> 'a Strategy
   [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v \<longrightarrow> winning_path p P"
 
 lemma (in ParityGame) path_conforms_preserved_under_extension:
-  assumes \<sigma>_valid: "valid_strategy p \<sigma> v0"
+  assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
     and P_valid: "valid_path P"
     and P_conforms: "path_conforms_with_strategy p P \<sigma>'"
@@ -413,7 +428,7 @@ lemma (in ParityGame) path_conforms_preserved_under_extension:
       hence "P (Suc i) = None" using P_valid valid_path_is_contiguous_suc valid_path_def by meson
       moreover have "\<sigma> (the (P i)) = None" proof (rule ccontr)
         assume "\<sigma> (the (P i)) \<noteq> None"
-        hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using valid_strategy_def \<sigma>_valid P(2) by blast
+        hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using valid_strategy_from_def \<sigma>_valid P(2) by blast
         thus False using deadend using valid_edge_set by auto
       qed
       ultimately show ?thesis by simp
@@ -433,7 +448,7 @@ lemma (in ParityGame) path_conforms_preserved_under_extension:
               thus ?thesis by (metis (no_types, lifting) P_conforms P_valid \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def valid_path_def)
             next
               assume no_deadend: "\<not>deadend (the (P 0))"
-              hence "\<sigma> (the (P 0)) \<noteq> None" using valid_strategy_starts_correctly[of p \<sigma> "the (P 0)"] no_deadend \<sigma>_valid P_valid_start using `the (P 0) \<in> VV p` by fastforce
+              hence "\<sigma> (the (P 0)) \<noteq> None" using valid_strategy_from_starts_correctly[of p \<sigma> "the (P 0)"] no_deadend \<sigma>_valid P_valid_start using `the (P 0) \<in> VV p` by fastforce
               thus ?thesis by (metis (mono_tags) i_def(2) P_conforms \<sigma>_less_eq_\<sigma>' `i = 0` `the (P 0) \<in> VV p` path_conforms_with_strategy_def strategy_less_eq_def)
             qed
           qed
@@ -441,7 +456,7 @@ lemma (in ParityGame) path_conforms_preserved_under_extension:
           case (Suc n)
           thus ?case proof (cases)
             assume assm: "P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n)))"
-            hence "\<sigma> (the (P (Suc n))) \<noteq> None" using \<sigma>_valid P_valid Suc.hyps P_valid_start valid_strategy_def by blast
+            hence "\<sigma> (the (P (Suc n))) \<noteq> None" using \<sigma>_valid P_valid Suc.hyps P_valid_start valid_strategy_from_def by blast
             hence "\<sigma> (the (P (Suc n))) = \<sigma>' (the (P (Suc n)))" using \<sigma>_less_eq_\<sigma>' using strategy_less_eq_def by blast
             moreover have "\<sigma>' (the (P (Suc n))) = P (Suc (Suc n))" using P_conforms assm path_conforms_with_strategy_def by blast
             ultimately have *: "\<sigma> (the (P (Suc n))) = P (Suc (Suc n))" by simp
@@ -475,7 +490,7 @@ lemma (in ParityGame) path_conforms_preserved_under_extension:
   qed
 
 lemma (in ParityGame) winning_strategy_preserved_under_extension:
-  assumes \<sigma>_valid: "valid_strategy p \<sigma> v0"
+  assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
     and \<sigma>_winning: "winning_strategy p \<sigma> v0"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
   shows "winning_strategy p \<sigma>' v0"
@@ -806,22 +821,36 @@ definition (in ParityGame) strategy_attracts_from_to :: "Player \<Rightarrow> 'a
 lemma (in ParityGame) strategy_attracts_from_to_trivial [simp]:
   "strategy_attracts_from_to p \<sigma> W W" by (meson strategy_attracts_from_to_def valid_paths_are_nonempty)
 definition (in ParityGame) strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P.
-      valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
-    \<longrightarrow> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<notin> W))"
+  "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P n.
+      valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) \<in> A
+    \<longrightarrow> (\<forall>i \<le> Suc n. P i \<noteq> None \<longrightarrow> the (P i) \<notin> W))"
 lemma (in ParityGame) strategy_avoids_trivial [simp]:
   "strategy_avoids p \<sigma> {} W" by (meson empty_iff strategy_avoids_def)
+lemma (in ParityGame) strategy_avoids_directly:
+  assumes "strategy_avoids p \<sigma> A W" "v0 \<in> A" "v0 \<in> VV p" "\<sigma> v0 \<noteq> None" "valid_strategy p \<sigma>"
+  shows "the (\<sigma> v0) \<notin> W"
+  proof (rule ccontr; simp)
+    assume assm: "the (\<sigma> v0) \<in> W"
+    obtain P where P: "valid_path P" "finite_path P" "path_conforms_with_strategy_up_to p P \<sigma> 0" "the (P 0) = v0" using one_element_path_exists assms by blast
+    have "the (P 0) \<in> A" using P(4) assms(2) by simp
+    hence "\<forall>i \<le> Suc 0. P i \<noteq> None \<longrightarrow> the (P i) \<notin> W" using assms(1) strategy_avoids_def P by blast
+    hence "P (Suc 0) \<noteq> None \<longrightarrow> the (P (Suc 0)) \<notin> W" by blast
+    moreover have "\<sigma> (the (P 0)) \<noteq> None" by (simp add: P(4) assms(4))
+    moreover have "the (P 0) \<in> VV p" by (simp add: P(4) assms(3))
+    ultimately show False
+      by (metis One_nat_def P(1) P(3) P(4) assm not_less_eq_eq not_one_le_zero path_conforms_with_strategy_up_to_def valid_paths_are_nonempty)
+  qed
 
 abbreviation (in ParityGame) attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_strategy_on p \<sigma> A W \<equiv> strategy_only_on p \<sigma> (A - W) \<and>
     (\<forall>\<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' A W)"
 
 lemma (in ParityGame) attractor_strategy_can_be_extended:
-  assumes W': "W \<subseteq> W'" "W' \<subseteq> V" "\<exists>\<sigma>. attractor_strategy_on p \<sigma> W' W"
+  assumes W': "W \<subseteq> W'" "W' \<subseteq> V" "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> attractor_strategy_on p \<sigma> W' W"
     and v_directly_attracted: "v \<in> directly_attracted p W'"
-  shows "\<exists>\<sigma>. attractor_strategy_on p \<sigma> (insert v W') W"
+  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> attractor_strategy_on p \<sigma> (insert v W') W"
 proof-
-  obtain \<sigma> where \<sigma>: "attractor_strategy_on p \<sigma> W' W" using W'(3) by blast
+  obtain \<sigma> where \<sigma>: "valid_strategy p \<sigma>" "attractor_strategy_on p \<sigma> W' W" using W'(3) by blast
   have "v \<notin> W'" using directly_attracted_is_disjoint_from_W v_directly_attracted by blast
   hence "v \<notin> W" using W'(1) by auto
   show ?thesis proof (cases rule: VV_cases)
@@ -834,7 +863,7 @@ proof-
     hence \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> ?\<sigma>'" using strategy_less_eq_updates by blast
     hence "strategy_attracts_from_to p ?\<sigma>' W' W" using \<sigma> by blast
     have "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if `v \<notin> W`)
-    moreover have "strategy_only_on p ?\<sigma>' (insert v (W' - W))" using strategy_only_on_case_rule using \<sigma> v `v \<notin> W'` by blast
+    moreover have "strategy_only_on p ?\<sigma>' (insert v (W' - W))" using strategy_only_on_case_rule \<sigma> v `v \<notin> W'` `v\<rightarrow>w` by blast
     ultimately have "strategy_only_on p ?\<sigma>' ((insert v W') - W)" by simp
     moreover
     have "\<forall>\<sigma>'. strategy_less_eq ?\<sigma>' \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' (insert v W') W" proof (unfold strategy_attracts_from_to_def, clarify)
@@ -859,6 +888,16 @@ proof-
         ultimately have "\<exists>i. path_tail P i \<noteq> None \<and> the (path_tail P i) \<in> W" using \<sigma> \<sigma>_less_eq_\<sigma>'' strategy_attracts_from_to_def by blast
         thus ?thesis by auto
       qed
+    qed
+    moreover have "valid_strategy p ?\<sigma>'" proof-
+      { fix u assume "u \<in> VV p" "?\<sigma>' u \<noteq> None"
+        have "u \<rightarrow> the (?\<sigma>' u)" proof (cases "u = v"; insert w(2); simp)
+          assume "u \<noteq> v"
+          hence "\<sigma> u \<noteq> None" by (metis `?\<sigma>' u \<noteq> None` fun_upd_apply)
+          thus "u \<rightarrow> the (\<sigma> u)" using \<sigma>(1) `u \<in> VV p` valid_strategy_def by blast
+        qed
+      }
+      thus ?thesis using valid_strategy_def by blast
     qed
     ultimately show ?thesis by blast
   next
@@ -887,16 +926,16 @@ proof-
         thus ?thesis by auto
       qed
     qed
-    ultimately show ?thesis by blast
+    ultimately show ?thesis using \<sigma>(1) by blast
   qed
 qed
 
 theorem (in ParityGame) attractor_has_strategy:
   fixes W p
   assumes "W \<subseteq> V"
-  shows "\<exists>\<sigma>. attractor_strategy_on p \<sigma> (attractor p W) W"
+  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> attractor_strategy_on p \<sigma> (attractor p W) W"
   proof -
-    def strategy_exists_for \<equiv> "\<lambda>A. \<exists>\<sigma>. attractor_strategy_on p \<sigma> A W"
+    def strategy_exists_for \<equiv> "\<lambda>A. \<exists>\<sigma>. valid_strategy p \<sigma> \<and> attractor_strategy_on p \<sigma> A W"
     have "strategy_exists_for (attractor p W)" proof (induct rule: attractor_induction, simp add: assms)
       show "strategy_exists_for W" by (simp add: strategy_exists_for_def strategy_only_on_empty_set_exists)
     next
@@ -920,7 +959,7 @@ qed
 theorem (in ParityGame) attractor_has_outside_strategy:
   fixes W p
   defines "A \<equiv> attractor p** W"
-  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (V - A) \<and> strategy_avoids p \<sigma> (V - A) A"
+  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (V - A) \<and> strategy_avoids p \<sigma> (V - A) A"
   proof (intro exI conjI)
     (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
     the successor. *)
@@ -946,6 +985,8 @@ theorem (in ParityGame) attractor_has_outside_strategy:
       ultimately show "the (\<sigma> v) \<notin> A \<and> v\<rightarrow>(the (\<sigma> v))" by (metis (mono_tags, lifting) someI_ex)
     qed
 
+    show "valid_strategy p \<sigma>" using \<sigma>_correct valid_strategy_def by blast
+
     show "strategy_only_on p \<sigma> (V - A)" using \<sigma>_def strategy_only_on_def[of p \<sigma> "V - A"] by auto
 
     show "strategy_avoids p \<sigma> (V - A) A" proof (cases)
@@ -954,21 +995,21 @@ theorem (in ParityGame) attractor_has_outside_strategy:
     next
       assume "V - A \<noteq> {}"
       show ?thesis proof (unfold strategy_avoids_def; intro allI impI; elim conjE)
-        fix P i
+        fix P n i
         assume P_valid: "valid_path P"
-          (* We don't need "maximal_path P". *)
-          and P_conforms: "path_conforms_with_strategy p P \<sigma>"
+          and P_conforms: "path_conforms_with_strategy_up_to p P \<sigma> n"
           and P_valid_start: "the (P 0) \<in> V - A"
-        show "P i \<noteq> None \<Longrightarrow> the (P i) \<notin> A" proof (induct i)
+        show "i \<le> Suc n \<Longrightarrow> P i \<noteq> None \<Longrightarrow> the (P i) \<notin> A" proof (induct i)
           case 0 thus ?case using P_valid_start by auto
         next
           case (Suc i)
+          have "i \<le> Suc n" using Suc.prems(1) by presburger
           have P_i_not_None: "P i \<noteq> None" using Suc.prems P_valid valid_path_is_contiguous_suc by blast
-          hence P_i_not_in_A: "the (P i) \<notin> A" using Suc.hyps by blast
+          hence P_i_not_in_A: "the (P i) \<notin> A" using Suc.hyps `i \<le> Suc n` by blast
           have "the (P i) \<in> V" using P_i_not_None P_valid valid_path_def by blast
           thus "the (P (Suc i)) \<notin> A" proof (cases rule: VV_cases)
             assume "the (P i) \<in> VV p"
-            hence *: "\<sigma> (the (P i)) = P (Suc i)" using P_conforms P_i_not_None path_conforms_with_strategy_def by blast
+            hence *: "\<sigma> (the (P i)) = P (Suc i)" using P_conforms P_i_not_None path_conforms_with_strategy_up_to_def Suc.prems(1) by blast
             hence "\<sigma> (the (P i)) \<noteq> None" by (simp add: Suc.prems)
             hence "the (\<sigma> (the (P i))) \<notin> A" using \<sigma>_correct[of "the (P i)"] by blast
             thus ?thesis by (simp add: *)
@@ -979,6 +1020,35 @@ theorem (in ParityGame) attractor_has_outside_strategy:
           qed
         qed
       qed
+    qed
+  qed
+
+lemma (in ParityGame)
+  assumes \<sigma>_valid: "valid_strategy p \<sigma>"
+    and \<sigma>_only_on: "strategy_only_on p \<sigma> A"
+    and \<sigma>_avoids: "strategy_avoids p \<sigma> A (V - A)"
+    and v0_def: "v0 \<in> A"
+  shows "valid_strategy_from p \<sigma> v0"
+  proof (unfold valid_strategy_from_def; intro conjI)
+    show "\<forall>v\<in>VV p. \<sigma> v \<noteq> None \<longrightarrow> v \<rightarrow> the (\<sigma> v)" using \<sigma>_valid valid_strategy_def by blast
+    show "v0 \<in> VV p \<and> \<not>deadend v0 \<longrightarrow> \<sigma> v0 \<noteq> None" using \<sigma>_only_on strategy_only_on_def v0_def by blast
+    show "\<forall>P n. valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) = v0
+      \<and> P (Suc n) \<noteq> None \<and> the (P (Suc n)) \<in> VV p \<and> \<not>deadend (the (P (Suc n))) \<longrightarrow> \<sigma> (the (P (Suc n))) \<noteq> None"
+      proof (intro allI impI; elim conjE)
+      fix P n
+      assume P_valid: "valid_path P"
+        and P_conforms_up_to_n: "path_conforms_with_strategy_up_to p P \<sigma> n"
+        and P_valid_start: "the (P 0) = v0"
+        and P_Suc_n_not_None: "P (Suc n) \<noteq> None"
+        and P_Suc_n_in_VV_p: "the (P (Suc n)) \<in> VV p"
+        and P_Suc_n_no_deadend: "\<not>deadend (the (P (Suc n)))"
+      have *: "\<And>i. i \<le> n \<Longrightarrow> P i \<noteq> None \<Longrightarrow> the (P i) \<in> VV p \<Longrightarrow> \<sigma> (the (P i)) = P (Suc i)" using path_conforms_with_strategy_up_to_def P_conforms_up_to_n by metis
+      have P_n_not_None: "P n \<noteq> None" using P_Suc_n_not_None P_valid valid_path_is_contiguous_suc by blast
+      have "\<forall>i \<le> Suc n. P i \<noteq> None \<longrightarrow> the (P i) \<notin> (V - A)" using \<sigma>_avoids strategy_avoids_def P_valid P_conforms_up_to_n P_valid_start v0_def by metis
+      hence "the (P (Suc n)) \<notin> (V - A)" using P_Suc_n_not_None by blast
+      hence "the (P (Suc n)) \<in> A" using P_Suc_n_in_VV_p by blast
+      hence "the (P (Suc n)) \<in> A \<inter> VV p" using P_Suc_n_in_VV_p by blast
+      thus "\<sigma> (the (P (Suc n))) \<noteq> None" using \<sigma>_only_on P_Suc_n_no_deadend strategy_only_on_def by blast
     qed
   qed
 
@@ -995,7 +1065,7 @@ primrec (in ParityGame) greedy_conforming_path :: "Player \<Rightarrow> 'a Strat
 
 theorem (in ParityGame) strategy_conforming_path_exists:
   fixes p \<sigma>
-  assumes v0_def: "v0 \<in> V" and \<sigma>_dom: "strategy_on p \<sigma> V" and \<sigma>_valid: "valid_strategy p \<sigma> v0"
+  assumes v0_def: "v0 \<in> V" and \<sigma>_dom: "strategy_on p \<sigma> V" and \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
   shows "\<exists>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v0"
   proof (intro exI conjI)
     (* Recursively construct a path starting from v0. *)
@@ -1026,7 +1096,7 @@ theorem (in ParityGame) strategy_conforming_path_exists:
             assume P_i_in_VVp: "the (P i) \<in> VV p"
             hence "\<sigma> (the (P i)) = P (Suc i)" using P_simp P_i(1) by presburger
             hence "\<sigma> (the (P i)) \<noteq> None" using P_Suc_i by auto
-            hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using \<sigma>_valid P_i_in_VVp valid_strategy_def by blast
+            hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using \<sigma>_valid P_i_in_VVp valid_strategy_from_def by blast
             thus ?thesis using valid_edge_set by auto
           next
             assume "the (P i) \<in> VV p**"
@@ -1038,7 +1108,7 @@ theorem (in ParityGame) strategy_conforming_path_exists:
           assume P_i_in_VVp: "the (P i) \<in> VV p"
           hence *: "\<sigma> (the (P i)) = P (Suc i)" using P_simp P_i(1) by presburger
           hence "\<sigma> (the (P i)) \<noteq> None" using P_Suc_i by auto
-          hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using \<sigma>_valid P_i_in_VVp valid_strategy_def by blast
+          hence "the (P i)\<rightarrow>the (\<sigma> (the (P i)))" using \<sigma>_valid P_i_in_VVp valid_strategy_from_def by blast
           hence "the (P i)\<rightarrow>the (P (Suc i))" using * by auto
           moreover hence "the (P (Suc i)) \<in> V" using valid_edge_set by blast
           ultimately show ?thesis using valid_edge_set by auto
@@ -1107,22 +1177,22 @@ theorem (in ParityGame) strategy_conforming_path_exists:
 
 theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   assumes "v0 \<in> V"
-  and "\<forall>w \<in> V. \<omega>(w) = 0"
-  shows "\<exists>p \<sigma>. valid_strategy p \<sigma> v0 \<and> winning_strategy p \<sigma> v0"
+  and "\<forall>w \<in> V. \<omega>(w) = n"
+  shows "\<exists>p \<sigma>. valid_strategy p \<sigma> \<and> winning_strategy p \<sigma> v0"
   proof -
     let ?deadends = "\<lambda>p. {v \<in> VV p. deadend v}"
     have deadends_in_V: "\<And>p. ?deadends p \<subseteq> V" by auto
     { fix p
       def A \<equiv> "attractor p (?deadends p**)"
-      obtain \<sigma> where \<sigma>: "attractor_strategy_on p \<sigma> A (?deadends p**)"
+      obtain \<sigma> where \<sigma>: "valid_strategy p \<sigma>" "attractor_strategy_on p \<sigma> A (?deadends p**)"
         using attractor_has_strategy[of "?deadends p**" "p"] A_def by auto
 
       have "A \<subseteq> V" using A_def using attractor_is_bounded_by_V deadends_in_V by blast
       hence "A - ?deadends p** \<subseteq> V" by auto
       moreover have "strategy_on p \<sigma> (A - ?deadends p**)" using \<sigma> by blast
-      ultimately obtain \<sigma>' where \<sigma>': "strategy_on p \<sigma>' V" "strategy_less_eq \<sigma> \<sigma>'"
-        using strategy_less_eq_extensible[of "A - ?deadends p**" "V"] by blast
-      hence \<sigma>'_attracts: "strategy_attracts_from_to p \<sigma>' A (?deadends p**)" using \<sigma> by blast
+      ultimately obtain \<sigma>' where \<sigma>': "valid_strategy p \<sigma>'" "strategy_on p \<sigma>' V" "strategy_less_eq \<sigma> \<sigma>'"
+        using \<sigma>(1) strategy_less_eq_extensible[of "A - ?deadends p**" "V"] by blast
+      hence \<sigma>'_attracts: "strategy_attracts_from_to p \<sigma>' A (?deadends p**)" using \<sigma>(2) by blast
 
       assume v_in_attractor: "v0 \<in> attractor p (?deadends p**)"
       have "winning_strategy p \<sigma>' v0" proof (unfold winning_strategy_def, clarify)
@@ -1132,53 +1202,66 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
         have "P (Suc i) = None" by (metis (no_types, lifting) i_def CollectD P(1) valid_path_def)
         moreover hence "finite_path P" using infinite_path_def P_infinite_or_finite by blast
         moreover have "i \<in> path_dom P \<and> the (P i) \<in> VV p**" using i_def by blast
-        ultimately show "winning_path p P" using winning_path_def by (metis One_nat_def add.right_neutral add_Suc_right)
+        ultimately show "winning_path p P" using winning_path_def by blast
       qed
-      hence "\<exists>\<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0" using \<sigma>' by blast
-      hence "\<exists>\<sigma>. valid_strategy p \<sigma> v0 \<and> winning_strategy p \<sigma> v0" using \<sigma>' by blast
+      hence "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> winning_strategy p \<sigma> v0" using \<sigma>' by blast
     } note lemma1 = this
     {
-      def W \<equiv> "?deadends Even"
+      def p \<equiv> "if even n then Even else Odd"
+      def W \<equiv> "?deadends p"
       hence W_in_V: "W \<subseteq> V" by auto
-      let ?A = "attractor Even** W"
-      assume v_not_in_attractor: "v \<in> V - ?A"
-      then obtain \<sigma> where \<sigma>_def: "strategy_only_on Even \<sigma> (V - ?A) \<and> strategy_avoids Even \<sigma> (V - ?A) ?A"
-        using W_in_V attractor_has_outside_strategy[of Even W] by blast
+      let ?A = "attractor p** W"
+      assume v_not_in_attractor: "v0 \<in> V - ?A"
+      then obtain \<sigma> where \<sigma>_def: "valid_strategy p \<sigma>" "strategy_only_on p \<sigma> (V - ?A)" "strategy_avoids p \<sigma> (V - ?A) ?A"
+        using W_in_V attractor_has_outside_strategy[of p W] by blast
 
-      hence "\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy Even P \<sigma> \<and> the (P 0) \<in> (V - ?A)
-        \<longrightarrow> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<notin> ?A)" apply (unfold strategy_avoids_def) apply (erule conjunct2) done
+      have "\<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> (V - ?A)
+        \<longrightarrow> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<notin> ?A)" apply (insert \<sigma>_def(3); unfold strategy_avoids_def) .
 
-      have "\<And>P. \<lbrakk> valid_path P; maximal_path P; path_conforms_with_strategy Even P \<sigma>; the (P 0) \<in> (V - ?A) \<rbrakk> \<Longrightarrow> winning_path Even P" proof-
+      have "\<And>P. \<lbrakk> valid_path P; maximal_path P; path_conforms_with_strategy p P \<sigma>; the (P 0) \<in> (V - ?A) \<rbrakk> \<Longrightarrow> winning_path p P" proof-
         fix P
         assume P_valid: "valid_path P"
           and P_maximal: "maximal_path P"
-          and P_conforms: "path_conforms_with_strategy Even P \<sigma>"
+          and P_conforms: "path_conforms_with_strategy p P \<sigma>"
           and P_valid_start: "the (P 0) \<in> V - ?A"
-        show "winning_path Even P" proof (cases)
+        show "winning_path p P" proof (cases)
           assume infinite: "infinite_path P"
-          have *: "\<And>a. a \<in> path_inf_priorities P \<Longrightarrow> winning_priority Even a" proof-
+          have *: "\<And>a. a \<in> path_inf_priorities P \<Longrightarrow> winning_priority p a" proof-
             fix a assume "a \<in> path_inf_priorities P"
             then obtain w where w_def: "w \<in> path_inf P" "a = \<omega> w" using path_inf_priorities_def by blast
             then obtain i where i_def: "P i = Some w" using path_inf_is_from_P[of w] by blast
             hence "the (P i) \<in> V" by (meson P_valid domI domIff valid_path_def)
             hence "w \<in> V" using i_def by simp
-            hence "a = 0" using assms w_def(2) by simp
-            thus "winning_priority Even a" using assms by simp
+            hence "a = n" using assms w_def(2) by simp
+            thus "winning_priority p a" using p_def assms by simp
           qed
           obtain a where a_def: "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)" using P_valid infinite path_inf_priorities_has_minimum by blast
           hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P" using infinite winning_path_def by (metis (no_types, lifting) infinite_path_def le_antisym)
           thus ?thesis using * a_def by blast
         next
           assume "\<not>infinite_path P"
-          hence "finite_path P" using P_valid valid_path_def by blast
-          show ?thesis sorry
+          hence P_finite: "finite_path P" using P_valid valid_path_def by blast
+          {
+            fix i assume i_def: "i \<in> path_dom P" "P (Suc i) = None"
+            hence deadend: "deadend (the (P i))" by (metis (mono_tags, lifting) CollectD P_maximal maximal_path_def)
+            have "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<notin> ?A" using P_valid P_maximal P_conforms P_valid_start \<sigma>_def(3) strategy_avoids_def by meson
+            hence no_bad_deadends: "\<And>i. P i \<noteq> None \<Longrightarrow> the (P i) \<notin> ?deadends p" using W_def by blast
+            hence "the (P i) \<notin> ?deadends p" using i_def(1) by blast
+            hence "the (P i) \<notin> VV p \<or> \<not>deadend (the (P i))" by blast
+            hence "the (P i) \<notin> VV p" using deadend by simp
+            hence "the (P i) \<in> VV p**" by (metis (mono_tags, lifting) CollectD DiffI P_valid Player.distinct(1) i_def(1) valid_path_def)
+          }
+          moreover have "\<exists>!i \<in> path_dom P. P (Suc i) = None" using P_finite path_dom_ends_on_finite_paths by simp
+          ultimately have "\<exists>i \<in> path_dom P. P (Suc i) = None \<and> the (P i) \<in> VV p**" by blast
+          thus ?thesis using P_finite winning_path_def by blast
         qed
       qed
-      hence *: "winning_strategy Even \<sigma> v" using winning_strategy_def v_not_in_attractor by presburger
-      have "strategy_on Even \<sigma> (V - ?A)" using \<sigma>_def by blast
-      then obtain \<sigma>' where \<sigma>'_def: "strategy_less_eq \<sigma> \<sigma>'" "strategy_on Even \<sigma>' V" by (meson Diff_subset strategy_less_eq_extensible)
-      hence "winning_strategy Even \<sigma>' v" using * sorry
-      hence "\<exists>\<sigma>. strategy_on Even \<sigma> V \<and> winning_strategy Even \<sigma> v" using \<sigma>'_def(2) by blast
+      hence *: "winning_strategy p \<sigma> v0" using winning_strategy_def v_not_in_attractor by presburger
+      have "strategy_on p \<sigma> (V - ?A)" using \<sigma>_def by blast
+      then obtain \<sigma>' where \<sigma>'_def: "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'" "strategy_on p \<sigma>' V"
+        by (meson \<sigma>_def(1) Diff_subset strategy_less_eq_extensible)
+      have "winning_strategy p \<sigma>' v0" using winning_strategy_preserved_under_extension \<sigma>_def(1) * \<sigma>'_def(2) by blast
+      hence "\<exists>\<sigma>. strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0" using \<sigma>'_def(2) * by blast
     }
     thus ?thesis using lemma1[of Odd] by meson
   qed
