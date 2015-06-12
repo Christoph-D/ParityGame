@@ -6,9 +6,11 @@ begin
 
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a option"
 
-definition (in ParityGame) strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
+context ParityGame begin
+
+definition strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_on p \<sigma> W \<equiv> \<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
-definition (in ParityGame) strategy_only_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
+definition strategy_only_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_only_on p \<sigma> W \<equiv> (\<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None) \<and> (\<forall>v. v \<notin> W \<inter> VV p \<longrightarrow> \<sigma> v = None)"
 
 (*definition restrict_path :: "'a Path \<Rightarrow> 'a set \<Rightarrow> 'a Path" (infixl "\<restriction>\<^sub>P" 80) where
@@ -16,71 +18,71 @@ definition (in ParityGame) strategy_only_on :: "Player \<Rightarrow> 'a Strategy
 definition restrict_strategy :: "'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a Strategy" (infixl "\<restriction>\<^sub>S" 80) where
   "restrict_strategy \<sigma> W \<equiv> \<lambda>v. if v \<in> W \<and> the (\<sigma> v) \<in> W then \<sigma> v else None"
 
-lemma (in ParityGame) restricted_strategy_invariant [simp]:
+lemma restricted_strategy_invariant [simp]:
   assumes "v \<in> W" "the (\<sigma> v) \<in> W"
   shows "(\<sigma> \<restriction>\<^sub>S W) v = \<sigma> v"
   by (simp add: assms restrict_strategy_def)
 
-lemma (in ParityGame) restricted_path_invariant [simp]:
+lemma restricted_path_invariant [simp]:
   assumes "the (P i) \<in> W"
   shows "(P \<restriction>\<^sub>P W) i = P i"
   by (simp add: assms restrict_path_def)
 
-lemma (in ParityGame) restricted_path_dom [simp]:
+lemma restricted_path_dom [simp]:
   assumes "i \<in> path_dom (P \<restriction>\<^sub>P W)"
   shows "i \<in> path_dom P"
   by (metis (mono_tags, lifting) assms mem_Collect_eq restrict_path_def)
 *)
 
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
-definition (in ParityGame) positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+definition positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
 
-definition (in ParityGame) path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+definition path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
-definition (in ParityGame) path_conforms_with_strategy_up_to :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> nat \<Rightarrow> bool" where
+definition path_conforms_with_strategy_up_to :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> nat \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy_up_to p P \<sigma> n \<equiv> (\<forall>i < n. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
-lemma (in ParityGame) path_conforms_with_strategy_approximations:
+lemma path_conforms_with_strategy_approximations:
   "(\<And>n. path_conforms_with_strategy_up_to p P \<sigma> n) \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by fastforce
-lemma (in ParityGame) path_conforms_with_strategy_approximations2:
+lemma path_conforms_with_strategy_approximations2:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy_up_to p P \<sigma> n" by simp
-lemma (in ParityGame) path_conforms_with_strategy_less_eq:
+lemma path_conforms_with_strategy_less_eq:
   "path_conforms_with_strategy_up_to p P \<sigma> n \<Longrightarrow> m \<le> n \<Longrightarrow> path_conforms_with_strategy_up_to p P \<sigma> m" by fastforce
-lemma (in ParityGame) path_conforms_up_to_VVpstar:
+lemma path_conforms_up_to_VVpstar:
   assumes "path_conforms_with_strategy_up_to p P \<sigma> n" "the (P n) \<notin> VV p"
   shows "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" using assms less_Suc_eq by auto
 
-definition (in ParityGame) valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+definition valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "valid_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v)"
-definition (in ParityGame) valid_strategy_from :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
+definition valid_strategy_from :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   "valid_strategy_from p \<sigma> v0 \<equiv> (\<forall>v \<in> VV p. \<sigma> v \<noteq> None \<longrightarrow> v\<rightarrow>the (\<sigma> v))
     \<and> (\<forall>P n. valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) = v0
         \<and> P n \<noteq> None \<and> the (P n) \<in> VV p \<and> \<not>deadend (the (P n))
         \<longrightarrow> \<sigma> (the (P n)) \<noteq> None)"
 
-lemma (in ParityGame) strategy_subset [intro]:
+lemma strategy_subset [intro]:
   "\<lbrakk> W' \<subseteq> W; strategy_on p \<sigma> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" using strategy_on_def by auto
-lemma (in ParityGame) strategy_on_empty_set [simp]:
+lemma strategy_on_empty_set [simp]:
   "strategy_on p \<sigma> {}" by (simp add: strategy_on_def)
-lemma (in ParityGame) strategy_only_on_empty_set_exists:
+lemma strategy_only_on_empty_set_exists:
   "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> {}"
   by (rule exI [of _ "\<lambda>_.None"]; simp add: valid_strategy_def strategy_only_on_def)
-lemma (in ParityGame) strategy_only_on_on [intro]:
+lemma strategy_only_on_on [intro]:
   "strategy_only_on p \<sigma> W \<Longrightarrow> strategy_on p \<sigma> W" by (simp add: strategy_on_def strategy_only_on_def)
-lemma (in ParityGame) strategy_only_on_on_subset [intro]:
+lemma strategy_only_on_on_subset [intro]:
   "\<lbrakk> strategy_only_on p \<sigma> W; W' \<subseteq> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" by (simp add: strategy_only_on_on strategy_subset)
-lemma (in ParityGame) strategy_only_on_elements [intro]:
+lemma strategy_only_on_elements [intro]:
   "\<lbrakk> strategy_only_on p \<sigma> W; v \<notin> W \<rbrakk> \<Longrightarrow> \<sigma> v = None" using strategy_only_on_def by auto
-lemma (in ParityGame) strategy_only_on_case_rule [intro]:
+lemma strategy_only_on_case_rule [intro]:
   "\<lbrakk> strategy_only_on p \<sigma> W; v \<in> VV p - W; v\<rightarrow>w \<rbrakk> \<Longrightarrow> strategy_only_on p (\<sigma>(v \<mapsto> w)) (insert v W)" using strategy_only_on_def by auto
-lemma (in ParityGame) strategy_only_on_case_rule2 [intro]:
+lemma strategy_only_on_case_rule2 [intro]:
   "\<lbrakk> strategy_only_on p \<sigma> W; v \<notin> VV p \<rbrakk> \<Longrightarrow> strategy_only_on p \<sigma> (insert v W)" using strategy_only_on_def by auto
-lemma (in ParityGame) valid_strategy_in_V:
+lemma valid_strategy_in_V:
   "\<lbrakk> valid_strategy p \<sigma>; v \<in> VV p; \<sigma> v \<noteq> None \<rbrakk> \<Longrightarrow> the (\<sigma> v) \<in> V" using assms valid_edge_set valid_strategy_def by auto
-lemma (in ParityGame) valid_strategy_from_is_valid_strategy [intro]:
+lemma valid_strategy_from_is_valid_strategy [intro]:
   "valid_strategy_from p \<sigma> v0 \<Longrightarrow> valid_strategy p \<sigma>" using valid_strategy_def valid_strategy_from_def by simp
 
-lemma (in ParityGame) path_conforms_up_to_deadends:
+lemma path_conforms_up_to_deadends:
   assumes "path_conforms_with_strategy_up_to p P \<sigma> n" "valid_path P" "valid_strategy p \<sigma>" "deadend (the (P n))"
   shows "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" proof-
     {
@@ -97,7 +99,7 @@ lemma (in ParityGame) path_conforms_up_to_deadends:
     ultimately show ?thesis by blast
   qed
 
-lemma (in ParityGame) one_step_path_exists:
+lemma one_step_path_exists:
   assumes "v0 \<in> V" "valid_strategy p \<sigma>"
   shows "\<exists>P. valid_path P \<and> finite_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> (Suc 0) \<and> the (P 0) = v0"
   proof (rule exI; intro conjI)
@@ -112,7 +114,7 @@ lemma (in ParityGame) one_step_path_exists:
     show "path_conforms_with_strategy_up_to p P \<sigma> (Suc 0)" using P_def assms(2) valid_strategy_def by auto
     show "the (P 0) = v0" using P_def by simp
   qed
-lemma (in ParityGame) valid_strategy_from_starts_correctly:
+lemma valid_strategy_from_starts_correctly:
   assumes "valid_strategy_from p \<sigma> v0" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 \<noteq> None"
   proof -
@@ -126,24 +128,24 @@ lemma (in ParityGame) valid_strategy_from_starts_correctly:
     thus ?thesis using P_def(2) by blast
   qed
 
-lemma (in ParityGame) infinite_path_tail_conforms [intro]:
+lemma infinite_path_tail_conforms [intro]:
   assumes "path_conforms_with_strategy p P \<sigma>"
   shows "path_conforms_with_strategy p (path_tail P) \<sigma>"
   using assms path_conforms_with_strategy_def by auto
 
-lemma (in ParityGame) infinite_path_tail_head [simp]:
+lemma infinite_path_tail_head [simp]:
   assumes "P 0 = Some v" "v \<in> VV p" "\<sigma> v = Some w" "path_conforms_with_strategy p P \<sigma>"
   shows "Some w = P 1"
   using assms by auto
 
-definition (in ParityGame) strategy_less_eq :: "'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+definition strategy_less_eq :: "'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy_less_eq \<sigma> \<sigma>' \<equiv> \<forall>v. \<sigma> v \<noteq> None \<longrightarrow> \<sigma> v = \<sigma>' v"
 
-lemma (in ParityGame) strategy_less_eq_updates:
+lemma strategy_less_eq_updates:
   assumes "\<sigma> v = None"
   shows "strategy_less_eq \<sigma> (\<sigma>(v \<mapsto> w))"
   by (simp add: assms option.case_eq_if strategy_less_eq_def)
-lemma (in ParityGame) strategy_on_is_monotone:
+lemma strategy_on_is_monotone:
   assumes "strategy_less_eq \<sigma> \<sigma>'" "strategy_on p \<sigma> W"
   shows "strategy_on p \<sigma>' W"
   proof-
@@ -153,14 +155,14 @@ lemma (in ParityGame) strategy_on_is_monotone:
     }
     thus ?thesis by (simp add: strategy_on_def)
   qed
-lemma (in ParityGame) strategy_less_eq_tran:
+lemma strategy_less_eq_tran:
   assumes "strategy_less_eq \<sigma> \<sigma>'" "strategy_less_eq \<sigma>' \<sigma>''"
   shows "strategy_less_eq \<sigma> \<sigma>''" by (unfold strategy_less_eq_def; metis assms strategy_less_eq_def)
-lemma (in ParityGame) strategy_less_eq_refl [simp]:
+lemma strategy_less_eq_refl [simp]:
   "strategy_less_eq \<sigma> \<sigma>" by (simp add: option.case_eq_if strategy_less_eq_def)
-lemma (in ParityGame) strategy_less_eq_least [simp]:
+lemma strategy_less_eq_least [simp]:
   "strategy_only_on p \<sigma> {} \<Longrightarrow> strategy_less_eq \<sigma> \<sigma>'" by (simp add: strategy_less_eq_def strategy_only_on_elements)
-lemma (in ParityGame) strategy_less_eq_extensible:
+lemma strategy_less_eq_extensible:
   assumes "W \<subseteq> W'" "strategy_on p \<sigma> W" "valid_strategy p \<sigma>"
   shows "\<exists>\<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> strategy_on p \<sigma>' W'" proof-
     let ?\<sigma>' = "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else (if v \<in> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None)"
@@ -202,7 +204,7 @@ lemma (in ParityGame) strategy_less_eq_extensible:
   qed
 
 (*
-lemma (in ParityGame) restricted_strategy_paths:
+lemma restricted_strategy_paths:
   assumes "path_conforms_with_strategy p P \<sigma>"
   shows "path_conforms_with_strategy p (P \<restriction>\<^sub>P W) (\<sigma> \<restriction>\<^sub>S W)"d
   proof (unfold path_conforms_with_strategy_def; clarify)
@@ -225,7 +227,7 @@ lemma (in ParityGame) restricted_strategy_paths:
     qed
   qed
 
-lemma (in ParityGame) restricted_strategy_paths_inv:
+lemma restricted_strategy_paths_inv:
   assumes "path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S W)"
     "\<forall>i \<in> path_dom P. the (P i) \<in> W"
   shows "path_conforms_with_strategy p P \<sigma>"
@@ -243,22 +245,22 @@ lemma (in ParityGame) restricted_strategy_paths_inv:
   qed
 *)
 
-definition (in ParityGame) winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
+definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v \<longrightarrow> winning_path p P"
 
-definition (in ParityGame) strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+definition strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_attracts_from_to p \<sigma> A W \<equiv> (\<forall>P.
       valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) \<in> A
     \<longrightarrow> (\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W))"
-lemma (in ParityGame) strategy_attracts_from_to_trivial [simp]:
+lemma strategy_attracts_from_to_trivial [simp]:
   "strategy_attracts_from_to p \<sigma> W W" by (meson strategy_attracts_from_to_def valid_paths_are_nonempty)
-definition (in ParityGame) strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P n.
       valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> the (P 0) \<in> A
     \<longrightarrow> (\<forall>i \<le> n. P i \<noteq> None \<longrightarrow> the (P i) \<notin> W))"
-lemma (in ParityGame) strategy_avoids_trivial [simp]:
+lemma strategy_avoids_trivial [simp]:
   "strategy_avoids p \<sigma> {} W" by (meson empty_iff strategy_avoids_def)
-lemma (in ParityGame) strategy_avoids_directly:
+lemma strategy_avoids_directly:
   assumes "strategy_avoids p \<sigma> A W" "v0 \<in> A" "v0 \<in> VV p" "\<sigma> v0 \<noteq> None" "valid_strategy p \<sigma>"
   shows "the (\<sigma> v0) \<notin> W"
   proof (rule ccontr; simp)
@@ -272,7 +274,7 @@ lemma (in ParityGame) strategy_avoids_directly:
     ultimately show False
       by (metis P(1) P(3) P(4) assm lessI path_conforms_with_strategy_up_to_def valid_paths_are_nonempty)
   qed
-lemma (in ParityGame) strategy_avoids_strongly:
+lemma strategy_avoids_strongly:
   assumes "strategy_avoids p \<sigma> A W"
     and P_conforms: "path_conforms_with_strategy p P \<sigma>"
     and "valid_path P" "the (P 0) \<in> A" "P n \<noteq> None"
@@ -283,7 +285,7 @@ lemma (in ParityGame) strategy_avoids_strongly:
     thus ?thesis using Suc_n_not_le_n assms(5) linear by blast
   qed
 
-lemma (in ParityGame) path_conforms_preserved_under_extension:
+lemma path_conforms_preserved_under_extension:
   assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
     and P_valid: "valid_path P"
@@ -345,14 +347,14 @@ lemma (in ParityGame) path_conforms_preserved_under_extension:
     qed
   qed
 
-lemma (in ParityGame) winning_strategy_preserved_under_extension:
+lemma winning_strategy_preserved_under_extension:
   assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
     and \<sigma>_winning: "winning_strategy p \<sigma> v0"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
   shows "winning_strategy p \<sigma>' v0"
   using assms path_conforms_preserved_under_extension winning_strategy_def by blast
 
-lemma (in ParityGame) valid_strategy_is_valid_strategy_from:
+lemma valid_strategy_is_valid_strategy_from:
   assumes \<sigma>_valid: "valid_strategy p \<sigma>"
     and \<sigma>_only_on: "strategy_on p \<sigma> A"
     and \<sigma>_avoids: "strategy_avoids p \<sigma> A (V - A)"
@@ -379,14 +381,14 @@ lemma (in ParityGame) valid_strategy_is_valid_strategy_from:
       thus "\<sigma> (the (P n)) \<noteq> None" using \<sigma>_only_on P_Suc_n_no_deadend strategy_on_def by blast
     qed
   qed
-lemma (in ParityGame) valid_strategy_is_valid_strategy_from_V:
+lemma valid_strategy_is_valid_strategy_from_V:
   assumes \<sigma>_valid: "valid_strategy p \<sigma>"
     and \<sigma>_on: "strategy_on p \<sigma> V"
     and v0_def: "v0 \<in> V"
   shows "valid_strategy_from p \<sigma> v0"
   by (metis Diff_cancel \<sigma>_on \<sigma>_valid empty_iff strategy_avoids_def v0_def valid_strategy_is_valid_strategy_from)
 
-primrec (in ParityGame) greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> nat \<Rightarrow> 'a option" where
+primrec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> nat \<Rightarrow> 'a option" where
   "greedy_conforming_path p \<sigma> v0 0 = Some v0"
   | "greedy_conforming_path p \<sigma> v0 (Suc n) = (
     if greedy_conforming_path p \<sigma> v0 n = None
@@ -397,7 +399,7 @@ primrec (in ParityGame) greedy_conforming_path :: "Player \<Rightarrow> 'a Strat
         then None
         else Some (SOME w. w \<in> V \<and> (the (greedy_conforming_path p \<sigma> v0 n))\<rightarrow>w))"
 
-theorem (in ParityGame) strategy_conforming_path_exists:
+theorem strategy_conforming_path_exists:
   fixes p \<sigma>
   assumes v0_def: "v0 \<in> V" and \<sigma>_dom: "strategy_on p \<sigma> V" and \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
   shows "\<exists>P. valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> the (P 0) = v0"
@@ -508,5 +510,7 @@ theorem (in ParityGame) strategy_conforming_path_exists:
       qed
     qed
   qed
+
+end -- "context ParityGame"
 
 end

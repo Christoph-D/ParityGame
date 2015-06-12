@@ -1,12 +1,12 @@
 theory positional_strategy
 imports
   Main
-  parity_games
-  strategy
-  attractor
+  parity_games strategy attractor
 begin
 
-theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
+context ParityGame begin
+
+theorem positional_strategy_exist_for_single_prio_games:
   assumes "v0 \<in> V" and "\<forall>v \<in> V. \<omega>(v) = n"
   shows "\<exists>p \<sigma>. valid_strategy_from p \<sigma> v0 \<and> strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0"
   proof -
@@ -108,12 +108,14 @@ theorem (in ParityGame) positional_strategy_exist_for_single_prio_games:
   qed
 
 (*
-theorem (in ParityGame) positional_strategy_exists:
+theorem positional_strategy_exists:
   assumes "v \<in> V"
   shows "\<exists>p :: Player. \<exists>\<sigma> :: Strategy. positional_strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
   proof -
     show ?thesis sorry
   qed
 *)
+
+end -- "context ParityGame"
 
 end
