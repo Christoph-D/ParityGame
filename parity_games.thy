@@ -14,8 +14,8 @@ definition infinite_path :: "'a Path \<Rightarrow> bool" where [simp]: "infinite
 definition finite_path :: "'a Path \<Rightarrow> bool" where [simp]: "finite_path P \<equiv> \<exists>i. \<forall>j. (j > i \<longleftrightarrow> P j = None)"
 abbreviation path_dom :: "'a Path \<Rightarrow> nat set" where "path_dom P \<equiv> {i. P i \<noteq> None}"
 (* The set of nodes that occur infinitely often on a given path. *)
-definition path_inf :: "'a Path \<Rightarrow> 'a set" where
-  "path_inf P \<equiv> {v. (\<exists>i. P i = Some v) \<and> (\<forall>i. P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v))}"
+(* definition path_inf :: "'a Path \<Rightarrow> 'a set" where
+  "path_inf P \<equiv> {v. (\<exists>i. P i = Some v) \<and> (\<forall>i. P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v))}" *)
 abbreviation path_tail :: "'a Path \<Rightarrow> 'a Path" where "path_tail P \<equiv> \<lambda>i. P (Suc i)"
 
 lemma paths_are_contiguous:
@@ -34,7 +34,7 @@ lemma path_dom_ends_on_finite_paths:
     hence "i \<in> path_dom P \<and> P (Suc i) = None" by auto
     thus ?thesis by (metis (mono_tags, lifting) i_def le_imp_less_or_eq less_Suc_eq_le mem_Collect_eq)
   qed
-lemma path_inf_is_from_P: "v \<in> path_inf P \<Longrightarrow> \<exists>i. P i = Some v" apply (unfold path_inf_def; fastforce) done
+(* lemma path_inf_is_from_P: "v \<in> path_inf P \<Longrightarrow> \<exists>i. P i = Some v" apply (unfold path_inf_def; fastforce) done *)
 
 record 'a Graph =
   verts :: "'a set" ("V\<index>")
@@ -44,8 +44,8 @@ abbreviation is_arc :: "('a, 'b) Graph_scheme \<Rightarrow> 'a \<Rightarrow> 'a 
 
 locale Digraph =
   fixes G (structure)
-  assumes finite_vertex_set: "finite V"
-    and non_empty_vertex_set: "V \<noteq> {}"
+  assumes (* finite_vertex_set: "finite V"
+    and *) non_empty_vertex_set: "V \<noteq> {}"
     and valid_edge_set: "E \<subseteq> V \<times> V"
 begin
 
@@ -78,13 +78,21 @@ lemma winning_priority_for_one_player: "winning_priority p i \<longleftrightarro
 
 locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) +
   assumes valid_player0_set: "V0 \<subseteq> V"
+    and priorities_finite: "finite (\<omega> ` V)"
 
 abbreviation (in ParityGame) VV :: "Player \<Rightarrow> 'a set" where "VV p \<equiv> (if p = Even then V0 else V - V0)"
 lemma (in ParityGame) [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" by (metis (full_types) Diff_subset subsetCE valid_player0_set)
 
+lemma (in ParityGame) "\<exists>n. \<forall>v \<in> V. \<omega>(v) \<le> n" using finite_nat_set_iff_bounded_le priorities_finite by auto
+
+definition (in ParityGame) path_priorities :: "'a Path \<Rightarrow> nat \<Rightarrow> nat" where
+  "path_priorities P i \<equiv> \<omega> (the (P i))"
 (* The set of priorities that occur infinitely often on a given path. *)
 definition (in ParityGame) path_inf_priorities :: "'a Path \<Rightarrow> nat set" where
-  "path_inf_priorities P \<equiv> {\<omega> v | v. v \<in> path_inf P}"
+  "path_inf_priorities P \<equiv> {k. (\<exists>i. path_priorities P i = k) \<and> (\<forall>i. path_priorities P i = k \<longrightarrow> (\<exists>j > i. path_priorities P j = k))}"
+
+lemma (in ParityGame) path_priorities_in_\<omega>V:
+  "\<lbrakk> valid_path P; infinite_path P \<rbrakk> \<Longrightarrow> path_priorities P i \<in> \<omega> ` V" using path_priorities_def by auto
 
 definition (in Digraph) path_last :: "'a Path \<Rightarrow> 'a" where
   "path_last P = the (P (THE i. P i \<noteq> None \<and> (\<forall>j > i. P j = None)))"
@@ -363,22 +371,15 @@ lemma (in ParityGame) VV_impl2 [intro]: "v \<in> VV p** \<Longrightarrow> v \<no
 lemma (in ParityGame) VV_equivalence [simp]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
 lemma (in ParityGame) VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by fastforce
 
-lemma (in ParityGame) path_inf_is_nonempty:
-  assumes "valid_path P" "infinite_path P"
-  shows "\<exists>v. v \<in> path_inf P"
-  proof -
-    from assms have P_total: "\<And>i v. the (P i) = v \<longleftrightarrow> P i = Some v" by auto
-    from assms have "\<forall>i. the (P i) \<in> V" by simp
-    hence "\<exists>v. (\<exists>i. the (P i) = v) \<and> (\<forall>i. (the (P i) = v \<longrightarrow> (\<exists>j > i. the (P j) = v)))"
-      using pigeon_hole_principle[of "V" "\<lambda>i. the (P i)"] finite_vertex_set by blast
-    hence "\<exists>v. (\<exists>i. P i = Some v) \<and> (\<forall>i. (P i = Some v \<longrightarrow> (\<exists>j > i. P j = Some v)))" using P_total by auto
-    thus ?thesis by (simp add: path_inf_def)
-  qed
-
 lemma (in ParityGame) path_inf_priorities_is_nonempty:
   assumes "valid_path P" "infinite_path P"
-  shows "\<exists>a. a \<in> path_inf_priorities P"
-  using assms path_inf_is_nonempty[of P] path_inf_priorities_def by auto
+  shows "\<exists>k. k \<in> path_inf_priorities P"
+  proof -
+    have "\<forall>i. path_priorities P i \<in> \<omega>`V" using assms path_priorities_in_\<omega>V by blast
+    hence "\<exists>k. (\<exists>i. path_priorities P i = k) \<and> (\<forall>i. path_priorities P i = k \<longrightarrow> (\<exists>j > i. path_priorities P j = k))"
+      using pigeon_hole_principle[of "\<omega>`V" "path_priorities P"] priorities_finite by blast
+    thus ?thesis by (simp add: path_inf_priorities_def)
+  qed
 
 lemma (in ParityGame) path_inf_priorities_has_minimum:
   assumes "valid_path P" "infinite_path P"
@@ -498,15 +499,203 @@ lemma (in ParityGame) winning_strategy_preserved_under_extension:
   shows "winning_strategy p \<sigma>' v0"
   using assms path_conforms_preserved_under_extension winning_strategy_def by blast
 
+definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
+  "directly_attracted p W \<equiv> {v \<in> V - W. \<not>deadend v \<and>
+      (v \<in> VV p   \<longrightarrow> (\<exists>w. v\<rightarrow>w \<and> w \<in> W))
+    \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W))}"
+lemma (in ParityGame) directly_attracted_disjoint:
+  "directly_attracted p W \<inter> W = {}" using directly_attracted_def by auto
+
+abbreviation (in ParityGame) "attractor_step p W S \<equiv> W \<union> S \<union> directly_attracted p S"
+lemma (in ParityGame) attractor_step_empty:
+  "attractor_step p {} {} = {}" using directly_attracted_def by auto
+lemma (in ParityGame) attractor_step_bounded_by_V:
+  "\<lbrakk> W \<subseteq> V; S \<subseteq> V \<rbrakk> \<Longrightarrow> attractor_step p W S \<subseteq> V" using directly_attracted_def by auto
+lemma (in ParityGame) attractor_step_mono:
+  shows "mono (attractor_step p W)" sorry
+  (* proof (unfold mono_def; intro allI impI)
+    fix S T :: "'a set" assume "S \<subseteq> T"
+    show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" proof
+      fix v assume v_assm: "v \<in> W \<union> S \<union> directly_attracted p S"
+      show "v \<in> W \<union> T \<union> directly_attracted p T" proof (cases)
+        assume "v \<in> W \<or> v \<in> T" thus ?thesis by simp
+      next
+        assume "\<not>(v \<in> W \<or> v \<in> T)"
+        hence v_assm2: "v \<notin> W \<and> v \<notin> T" by simp
+        hence v_S_attracted: "v \<in> directly_attracted p S" using v_assm `S \<subseteq> T` by blast
+        hence "\<not>deadend v" using directly_attracted_def by blast
+        have "v \<in> V - T" using v_S_attracted by (simp add: v_assm2 directly_attracted_def)
+        hence "v \<in> directly_attracted p T" proof (cases rule: VV_cases[of v p]; simp)
+          assume "v \<in> VV p"
+          hence "v \<notin> VV p**" by auto
+          have "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using `v \<in> VV p` v_S_attracted directly_attracted_def by blast
+          hence "\<exists>w. v\<rightarrow>w \<and> w \<in> T" using `S \<subseteq> T` by blast
+          thus ?thesis using `v \<in> V - T` `v \<in> VV p` `v \<notin> VV p**` `\<not>deadend v` directly_attracted_def by blast
+        next
+          assume "v \<in> VV p**"
+          show ?thesis sorry
+        qed
+        thus ?thesis by simp
+      qed
+    qed
+  qed *)
+
+lemma (in ParityGame) mono_restriction_is_mono:
+  assumes "mono (f :: 'a set \<Rightarrow> 'a set)"
+  shows "mono (\<lambda>S. f (S \<inter> V))" (is "mono ?f")
+  proof-
+    {
+      fix S T :: "'a set" assume "S \<subseteq> T"
+      have "?f S \<subseteq> ?f T" by (meson `S \<subseteq> T` assms inf_mono monoD subset_refl)
+    }
+    thus ?thesis using mono_def by blast
+  qed
+
+definition (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
+  "attractor p W = lfp (attractor_step p W)"
+
+lemma (in ParityGame) attractor_unfolding:
+  "attractor p W = attractor_step p W (attractor p W)" unfolding attractor_def using attractor_step_mono lfp_unfold by blast
+lemma (in ParityGame) attractor_lowerbound:
+  "attractor_step p W S \<subseteq> S \<Longrightarrow> attractor p W \<subseteq> S" unfolding attractor_def using attractor_step_mono by (simp add: lfp_lowerbound)
+
+lemma (in ParityGame) attractor_set_induction:
+  assumes "W \<subseteq> V" -- "This assumption might be unnecessary."
+    and step: "\<And>S. S \<subseteq> V \<Longrightarrow> P S \<Longrightarrow> P (attractor_step p W S)"
+    and union: "\<And>M. \<forall>S \<in> M. S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)"
+  shows "P (attractor p W)"
+  proof-
+    let ?P = "\<lambda>S. P (S \<inter> V)"
+    let ?f = "\<lambda>S. attractor_step p W (S \<inter> V)"
+    let ?A = "lfp ?f"
+    let ?B = "lfp (attractor_step p W)"
+    have f_mono: "mono ?f" using mono_restriction_is_mono[of "attractor_step p W"] attractor_step_mono by simp
+    have P_A: "?P ?A" proof (rule lfp_ordinal_induct_set, simp add: f_mono)
+      show "\<And>S. ?P S \<Longrightarrow> ?P (W \<union> (S \<inter> V) \<union> directly_attracted p (S \<inter> V))"
+        by (metis assms(1) attractor_step_bounded_by_V inf.absorb1 inf_le2 local.step)
+      show "\<And>M. \<forall>S \<in> M. ?P S \<Longrightarrow> ?P (\<Union>M)" proof-
+        fix M
+        let ?M = "{S \<inter> V | S. S \<in> M}"
+        assume "\<forall>S\<in>M. ?P S"
+        hence "\<And>S. S \<in> M \<Longrightarrow> P (S \<inter> V)" by simp
+        hence "\<forall>S \<in> ?M. S \<subseteq> V \<and> P S" by auto
+        hence *: "P (\<Union>?M)" by (simp add: union)
+        have "\<Union>?M = (\<Union>M) \<inter> V" by blast
+        thus "?P (\<Union>M)" using * by simp
+      qed
+    qed
+
+    have *: "W \<union> (V \<inter> V) \<union> directly_attracted p (V \<inter> V) \<subseteq> V" using `W \<subseteq> V` attractor_step_bounded_by_V by auto
+    have "?A \<subseteq> V" using * by (simp add: lfp_lowerbound)
+    have "?B \<subseteq> V" using * by (simp add: lfp_lowerbound)
+
+    have "?A = ?f ?A" using f_mono lfp_unfold by blast
+    hence "?A = W \<union> (?A \<inter> V) \<union> directly_attracted p (?A \<inter> V)" using `?A \<subseteq> V` by simp
+    hence *: "attractor_step p W ?A \<subseteq> ?A" using `?A  \<subseteq> V` inf.absorb1 by fastforce
+
+    have "?B = attractor_step p W ?B" using attractor_step_mono lfp_unfold by blast
+    hence "?f ?B \<subseteq> ?B" using `?B \<subseteq> V` by (metis (no_types, lifting) equalityD2 le_iff_inf)
+
+    have "?A = ?B" proof
+      show "?A \<subseteq> ?B" using `?f ?B \<subseteq> ?B` by (simp add: lfp_lowerbound)
+      show "?B \<subseteq> ?A" using * by (simp add: lfp_lowerbound)
+    qed
+    hence "?P ?B" using P_A by (simp add: attractor_def)
+    thus ?thesis using `?B \<subseteq> V` by (simp add: attractor_def le_iff_inf)
+  qed
+
+lemma (in ParityGame) attractor_set_non_empty: "W \<noteq> {} \<Longrightarrow> attractor p W \<noteq> {}"
+  using attractor_unfolding by auto
+lemma (in ParityGame) attractor_set_empty: "attractor p {} = {}"
+  by (metis attractor_lowerbound attractor_step_empty bot.extremum_uniqueI subset_refl)
+
+lemma (in ParityGame) attractor_set_base: "W \<subseteq> attractor p W" using attractor_unfolding by blast
+lemma (in ParityGame) attractor_set_VVp:
+  assumes "v \<in> VV p" "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W"
+  shows "v \<in> attractor p W"
+  proof (rule ccontr)
+    assume contra: "v \<notin> attractor p W"
+    hence "v \<in> V - attractor p W" using assms(1) by blast
+    moreover have "v \<notin> VV p**" using assms(1) by auto
+    moreover have "\<not>deadend v" using assms(2) using valid_edge_set by auto
+    ultimately have "v \<in> directly_attracted p (attractor p W)"
+      unfolding directly_attracted_def using assms(2) by blast
+    thus False using contra attractor_unfolding by auto
+  qed
+lemma (in ParityGame) attractor_set_VVpstar:
+  assumes "v \<in> VV p**" "\<not>deadend v" "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W"
+  shows "v \<in> attractor p W"
+  proof (rule ccontr)
+    assume contra: "v \<notin> attractor p W"
+    hence "v \<in> V - attractor p W" using assms(1) by blast
+    moreover have "v \<notin> VV p" using assms(1) by auto
+    ultimately have "v \<in> directly_attracted p (attractor p W)"
+      unfolding directly_attracted_def using assms(2) assms(3) by blast
+    thus False using contra attractor_unfolding by auto
+  qed
+
 (* The attractor set of a given set of vertices. *)
-inductive_set (in ParityGame) attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
+inductive_set (in ParityGame) attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
   for p :: Player and W :: "'a set" where
-  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor p W" |
-  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W" |
-  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W \<Longrightarrow> v \<in> attractor p W"
+  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W" |
+  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W" |
+  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W"
+
+lemma (in ParityGame) attractor_inductive_is_attractor:
+  assumes "W \<subseteq> V"
+  shows "attractor_inductive p W = attractor p W"
+  proof
+    show "attractor_inductive p W \<subseteq> attractor p W" proof
+      fix v show "v \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor p W" proof (induct rule: attractor_inductive.induct)
+      case (Base v) thus ?case using attractor_set_base by auto
+      next case (VVp v) thus ?case using attractor_set_VVp by auto
+      next case (VVpstar v) thus ?case using attractor_set_VVpstar by auto
+      qed
+    qed
+    show "attractor p W \<subseteq> attractor_inductive p W" proof-
+      def P \<equiv> "\<lambda>S. S \<subseteq> attractor_inductive p W"
+      have "P (attractor p W)" proof (induct rule: attractor_set_induction, simp add: `W \<subseteq> V`)
+        show "\<And>S. S \<subseteq> V \<Longrightarrow> P S \<Longrightarrow> P (W \<union> S \<union> directly_attracted p S)" proof-
+          fix S assume "S \<subseteq> V" "P S"
+          hence "S \<subseteq> attractor_inductive p W" using P_def by simp
+          have "W \<union> S \<union> directly_attracted p S \<subseteq> attractor_inductive p W" proof
+            fix v assume "v \<in> W \<union> S \<union> directly_attracted p S"
+            moreover
+            { assume "v \<in> W" hence "v \<in> attractor_inductive p W" by blast }
+            moreover
+            { assume "v \<in> S" hence "v \<in> attractor_inductive p W" by (meson `S \<subseteq> attractor_inductive p W` set_rev_mp) }
+            moreover
+            { assume v_attracted: "v \<in> directly_attracted p S"
+              hence "v \<in> V" using `S \<subseteq> V` attractor_step_bounded_by_V by blast
+              hence "v \<in> attractor_inductive p W" proof (cases rule: VV_cases)
+                assume "v \<in> VV p"
+                hence "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using v_attracted directly_attracted_def by blast
+                hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W" using `S \<subseteq> attractor_inductive p W` by blast
+                thus ?thesis by (simp add: `v \<in> VV p` attractor_inductive.VVp)
+              next
+                assume "v \<in> VV p**"
+                hence *: "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> S" using v_attracted directly_attracted_def by blast
+                have "\<not>deadend v" using v_attracted directly_attracted_def by blast
+                show ?thesis proof (rule ccontr)
+                  assume "v \<notin> attractor_inductive p W"
+                  hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> attractor_inductive p W" by (metis attractor_inductive.VVpstar `v \<in> VV p**` `\<not>deadend v`)
+                  hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> S" using `S \<subseteq> attractor_inductive p W` by (meson subsetCE)
+                  thus False using * by blast
+                qed
+              qed
+            }
+            ultimately show "v \<in> attractor_inductive p W" by (meson UnE)
+          qed
+          thus "P (W \<union> S \<union> directly_attracted p S)" using P_def by simp
+        qed
+        show "\<And>M. \<forall>S\<in>M. S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)" by (simp add: P_def Sup_least)
+      qed
+      thus ?thesis using P_def by simp
+    qed
+  qed
 
 lemma (in ParityGame) attractor_is_superset [simp]:
-  shows "W \<subseteq> attractor p W" by (simp add: attractor.intros(1) subsetI)
+  shows "W \<subseteq> attractor_inductive p W" by (simp add: attractor_inductive.intros(1) subsetI)
 
 lemma (in ParityGame) attractor_is_bounded_by_V:
   assumes "W \<subseteq> V" shows "attractor p W \<subseteq> V"
@@ -518,20 +707,17 @@ lemma (in ParityGame) attractor_is_bounded_by_V:
     thus ?thesis by blast
   qed
 
-lemma (in ParityGame) attractor_is_finite:
+(* lemma (in ParityGame) attractor_is_finite:
   "W \<subseteq> V \<Longrightarrow> finite (attractor p W)" by (metis assms attractor_is_bounded_by_V finite_vertex_set rev_finite_subset)
+*)
 
 lemma (in ParityGame) attractor_outside: "\<lbrakk> v \<notin> attractor p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor p W" by (metis attractor.VVp)
 
-definition (in ParityGame) directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
-  "directly_attracted p W \<equiv> {v \<in> V - W. \<not>deadend v \<and>
-      (v \<in> VV p   \<longrightarrow> (\<exists>w. v\<rightarrow>w \<and> w \<in> W))
-    \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W))}"
-
 lemma (in ParityGame) directly_attracted_is_bounded_by_V:
   shows "directly_attracted p W \<subseteq> V" using directly_attracted_def by blast
-lemma (in ParityGame) directly_attracted_is_finite [simp]:
+(* lemma (in ParityGame) directly_attracted_is_finite [simp]:
   shows "finite (directly_attracted p W)" using directly_attracted_is_bounded_by_V finite_subset finite_vertex_set by blast
+*)
 lemma (in ParityGame) directly_attracted_is_disjoint_from_W [simp]:
   shows "W \<inter> directly_attracted p W = {}" using directly_attracted_def by blast
 lemma (in ParityGame) directly_attracted_is_eventually_empty [simp]:
@@ -644,8 +830,9 @@ lemma (in ParityGame) attractor_set_fun_bounded_by_V:
     have "directly_attracted p W \<subseteq> V" by (simp add: directly_attracted_is_bounded_by_V)
     thus ?case using Suc.hyps by auto
   qed
-lemma (in ParityGame) attractor_set_fun_finite:
+(* lemma (in ParityGame) attractor_set_fun_finite:
   "finite W \<Longrightarrow> finite (attractor_set_fun n p W)" by (metis attractor_set_fun_bounded_by_V finite_UnI finite_vertex_set rev_finite_subset)
+*)
 lemma (in ParityGame) attractor_set_fun_equivalence [iff]:
   "attractor_set_fun (Suc n) p W = attractor_set_fun n p (W \<union> directly_attracted p W)"
   by (metis Un_empty_right attractor_set_fun.elims attractor_set_fun.simps(2))
@@ -770,9 +957,13 @@ lemma (in ParityGame) attractor_set_fun_attractor:
 lemma (in ParityGame) attractor_set_induction:
   fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
   assumes "W \<subseteq> V" "P W"
-    "\<And>W'. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
+    and step: "\<And>W'. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
+    and union: "\<And>M. \<forall>S \<in> M. W \<subseteq> S \<and> S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)"
   shows "P (attractor p W)"
   proof -
+    print_statement attractorp.induct
+    have "P (attractor p W)" proof (induct rule: lfp_ordinal_induct_set[of attractor])
+    qed
     obtain n where "attractor_set_fun n p W = attractor p W" using assms(1) attractor_set_fun_attractor by blast
     moreover have "P (attractor_set_fun n p W)" proof (induct n)
       case 0 thus ?case by (simp add: assms(2))
