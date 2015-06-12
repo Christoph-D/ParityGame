@@ -1,7 +1,7 @@
 theory positional_strategy
 imports
   Main
-  parity_games strategy attractor
+  parity_game strategy attractor
 begin
 
 context ParityGame begin

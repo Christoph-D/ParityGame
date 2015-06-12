@@ -1,4 +1,4 @@
-theory parity_games
+theory parity_game
 imports
   Main
   pigeon_hole_principle

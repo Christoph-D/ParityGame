@@ -1,7 +1,7 @@
 theory strategy
 imports
   Main
-  parity_games
+  parity_game
 begin
 
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a option"
