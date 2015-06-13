@@ -19,8 +19,8 @@ lemma attractor_step_empty:
 lemma attractor_step_bounded_by_V:
   "\<lbrakk> W \<subseteq> V; S \<subseteq> V \<rbrakk> \<Longrightarrow> attractor_step p W S \<subseteq> V" using directly_attracted_def by auto
 lemma attractor_step_mono:
-  shows "mono (attractor_step p W)" sorry
-  (* proof (unfold mono_def; intro allI impI)
+  shows "mono (attractor_step p W)"
+  proof (unfold mono_def; intro allI impI)
     fix S T :: "'a set" assume "S \<subseteq> T"
     show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" proof
       fix v assume v_assm: "v \<in> W \<union> S \<union> directly_attracted p S"
@@ -40,12 +40,15 @@ lemma attractor_step_mono:
           thus ?thesis using `v \<in> V - T` `v \<in> VV p` `v \<notin> VV p**` `\<not>deadend v` directly_attracted_def by blast
         next
           assume "v \<in> VV p**"
-          show ?thesis sorry
+          hence "v \<notin> VV p" by auto
+          have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> S" using `v \<in> VV p**` v_S_attracted directly_attracted_def by blast
+          hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> T" using `S \<subseteq> T` by blast
+          thus ?thesis using `v \<in> V - T` `v \<in> VV p**` `v \<notin> VV p` `\<not>deadend v` directly_attracted_def by blast
         qed
         thus ?thesis by simp
       qed
     qed
-  qed *)
+  qed
 
 lemma mono_restriction_is_mono:
   assumes "mono (f :: 'a set \<Rightarrow> 'a set)"
