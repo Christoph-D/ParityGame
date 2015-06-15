@@ -39,9 +39,9 @@ definition positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
 
 definition path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> (\<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
+  [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> \<forall>i. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i)"
 definition path_conforms_with_strategy_up_to :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> nat \<Rightarrow> bool" where
-  [simp]: "path_conforms_with_strategy_up_to p P \<sigma> n \<equiv> (\<forall>i < n. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i))"
+  [simp]: "path_conforms_with_strategy_up_to p P \<sigma> n \<equiv> \<forall>i < n. P i \<noteq> None \<and> the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) = P (Suc i)"
 lemma path_conforms_with_strategy_approximations:
   "(\<And>n. path_conforms_with_strategy_up_to p P \<sigma> n) \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by fastforce
 lemma path_conforms_with_strategy_approximations2:
@@ -56,6 +56,49 @@ lemma path_conforms_up_to_VVpstar:
 definition path_conforms_with_strategy_maximally :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy_maximally p P \<sigma> \<equiv> path_conforms_with_strategy p P \<sigma>
     \<or> (\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> \<sigma> (the (P n)) = None)"
+
+definition path_prefix :: "'a Path \<Rightarrow> 'a Path \<Rightarrow> bool" where
+  "path_prefix P P' \<equiv> (\<exists>n. (\<forall>i \<le> n. P i = P' i) \<and> (\<forall>i > n. P i = None)) \<or> P = P'"
+lemma path_prefix_first: "path_prefix P P' \<Longrightarrow> P' 0 = P 0" using path_prefix_def by auto
+lemma path_prefix_included: "\<lbrakk> path_prefix P P'; P i \<noteq> None \<rbrakk> \<Longrightarrow> P i = P' i" by (metis not_less path_prefix_def)
+lemma path_prefix_infinite: "\<lbrakk> path_prefix P P'; infinite_path P \<rbrakk> \<Longrightarrow> P i = P' i" using path_prefix_included by auto
+lemma path_prefix_valid:
+  assumes valid: "valid_path P'"
+    and prefix: "path_prefix P P'"
+  shows "valid_path P" proof (unfold valid_path_def; intro conjI)
+    have "P' 0 \<noteq> None" using valid valid_paths_are_nonempty by blast
+    thus "P 0 \<noteq> None" using prefix by (simp add: path_prefix_first)
+    -- "P 0 \<noteq> None \<and> (infinite_path P \<or> finite_path P) \<and> (\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V) \<and> (\<forall>i. P i \<noteq> None \<and> path_tail P i \<noteq> None \<longrightarrow> the (P i) \<rightarrow> the (path_tail P i))"
+    show "infinite_path P \<or> finite_path P" proof (rule disjCI)
+      assume not_finite: "\<not>finite_path P"
+      { assume "P = P'" hence "infinite_path P" using not_finite valid valid_path_is_infinite_or_finite by blast }
+      moreover
+      { assume "P \<noteq> P'"
+        then obtain n where n_def: "\<And>i. i \<le> n \<Longrightarrow> P i = P' i" "\<And>i. i > n \<Longrightarrow> P i = None" using path_prefix_def prefix by auto
+        hence "\<exists>i. P i = None" by auto
+        then obtain m where m_def: "P m = None" "\<And>i. i < m \<Longrightarrow> P i \<noteq> None"
+          using obtain_min[of "\<lambda>i. P i = None"] by blast
+        moreover have "\<forall>j \<ge> m. P j = None" proof (rule ccontr)
+          assume "\<not>?thesis"
+          then obtain j where j_def: "j \<ge> m" "P j \<noteq> None" by auto
+          hence *: "P' j \<noteq> None" using path_prefix_included prefix by fastforce
+          have "j \<le> n" by (meson j_def(2) le_less_linear n_def(2))
+          hence "m \<le> n" using j_def(1) by linarith
+          hence "P' m = None" using m_def(1) n_def(1) by auto
+          thus False using * j_def(1) valid less_imp_le_nat paths_are_contiguous valid_path_is_infinite_or_finite by blast
+        qed
+        ultimately have *: "\<And>i. i \<ge> m \<longleftrightarrow> P i = None" using le_less_linear by blast
+        have "m \<noteq> 0" by (metis `P 0 \<noteq> None` m_def(1))
+        hence "\<forall>i. i > m - 1 \<longleftrightarrow> P i = None" using * using less_eq_Suc_le by auto
+        hence "finite_path P" by auto
+        hence False using not_finite by simp
+      }
+      ultimately show "infinite_path P" by blast
+    qed
+    show "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" by (metis path_prefix_included prefix valid valid_path_def)
+    show "\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i) \<rightarrow> the (P (Suc i))"
+      by (metis (no_types, lifting) path_prefix_included prefix valid valid_path_def)
+  qed
 
 lemma path_conforms_with_strategy_maximally_start:
   assumes "path_conforms_with_strategy_maximally p P \<sigma>"
@@ -108,6 +151,8 @@ lemma strategy_only_on_empty_set_exists:
   by (rule exI [of _ "\<lambda>_.None"]; simp add: valid_strategy_def strategy_only_on_def)
 lemma strategy_only_on_on [intro]:
   "strategy_only_on p \<sigma> W \<Longrightarrow> strategy_on p \<sigma> W" by (simp add: strategy_on_def strategy_only_on_def)
+lemma strategy_only_on_updates:
+  "\<lbrakk> strategy_only_on p \<sigma> W; v \<in> VV p \<rbrakk> \<Longrightarrow> strategy_only_on p (\<sigma>(v\<mapsto>w)) (W \<union> {v})" using strategy_only_on_def by auto
 lemma strategy_only_on_on_subset [intro]:
   "\<lbrakk> strategy_only_on p \<sigma> W; W' \<subseteq> W \<rbrakk> \<Longrightarrow> strategy_on p \<sigma> W'" by (simp add: strategy_only_on_on strategy_subset)
 lemma strategy_only_on_elements [intro]:
@@ -328,6 +373,37 @@ lemma strategy_less_eq_extensible:
       thus ?thesis using valid_strategy_def by blast
     qed
     ultimately show ?thesis by auto
+  qed
+lemma strategy_only_on_extensible:
+  assumes "valid_strategy p \<sigma>" "strategy_only_on p \<sigma> W'" "W' \<subseteq> W"
+  shows "\<exists>\<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> strategy_only_on p \<sigma>' W" proof-
+    let ?\<sigma>' = "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else if v \<in> W \<inter> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None"
+    have "valid_strategy p ?\<sigma>'" proof-
+      { fix v assume v: "v \<in> VV p" "?\<sigma>' v \<noteq> None"
+        hence "v\<rightarrow>the (?\<sigma>' v)" proof (cases "\<sigma> v \<noteq> None")
+          case True
+          hence "v\<rightarrow>the (\<sigma> v)" using assms(1) v valid_strategy_def by blast
+          thus ?thesis by (simp add: True)
+        next
+          case False
+          hence "v \<in> W \<inter> VV p \<and> \<not>deadend v" using v(2) by presburger
+          hence "\<exists>w. v\<rightarrow>w" by blast
+          hence "v\<rightarrow>(SOME w. v\<rightarrow>w)" by (meson someI_ex)
+          hence "v\<rightarrow>the (Some (SOME w. v\<rightarrow>w))" by auto
+          thus ?thesis using False v(2) by presburger
+        qed
+      }
+      thus ?thesis using valid_strategy_def by blast
+    qed
+    moreover have "\<forall>v \<in> W \<inter> VV p. \<not>deadend v \<longrightarrow> ?\<sigma>' v \<noteq> None" by simp
+    moreover have "\<forall>v. v \<notin> W \<inter> VV p \<longrightarrow> ?\<sigma>' v = None" proof (clarify)
+      fix v assume assm: "v \<notin> W \<inter> VV p"
+      hence "v \<notin> W' \<inter> VV p" using assms(3) by blast
+      hence "\<sigma> v = None" using assms(2) strategy_only_on_def by simp
+      thus "?\<sigma>' v = None" using assm by auto
+    qed
+    moreover have "strategy_less_eq \<sigma> ?\<sigma>'" by (simp add: strategy_less_eq_def)
+    ultimately show ?thesis using strategy_only_on_def by blast
   qed
 
 (*
@@ -637,6 +713,14 @@ theorem strategy_conforming_path_exists:
       qed
     qed
   qed
+
+lemma paths_can_be_restricted:
+  assumes \<sigma>'_valid: "valid_strategy p \<sigma>"
+    and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma>' \<sigma>"
+    and P_valid: "valid_path P"
+    and P_conforms: "path_conforms_with_strategy_maximally p P \<sigma>"
+  shows "\<exists>P'. path_prefix P' P \<and> path_conforms_with_strategy_maximally p P' \<sigma>'"
+  sorry
 
 end -- "context ParityGame"
 

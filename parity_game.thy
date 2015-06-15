@@ -5,6 +5,10 @@ imports
 begin
 
 lemma option_the_simp: "x = Some y \<Longrightarrow> the x = y" by simp
+lemma obtain_min:
+  assumes "\<exists>n :: nat. P n"
+  obtains n where "P n" "\<And>i. i < n \<Longrightarrow> \<not>P i"
+  using assms ex_least_nat_le by blast
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
