@@ -641,6 +641,17 @@ lemma attractor_strategy_on_extends:
     ultimately have "attractor_strategy_on p \<sigma>' v0 A W" using attractor_strategy_on_def by blast
     thus ?thesis using \<sigma>'_def(2) by blast
   qed
+(* ML_val {*
+(*proof body with digest*)
+val body = Proofterm.strip_thm (Thm.proof_body_of @{thm obtain_min});
+(*proof term only*)
+val prf = Proofterm.proof_of body;
+Pretty.writeln (Proof_Syntax.pretty_proof @{context} prf);
+(*all theorems used in the graph of nested proofs*)
+val all_thms =
+Proofterm.fold_body_thms
+(fn (name, _, _) => insert (op =) name) [body] [];
+*} *)
 
 lemma merge_attractor_strategies:
   fixes W p S
@@ -648,7 +659,21 @@ lemma merge_attractor_strategies:
     and "S \<subseteq> V"
     and "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v S W"
   shows "\<exists>\<sigma>. \<forall>v \<in> S. attractor_strategy_on p \<sigma> v S W"
-  sorry
+  proof-
+    let ?good = "\<lambda>v. {\<sigma>. attractor_strategy_on p \<sigma> v S W}"
+    def G \<equiv> "{ \<sigma>. \<exists>v \<in> S. attractor_strategy_on p \<sigma> v S W }"
+    obtain r where "well_order_on G r" using well_order_on by blast
+    def choose \<equiv> "\<lambda>v. THE \<sigma>. \<sigma> \<in> ?good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r \<longrightarrow> \<sigma>' \<notin> ?good v)"
+    def \<sigma> \<equiv> "\<lambda>v. if v \<in> S - W
+      then Some (choose v)
+      else None"
+    (* have "\<And>v. v \<in> S - W \<Longrightarrow> \<exists>!\<sigma>. ?good \<sigma> v \<and> (\<forall>\<sigma>'. ?good \<sigma>' v \<and> \<sigma> \<noteq> \<sigma>' \<longrightarrow> (\<sigma>,\<sigma>') \<in> r)" proof
+      fix v assume "v \<in> S - W"
+      have "\<exists>\<sigma>. ?good \<sigma> v" using `v \<in> S - W` assms(3) by auto
+      hence "\<exists>\<sigma>. ?good \<sigma> v \<and> (\<forall>\<sigma>'. ?good \<sigma>' v \<and> \<sigma> \<noteq> \<sigma>' \<longrightarrow> (\<sigma>,\<sigma>') \<in> r)" sorry
+    qed *)
+    show ?thesis sorry
+  qed
 
 theorem attractor_has_strategy:
   fixes W p
@@ -668,7 +693,7 @@ theorem attractor_has_strategy:
       }
       moreover { assume "v0 \<in> W"
         let ?\<sigma> = "\<lambda>_. None"
-        have "valid_strategy p ?\<sigma>" using valid_strategy_def by metis
+        have "valid_strategy p ?\<sigma>" using valid_empty_strategy by blast
         moreover have "strategy_only_on p ?\<sigma> ({} - W)" using strategy_only_on_def by blast
         moreover have "strategy_attracts_to p ?\<sigma> v0 W" by (metis `v0 \<in> W` option.distinct(1) option.sel)
         ultimately have "attractor_strategy_on p ?\<sigma> v0 {} W" using attractor_strategy_on_def by blast
@@ -687,7 +712,7 @@ theorem attractor_has_strategy:
           have "?\<sigma> v0 = Some w" by simp
           have "\<sigma> v0 = None" using \<sigma>_def(2) attracted(3) by auto
           hence less_eq: "strategy_less_eq \<sigma> ?\<sigma>" using strategy_less_eq_updates by blast
-          have "valid_strategy p ?\<sigma>" using \<sigma>_def w_def(1) valid_strategy_updates by blast
+          have "valid_strategy p ?\<sigma>" using \<sigma>_def w_def(1) valid_strategy_updates `v0 \<in> VV p` by blast
           moreover have "strategy_only_on p ?\<sigma> (S \<union> {v0} - W)" proof-
             have "strategy_only_on p ?\<sigma> ((S - W) \<union> {v0})"
               using strategy_only_on_updates \<sigma>_def(2) `v0 \<in> VV p` by blast
@@ -704,14 +729,14 @@ theorem attractor_has_strategy:
               have 3: "\<not>deadend (the (P 0))" using \<sigma>'(4) v0_no_deadend by auto
               have 4: "\<sigma>' v0 \<noteq> None" proof-
                 have "?\<sigma> v0 \<noteq> None" by (simp add: \<sigma>'(4))
-                thus ?thesis by (metis \<sigma>'(2) strategy_less_eq_def)
+                thus ?thesis using strategy_less_eq_not_none2 \<sigma>'(2) by blast
               qed
               note P = 1 2 3 4
 
               have less_eq: "strategy_less_eq \<sigma> \<sigma>'" using local.less_eq strategy_less_eq_tran \<sigma>'(2) by blast
               moreover have tail_start: "(path_tail P) 0 = Some w" proof-
-                have "\<sigma>' (the (P 0)) = P (Suc 0)" using P \<sigma>'(5) path_conforms_with_strategy_maximally_start \<sigma>'(4) `v0 \<in> VV p` by blast
-                moreover have "\<sigma>' (the (P 0)) = Some w" using \<sigma>'(2) by (metis (mono_tags, lifting) \<sigma>'(4) `(\<sigma>(v0 \<mapsto> w)) v0 = Some w` option.distinct(1) option.sel strategy_less_eq_def)
+                have "\<sigma>' v0 = P (Suc 0)" using P \<sigma>'(5) path_conforms_with_strategy_maximally_start \<sigma>'(4) `v0 \<in> VV p` by blast
+                moreover have "\<sigma>' v0 = Some w" using \<sigma>'(2) by (metis (mono_tags, lifting) `(\<sigma>(v0 \<mapsto> w)) v0 = Some w` strategy_less_eq_def)
                 ultimately show ?thesis by presburger
               qed
               moreover have tail_valid: "valid_path (path_tail P)" by (metis \<sigma>'(3) option.distinct(1) tail_start valid_path_tail)
@@ -723,7 +748,7 @@ theorem attractor_has_strategy:
               moreover have "valid_path P'" using P'_def(1) tail_valid path_prefix_valid by blast
               ultimately obtain n where n_def: "P' n \<noteq> None" "the (P' n) \<in> W" using P'_def(2) using \<sigma>_def(1) \<sigma>_def(3) strategy_less_eq_refl by blast
               have "P' n = (path_tail P) n" using n_def(1) P'_def(1) path_prefix_included by blast
-              hence "(path_tail P) n \<noteq> None \<and> the ((path_tail P) n) \<in> W" using n_def by simp
+              hence "(path_tail P) n \<noteq> None \<and> the ((path_tail P) n) \<in> W" using n_def by presburger
               hence "\<exists>n. P n \<noteq> None \<and> the (P n) \<in> W" by blast
             }
             thus ?thesis by blast
@@ -747,10 +772,10 @@ theorem attractor_has_strategy:
           moreover have "strategy_attracts_to p \<sigma> v0 W" proof-
             { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
                 "valid_path P" "P 0 = Some v0" "path_conforms_with_strategy_maximally p P \<sigma>'"
-              have "path_tail P 0 \<noteq> None" using path_conforms_with_strategy_maximally_start_VVpstar by (metis \<sigma>'(4) \<sigma>'(5) `\<not>deadend v0` `v0 \<in> VV p**`)
+              have "path_tail P 0 \<noteq> None" using path_conforms_with_strategy_maximally_start_VVpstar \<sigma>'(4) \<sigma>'(5) `\<not>deadend v0` `v0 \<in> VV p**` by (metis option.distinct(1))
               hence tail_valid: "valid_path (path_tail P)" using \<sigma>'(3) by blast
-              have "the (path_tail P 0) \<in> S" by (metis \<sigma>'(3) \<sigma>'(4) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `path_tail P 0 \<noteq> None` option.sel valid_path_def)
-              then obtain w where w_def: "w \<in> S" and tail_start: "path_tail P 0 = Some w" using `path_tail P 0 \<noteq> None` by auto
+              have "the (path_tail P 0) \<in> S" using \<sigma>'(3) \<sigma>'(4) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `path_tail P 0 \<noteq> None` valid_path_def by (metis option.collapse)
+              then obtain w where w_def: "w \<in> S" and tail_start: "path_tail P 0 = Some w" using `path_tail P 0 \<noteq> None` by (metis option.collapse)
               have tail_conforms: "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>'" using path_conforms_with_strategy_maximally_tail_VVpstar
                 by (metis \<sigma>'(4) \<sigma>'(5) `\<And>thesis. (\<And>w. \<lbrakk>w \<in> S; path_tail P 0 = Some w\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis` `v0 \<in> VV p**`)
               have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
@@ -778,11 +803,17 @@ theorem attractor_has_strategy:
 corollary attractor_has_strategy_weak:
   fixes W p
   defines "A \<equiv> attractor p W"
-  assumes "W \<subseteq> V"
+  assumes "W \<subseteq> V" "W \<noteq> {}"
   shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W"
 proof -
-  obtain \<sigma> where "strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W" using assms attractor_has_strategy by (metis (full_types) strategy_less_eq_refl)
-  thus ?thesis using strategy_less_eq_refl by blast
+  have "A \<subseteq> V" by (simp add: A_def assms(2) attractor_lowerbound)
+  moreover have "\<And>v. v \<in> A \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v A W" using assms attractor_has_strategy by blast
+  ultimately obtain \<sigma> where \<sigma>_def: "\<forall>v \<in> A. attractor_strategy_on p \<sigma> v A W" using merge_attractor_strategies `W \<subseteq> V` by blast
+  have "A \<noteq> {}" by (simp add: A_def assms(3) attractor_set_non_empty)
+  hence "\<exists>v \<in> A. attractor_strategy_on p \<sigma> v A W" using \<sigma>_def by blast
+  hence "strategy_only_on p \<sigma> (A - W)" using attractor_strategy_on_def by blast
+  moreover have "strategy_attracts_from_to p \<sigma> A W" using assms sorry
+  ultimately show ?thesis using strategy_less_eq_refl by blast
 qed
 
 (* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A. *)
