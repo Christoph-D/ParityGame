@@ -647,8 +647,8 @@ theorem attractor_has_strategy:
   assumes "W \<subseteq> V"
     and v0_def: "v0 \<in> attractor p W" (is "_ \<in> ?A")
   shows "\<exists>\<sigma>. attractor_strategy_on p \<sigma> v0 ?A W"
-  proof
-    have "v0 \<in> ?A \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v0 ?A W" proof (induct arbitrary: v0 rule: attractor_set_induction)
+  proof-
+    from v0_def have "\<exists>\<sigma>. attractor_strategy_on p \<sigma> v0 ?A W" proof (induct arbitrary: v0 rule: attractor_set_induction)
       case base thus ?case using `W \<subseteq> V` .
     next
       case (step S)
@@ -687,13 +687,27 @@ theorem attractor_has_strategy:
             ultimately show ?thesis by simp
           qed
           moreover have "strategy_attracts_to p ?\<sigma> v0 W" proof-
-            { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq ?\<sigma> \<sigma>'"
+            { fix P \<sigma>'
+              assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq ?\<sigma> \<sigma>'"
                 "valid_path P" "P 0 = Some v0" "path_conforms_with_strategy_maximally p P \<sigma>'"
 
-              hence less_eq: "strategy_less_eq \<sigma> \<sigma>'" using local.less_eq strategy_less_eq_tran by blast
-              moreover have tail_valid: "valid_path (path_tail P)" sorry
-              moreover have tail_start: "(path_tail P) 0 = Some w" sorry
-              moreover have tail_conforms: "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>'" sorry
+              have 1: "P 0 \<noteq> None" by (simp add: \<sigma>'(4))
+              have 2: "the (P 0) \<in> VV p" by (simp add: \<sigma>'(4) `v0 \<in> VV p`)
+              have 3: "\<not>deadend (the (P 0))" using \<sigma>'(4) v0_no_deadend by auto
+              have 4: "\<sigma>' (the (P 0)) \<noteq> None" proof-
+                have "?\<sigma> (the (P 0)) \<noteq> None" by (simp add: \<sigma>'(4))
+                thus ?thesis by (metis \<sigma>'(2) strategy_less_eq_def)
+              qed
+              note P = 1 2 3 4
+
+              have less_eq: "strategy_less_eq \<sigma> \<sigma>'" using local.less_eq strategy_less_eq_tran \<sigma>'(2) by blast
+              moreover have tail_start: "(path_tail P) 0 = Some w" proof-
+                have "\<sigma>' (the (P 0)) = P (Suc 0)" using P \<sigma>'(5) path_conforms_with_strategy_maximally_start by blast
+                moreover have "\<sigma>' (the (P 0)) = Some w" using \<sigma>'(2) by (metis (mono_tags, lifting) \<sigma>'(4) `(\<sigma>(v0 \<mapsto> w)) v0 = Some w` option.distinct(1) option.sel strategy_less_eq_def)
+                ultimately show ?thesis by presburger
+              qed
+              moreover have tail_valid: "valid_path (path_tail P)" by (metis \<sigma>'(3) option.distinct(1) tail_start valid_path_tail)
+              moreover have tail_conforms: "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>'" using P \<sigma>'(5) path_conforms_with_strategy_maximally_tail by blast
               ultimately obtain P' where P'_def: "path_prefix P' (path_tail P)" "path_conforms_with_strategy_maximally p P' \<sigma>"
                 using paths_can_be_restricted \<sigma>' by blast
 
@@ -726,6 +740,7 @@ theorem attractor_has_strategy:
       then obtain S where "S \<in> M" "v0 \<in> S" by blast
       thus ?case by (meson Union_upper attractor_strategy_on_extends union.hyps)
     qed
+    thus ?thesis by blast
   qed
 
 corollary attractor_has_strategy_weak:
