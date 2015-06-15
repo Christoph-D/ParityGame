@@ -642,6 +642,14 @@ lemma attractor_strategy_on_extends:
     thus ?thesis using \<sigma>'_def(2) by blast
   qed
 
+lemma merge_attractor_strategies:
+  fixes W p S
+  assumes "W \<subseteq> V"
+    and "S \<subseteq> V"
+    and "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v S W"
+  shows "\<exists>\<sigma>. \<forall>v \<in> S. attractor_strategy_on p \<sigma> v S W"
+  sorry
+
 theorem attractor_has_strategy:
   fixes W p
   assumes "W \<subseteq> V"
@@ -694,20 +702,20 @@ theorem attractor_has_strategy:
               have 1: "P 0 \<noteq> None" by (simp add: \<sigma>'(4))
               have 2: "the (P 0) \<in> VV p" by (simp add: \<sigma>'(4) `v0 \<in> VV p`)
               have 3: "\<not>deadend (the (P 0))" using \<sigma>'(4) v0_no_deadend by auto
-              have 4: "\<sigma>' (the (P 0)) \<noteq> None" proof-
-                have "?\<sigma> (the (P 0)) \<noteq> None" by (simp add: \<sigma>'(4))
+              have 4: "\<sigma>' v0 \<noteq> None" proof-
+                have "?\<sigma> v0 \<noteq> None" by (simp add: \<sigma>'(4))
                 thus ?thesis by (metis \<sigma>'(2) strategy_less_eq_def)
               qed
               note P = 1 2 3 4
 
               have less_eq: "strategy_less_eq \<sigma> \<sigma>'" using local.less_eq strategy_less_eq_tran \<sigma>'(2) by blast
               moreover have tail_start: "(path_tail P) 0 = Some w" proof-
-                have "\<sigma>' (the (P 0)) = P (Suc 0)" using P \<sigma>'(5) path_conforms_with_strategy_maximally_start by blast
+                have "\<sigma>' (the (P 0)) = P (Suc 0)" using P \<sigma>'(5) path_conforms_with_strategy_maximally_start \<sigma>'(4) `v0 \<in> VV p` by blast
                 moreover have "\<sigma>' (the (P 0)) = Some w" using \<sigma>'(2) by (metis (mono_tags, lifting) \<sigma>'(4) `(\<sigma>(v0 \<mapsto> w)) v0 = Some w` option.distinct(1) option.sel strategy_less_eq_def)
                 ultimately show ?thesis by presburger
               qed
               moreover have tail_valid: "valid_path (path_tail P)" by (metis \<sigma>'(3) option.distinct(1) tail_start valid_path_tail)
-              moreover have tail_conforms: "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>'" using P \<sigma>'(5) path_conforms_with_strategy_maximally_tail by blast
+              moreover have tail_conforms: "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>'" using P \<sigma>'(4) \<sigma>'(5) `v0 \<in> VV p` path_conforms_with_strategy_maximally_tail by blast
               ultimately obtain P' where P'_def: "path_prefix P' (path_tail P)" "path_conforms_with_strategy_maximally p P' \<sigma>"
                 using paths_can_be_restricted \<sigma>' by blast
 
@@ -730,8 +738,32 @@ theorem attractor_has_strategy:
           hence "v0 \<in> VV p**" using `v0 \<in> V` by blast
           have "\<not>deadend v0" using attracted directly_attracted_contains_no_deadends by blast
           have "\<forall>w. v0\<rightarrow>w \<longrightarrow> w \<in> S" using attracted by (simp add: directly_attracted_def `v0 \<in> VV p**`)
-          (* TODO: here we need to merge all the strategies of the w's into one. *)
-          show ?thesis sorry
+          obtain \<sigma> where \<sigma>_def: "\<And>v. v \<in> S \<Longrightarrow> attractor_strategy_on p \<sigma> v S W"
+            using merge_attractor_strategies[of W S p] assms(1) step.hyps(1) step.hyps(2) by blast
+          have "strategy_only_on p \<sigma> (S - W)" using \<sigma>_def `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>deadend v0` attractor_strategy_on_def by blast
+          hence "strategy_only_on p \<sigma> ((S - W) \<union> {v0})" by (simp add: `v0 \<notin> VV p` strategy_only_on_case_rule2)
+          hence "strategy_only_on p \<sigma> ((S \<union> {v0}) - W)" by (simp add: attracted(2) insert_Diff_if)
+          moreover have "valid_strategy p \<sigma>" using \<sigma>_def `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not> deadend v0` attractor_strategy_on_def by blast
+          moreover have "strategy_attracts_to p \<sigma> v0 W" proof-
+            { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
+                "valid_path P" "P 0 = Some v0" "path_conforms_with_strategy_maximally p P \<sigma>'"
+              have "path_tail P 0 \<noteq> None" using path_conforms_with_strategy_maximally_start_VVpstar by (metis \<sigma>'(4) \<sigma>'(5) `\<not>deadend v0` `v0 \<in> VV p**`)
+              hence tail_valid: "valid_path (path_tail P)" using \<sigma>'(3) by blast
+              have "the (path_tail P 0) \<in> S" by (metis \<sigma>'(3) \<sigma>'(4) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `path_tail P 0 \<noteq> None` option.sel valid_path_def)
+              then obtain w where w_def: "w \<in> S" and tail_start: "path_tail P 0 = Some w" using `path_tail P 0 \<noteq> None` by auto
+              have tail_conforms: "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>'" using path_conforms_with_strategy_maximally_tail_VVpstar
+                by (metis \<sigma>'(4) \<sigma>'(5) `\<And>thesis. (\<And>w. \<lbrakk>w \<in> S; path_tail P 0 = Some w\<rbrakk> \<Longrightarrow> thesis) \<Longrightarrow> thesis` `v0 \<in> VV p**`)
+              have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
+              hence "\<exists>n. path_tail P n \<noteq> None \<and> the (path_tail P n) \<in> W" using tail_valid tail_start tail_conforms
+                using \<sigma>'(1) \<sigma>'(2) attractor_strategy_on_def by blast
+              hence "\<exists>n. P n \<noteq> None \<and> the (P n) \<in> W" by blast
+            }
+            thus ?thesis by blast
+          qed
+          ultimately have "attractor_strategy_on p \<sigma> v0 (S \<union> {v0}) W" using attractor_strategy_on_def by blast
+          moreover have "S \<union> {v0} \<subseteq> W \<union> S \<union> directly_attracted p S" using step.prems by blast
+          ultimately show ?thesis
+            using attractor_strategy_on_extends[of p \<sigma> v0 "S \<union> {v0}" W "W \<union> S \<union> directly_attracted p S"] by blast
         qed
       }
       ultimately show ?case using step.prems by blast

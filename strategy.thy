@@ -54,8 +54,9 @@ lemma path_conforms_up_to_VVpstar:
 
 -- "Conform to \<sigma> as long as possible."
 definition path_conforms_with_strategy_maximally :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  [simp]: "path_conforms_with_strategy_maximally p P \<sigma> \<equiv> path_conforms_with_strategy p P \<sigma>
-    \<or> (\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> \<sigma> (the (P n)) = None)"
+  [simp]: "path_conforms_with_strategy_maximally p P \<sigma> \<equiv> (path_conforms_with_strategy p P \<sigma>
+      \<or> (\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> the (P n) \<in> VV p \<and> \<sigma> (the (P n)) = None))
+    \<and> (\<forall>i. P i \<noteq> None \<and> \<not>deadend (the (P i)) \<and> (the (P i) \<in> VV p \<longrightarrow> \<sigma> (the (P i)) \<noteq> None) \<longrightarrow> P (Suc i) \<noteq> None)"
 
 definition path_prefix :: "'a Path \<Rightarrow> 'a Path \<Rightarrow> bool" where
   "path_prefix P P' \<equiv> (\<exists>n. (\<forall>i \<le> n. P i = P' i) \<and> (\<forall>i > n. P i = None)) \<or> P = P'"
@@ -102,25 +103,33 @@ lemma path_prefix_valid:
 
 lemma path_conforms_with_strategy_maximally_start:
   assumes "path_conforms_with_strategy_maximally p P \<sigma>"
-    and "P 0 \<noteq> None" "the (P 0) \<in> VV p" "\<sigma> (the (P 0)) \<noteq> None"
+    and "P 0 = Some v" "v \<in> VV p" "\<sigma> v \<noteq> None"
   shows "\<sigma> (the (P 0)) = P (Suc 0)"
   proof-
     { assume "path_conforms_with_strategy p P \<sigma>"
-      hence ?thesis using assms(2) assms(3) path_conforms_with_strategy_def by blast
+      hence ?thesis using assms(2) assms(3) path_conforms_with_strategy_def by auto
     }
     moreover
-    { assume "\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> \<sigma> (the (P n)) = None"
-      then obtain n where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "P n \<noteq> None" "\<sigma> (the (P n)) = None" by blast
+    { assume "\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> the (P n) \<in> VV p \<and> \<sigma> (the (P n)) = None"
+      then obtain n where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "P n \<noteq> None" "the (P n) \<in> VV p" "\<sigma> (the (P n)) = None" by blast
       have ?thesis proof (cases)
         assume "n = 0"
-        thus ?thesis using assms(4) n_def(3) by blast
+        thus ?thesis using assms(2) assms(4) n_def(4) by auto
       next
         assume "n \<noteq> 0"
         hence "path_conforms_with_strategy_up_to p P \<sigma> (Suc 0)" using n_def(1) by simp
-        thus ?thesis using assms(2) assms(3) path_conforms_with_strategy_up_to_def by blast
+        thus ?thesis using assms(2) assms(3) path_conforms_with_strategy_up_to_def by simp
       qed
     }
     ultimately show ?thesis using assms(1) path_conforms_with_strategy_maximally_def by blast
+  qed
+lemma path_conforms_with_strategy_maximally_start_VVpstar:
+  assumes "path_conforms_with_strategy_maximally p P \<sigma>"
+    and v: "P 0 = Some v" "v \<in> VV p**" "\<not>deadend v"
+  shows "P (Suc 0) \<noteq> None"
+  proof-
+    have "v \<notin> VV p" using v(2) by auto
+    thus ?thesis using assms(1) v(1) v(3) by auto
   qed
 
 definition valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
@@ -229,27 +238,56 @@ lemma infinite_path_tail_head [simp]:
 
 lemma path_conforms_with_strategy_maximally_tail:
   assumes "path_conforms_with_strategy_maximally p P \<sigma>"
-    and "P 0 \<noteq> None" "the (P 0) \<in> VV p" "\<sigma> (the (P 0)) \<noteq> None"
+    and "P 0 = Some v" "v \<in> VV p" "\<sigma> v \<noteq> None"
   shows "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>"
   proof-
+    have *: "\<forall>i. (path_tail P) i \<noteq> None \<and> \<not>deadend (the (path_tail P i)) \<and> (the (path_tail P i) \<in> VV p \<longrightarrow> \<sigma> (the (path_tail P i)) \<noteq> None) \<longrightarrow> path_tail P (Suc i) \<noteq> None"
+       using assms(1) path_conforms_with_strategy_maximally_def by blast
     { assume "path_conforms_with_strategy p P \<sigma>"
       hence "path_conforms_with_strategy p (path_tail P) \<sigma>" using infinite_path_tail_conforms by blast
-      hence ?thesis using path_conforms_with_strategy_maximally_def by blast
+      hence ?thesis using * path_conforms_with_strategy_maximally_def by blast
     }
     moreover
-    { assume "\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> \<sigma> (the (P n)) = None"
-      then obtain n where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "P n \<noteq> None" "\<sigma> (the (P n)) = None" by blast
-      have "n \<noteq> 0" by (metis assms(4) n_def(3))
+    { assume "\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> the (P n) \<in> VV p \<and> \<sigma> (the (P n)) = None"
+      then obtain n where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "P n \<noteq> None" "the (P n) \<in> VV p" "\<sigma> (the (P n)) = None" by blast
+      have "\<sigma> (the (P 0)) \<noteq> None" by (simp add: assms(2) assms(4))
+      hence "n \<noteq> 0" by (metis n_def(4))
       then obtain m where "Suc m = n" by (metis nat.exhaust)
-      hence "path_conforms_with_strategy_up_to p P \<sigma> (Suc m) \<and> P (Suc m) \<noteq> None \<and> \<sigma> (the (P (Suc m))) = None"
+      hence "path_conforms_with_strategy_up_to p P \<sigma> (Suc m) \<and> P (Suc m) \<noteq> None \<and> the (path_tail P m) \<in> VV p \<and> \<sigma> (the (P (Suc m))) = None"
         using n_def by metis
       moreover hence "path_conforms_with_strategy_up_to p (path_tail P) \<sigma> m" using path_tail_conforms_suc by blast
-      ultimately have "\<exists>n. path_conforms_with_strategy_up_to p (path_tail P) \<sigma> n \<and> (path_tail P) n \<noteq> None \<and> \<sigma> (the ((path_tail P) n)) = None"
+      ultimately have "\<exists>n. path_conforms_with_strategy_up_to p (path_tail P) \<sigma> n \<and> (path_tail P) n \<noteq> None \<and> the (path_tail P n) \<in> VV p \<and> \<sigma> (the ((path_tail P) n)) = None"
         by blast
     }
     ultimately show ?thesis using assms(1) path_conforms_with_strategy_maximally_def by blast
   qed
 
+lemma path_conforms_with_strategy_maximally_tail_VVpstar:
+  assumes "path_conforms_with_strategy_maximally p P \<sigma>"
+    and "P 0 = Some v" "v \<in> VV p**" "P (Suc 0) = Some w"
+  shows "path_conforms_with_strategy_maximally p (path_tail P) \<sigma>"
+  proof-
+    have *: "\<forall>i. (path_tail P) i \<noteq> None \<and> \<not>deadend (the (path_tail P i)) \<and> (the (path_tail P i) \<in> VV p \<longrightarrow> \<sigma> (the (path_tail P i)) \<noteq> None) \<longrightarrow> path_tail P (Suc i) \<noteq> None"
+       using assms(1) path_conforms_with_strategy_maximally_def by blast
+    { assume "path_conforms_with_strategy p P \<sigma>"
+      hence "path_conforms_with_strategy p (path_tail P) \<sigma>" using infinite_path_tail_conforms by blast
+      hence ?thesis using * path_conforms_with_strategy_maximally_def by blast
+    }
+    moreover
+    { assume "\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P n \<noteq> None \<and> the (P n) \<in> VV p \<and> \<sigma> (the (P n)) = None"
+      then obtain n where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "P n \<noteq> None" "the (P n) \<in> VV p" "\<sigma> (the (P n)) = None" by blast
+      hence "n \<noteq> 0" by (metis VV_impl2 assms(2) assms(3) option.sel)
+      then obtain m where "Suc m = n" by (metis nat.exhaust)
+      hence "path_conforms_with_strategy_up_to p P \<sigma> (Suc m) \<and> P (Suc m) \<noteq> None \<and> the (path_tail P m) \<in> VV p \<and> \<sigma> (the (P (Suc m))) = None"
+        using n_def by metis
+      moreover hence "path_conforms_with_strategy_up_to p (path_tail P) \<sigma> m" using path_tail_conforms_suc by blast
+      ultimately have "\<exists>n. path_conforms_with_strategy_up_to p (path_tail P) \<sigma> n \<and> (path_tail P) n \<noteq> None \<and> the (path_tail P n) \<in> VV p \<and> \<sigma> (the ((path_tail P) n)) = None"
+        by blast
+    }
+    ultimately show ?thesis using assms(1) path_conforms_with_strategy_maximally_def by blast
+  qed
+
+(*
 lemma path_conforms_with_strategy_maximally:
   assumes P_conforms: "path_conforms_with_strategy_maximally p P (\<sigma>(v \<mapsto> w))"
     and P: "P 0 = Some v" and v: "v \<in> VV p" "v\<rightarrow>w" and \<sigma>: "\<sigma> v = None"
@@ -309,6 +347,7 @@ lemma path_conforms_with_strategy_maximally:
     moreover have "\<forall>i. ?P' i = P (Suc i)" by blast
     ultimately show ?thesis by blast
   qed
+*)
 
 definition strategy_less_eq :: "'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy_less_eq \<sigma> \<sigma>' \<equiv> \<forall>v. \<sigma> v \<noteq> None \<longrightarrow> \<sigma> v = \<sigma>' v"
