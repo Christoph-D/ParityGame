@@ -817,7 +817,7 @@ proof -
 qed
 
 (* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A. *)
-theorem attractor_has_outside_strategy:
+(* theorem attractor_has_outside_strategy:
   fixes W p
   defines "A \<equiv> attractor p** W"
   shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (V - A) \<and> strategy_avoids p \<sigma> (V - A) A"
@@ -883,6 +883,7 @@ theorem attractor_has_outside_strategy:
       qed
     qed
   qed
+*)
 
 end -- "context ParityGame"
 
