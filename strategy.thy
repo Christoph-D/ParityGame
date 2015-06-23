@@ -438,40 +438,41 @@ lemma strategy_less_eq_least [simp]:
 lemma strategy_less_eq_extensible:
   assumes "W \<subseteq> W'" "strategy_on p \<sigma> W" "valid_strategy p \<sigma>"
   shows "\<exists>\<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> strategy_on p \<sigma>' W'" proof-
-    let ?\<sigma>' = "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else (if v \<in> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None)"
-    have "strategy_less_eq \<sigma> ?\<sigma>'" proof-
-      have "\<And>v w. \<sigma> v = Some w \<Longrightarrow> \<sigma> v = ?\<sigma>' v" by simp
+    def [simp]: \<sigma>' \<equiv> "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else (if v \<in> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None)"
+    have "strategy_less_eq \<sigma> \<sigma>'" proof-
+      have "\<And>v w. \<sigma> v = Some w \<Longrightarrow> \<sigma> v = \<sigma>' v" unfolding \<sigma>'_def by simp
       thus ?thesis using strategy_less_eq_def by blast
     qed
-    moreover have "strategy_on p ?\<sigma>' W'" proof (unfold strategy_on_def; rule; rule)
+    moreover have "strategy_on p \<sigma>' W'" proof (unfold strategy_on_def; rule; rule)
       fix v assume v: "v \<in> W' \<inter> VV p" "\<not>deadend v"
-      show "\<exists>w. ?\<sigma>' v = Some w" proof (cases)
-        assume "\<sigma> v = None"
-        hence "?\<sigma>' v = Some (SOME w. v\<rightarrow>w)" using v by auto
-        thus "\<exists>w. ?\<sigma>' v = Some w" by blast
+      show "\<exists>w. \<sigma>' v = Some w" proof (cases)
+        assume assm: "\<sigma> v = None"
+        have "v \<in> VV p" using v(1) by blast
+        hence "\<sigma>' v = Some (SOME w. v\<rightarrow>w)" unfolding \<sigma>'_def using assm v(2) by presburger
+        thus "\<exists>w. \<sigma>' v = Some w" by blast
       next
         assume *: "\<sigma> v \<noteq> None"
-        hence "\<exists>w. \<sigma> v = Some w" by blast
-        moreover have "?\<sigma>' v = \<sigma> v" using * by auto
-        ultimately show ?thesis by auto (* TODO: make faster *)
+        hence **: "\<exists>w. \<sigma> v = Some w" by blast
+        have "\<sigma> v = \<sigma>' v" unfolding \<sigma>'_def by (simp add: *)
+        thus ?thesis using ** by presburger
       qed
     qed
-    moreover have "valid_strategy p ?\<sigma>'" proof-
+    moreover have "valid_strategy p \<sigma>'" proof-
       {
-        fix v w assume v_def: "?\<sigma>' v = Some w"
+        fix v w assume v_def: "\<sigma>' v = Some w"
         have "v \<in> VV p \<and> v \<rightarrow> w" proof (cases)
           assume assm: "\<sigma> v = None"
-          have "v \<in> VV p" by (meson option.distinct(1) assm v_def)
-          have "?\<sigma>' v = Some (SOME w. v\<rightarrow>w)" using assm v_def by (metis option.distinct(2))
+          have "v \<in> VV p" by (metis \<sigma>'_def assm option.distinct(1) v_def)
+          have "\<sigma>' v = Some (SOME w. v\<rightarrow>w)" using assm v_def by (metis \<sigma>'_def option.distinct(1))
           hence *: "w = (SOME w. v\<rightarrow>w)" by (metis option.sel v_def)
-          have "\<not>deadend v" using v_def `\<sigma> v = None` by (meson option.distinct(1))
+          have "\<not>deadend v" using v_def `\<sigma> v = None` by (metis \<sigma>'_def option.distinct(1))
           hence "\<exists>w. v\<rightarrow>w" by auto
           thus ?thesis using * `v \<in> VV p` by (metis (mono_tags, lifting) someI)
         next
           assume assm: "\<sigma> v \<noteq> None"
           then obtain w' where w'_def: "\<sigma> v = Some w'" by blast
           have "v \<in> VV p \<and> v \<rightarrow> w'" using assms(3) valid_strategy_def by (metis w'_def)
-          moreover have "w = w'" by (metis assm w'_def option.inject v_def)
+          moreover have "w = w'" by (metis assm w'_def option.inject v_def \<sigma>'_def)
           ultimately show ?thesis by blast
         qed
       }
