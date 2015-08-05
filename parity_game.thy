@@ -26,6 +26,7 @@ definition infinite_path :: "'a Path \<Rightarrow> bool" where [simp]: "infinite
 fun path_head :: "'a Path \<Rightarrow> 'a" where
   "path_head (path_cons v _) = v"
   | "path_head (PEnd v) = v"
+lemma path_head_cons: "\<not>path_deadend P \<Longrightarrow> path_head P = v \<Longrightarrow> path_cons v (path_tail P) = P" by (metis Path.collapse(1) path_head.simps(1))
 
 fun path_at :: "'a Path \<Rightarrow> nat \<Rightarrow> 'a option" (infix "$" 60) where
   "path_at (PEnd v) 0 = Some v"
@@ -33,24 +34,41 @@ fun path_at :: "'a Path \<Rightarrow> nat \<Rightarrow> 'a option" (infix "$" 60
   | "path_at (path_cons v _) 0 = Some v"
   | "path_at (path_cons v Ps) (Suc n) = path_at Ps n"
 
+primrec Pdrop :: "nat \<Rightarrow> 'a Path \<Rightarrow> 'a Path" where
+  "Pdrop 0 P = P"
+  | "Pdrop (Suc n) P = Pdrop n (path_tail P)"
+
 lemma path_at_0 [simp]: "P $ 0 = Some (path_head P)" by (metis path_at.simps(1) path_at.simps(3) path_head.elims)
 lemma path_at_0' [simp]: "P $ 0 \<noteq> None" by simp
 lemma path_cons_0 [simp]: "path_head (path_cons v P) = v" by simp
 lemma path_cons_suc_is_P [simp]: "path_cons v P $ (Suc i) = P $ i" by simp
 lemma path_cons_suc_is_P2: "i \<noteq> 0 \<Longrightarrow> path_cons v P $ i = P $ i - 1" by (metis Suc_diff_1 gr0I path_cons_suc_is_P)
 
+lemma path_tail_suc: "P $ Suc i \<noteq> None \<Longrightarrow> P $ Suc i = path_tail P $ i"
+  by (metis Path.exhaust Path.sel(2) path_at.simps(2) path_cons_suc_is_P)
+lemma path_drop_suc: "Pdrop n P $ Suc i \<noteq> None \<Longrightarrow> Pdrop n P $ Suc i = Pdrop (Suc n) P $ i"
+  by (induct n arbitrary: P, insert path_tail_suc; fastforce)
+lemma path_drop_diff: "\<lbrakk> n \<le> i; P $ i \<noteq> None \<rbrakk> \<Longrightarrow> P $ i = Pdrop n P $ i - n"
+  by (induct n, simp, metis Suc_diff_le Suc_leD diff_Suc_Suc path_drop_suc)
+lemma path_drop_comm: "P $ Suc n \<noteq> None \<Longrightarrow> Pdrop n (path_tail P) = path_tail (Pdrop n P)"
+  by (induct n arbitrary: P, simp, metis Pdrop.simps(2) path_tail_suc)
+lemma path_drop_head: "P $ n = Some v \<Longrightarrow> path_head (Pdrop n P) = v"
+  by (induct n arbitrary: P, simp, insert path_tail_suc, force)
+lemma path_drop_no_deadend: "P $ Suc n \<noteq> None \<Longrightarrow> \<not>path_deadend (Pdrop n P)"
+  apply (induct n arbitrary: P)
+    apply (metis Path.collapse(2) Pdrop.simps(1) path_at.simps(2))
+  by (metis Pdrop.simps(2) path_tail_suc)
+
 lemma infinite_path_no_deadend: "infinite_path P \<Longrightarrow> \<not>path_deadend P" using finite_path.simps path_deadend_def by fastforce
 lemma infinite_path_tail: "infinite_path (path_cons v Ps) \<Longrightarrow> infinite_path Ps" by (meson finite_path_cons infinite_path_def)
-lemma infinite_path_at:
-  assumes P_inf: "infinite_path P"
-  shows "P $ i \<noteq> None"
-using assms proof (induct i arbitrary: P, simp)
+lemma infinite_path_at: "infinite_path P \<Longrightarrow> P $ i \<noteq> None" proof (induct i arbitrary: P, simp)
   fix i and P :: "'a Path"
   assume IH: "\<And>P :: 'a Path. infinite_path P \<Longrightarrow> P $ i \<noteq> None" "infinite_path P"
   then obtain v Ps where Ps: "P = path_cons v Ps" using infinite_path_no_deadend by (metis Path.collapse(1))
   hence "Ps $ i \<noteq> None" using IH by (meson infinite_path_tail)
   thus "P $ Suc i \<noteq> None" by (simp add: Ps)
 qed
+
 lemma finite_path_at:
   assumes P_fin: "finite_path P"
   shows "\<exists>i. P $ i = None"
@@ -65,21 +83,15 @@ next
   hence "path_cons v Ps $ (Suc i) = None" by simp
   thus "\<exists>i. path_cons v Ps $ i = None" by blast
 qed
-lemma finite_path_none_Suc: "P $ i = None \<Longrightarrow> P $ (Suc i) = None" proof (induct i arbitrary: P)
-  case 0 thus "P $ Suc 0 = None" by simp
-next
-  case (Suc i) thus "P $ Suc (Suc i) = None" by (metis path_at.simps(2) path_cons_suc_is_P path_head.cases)
-qed
 
-lemma finite_path_at2: "\<lbrakk> P $ i = None; i \<le> j \<rbrakk> \<Longrightarrow> P $ j = None" proof (induct "j - i" arbitrary: i j)
-  case 0 thus "P $ j = None" by simp
-next
-  case (Suc d)
-  thus "P $ j = None" by (metis Suc_diff_Suc diff_diff_cancel diff_le_self finite_path_none_Suc leD le_eq_less_or_eq not_less_eq)
-qed
+lemma finite_path_none_Suc: "P $ i = None \<Longrightarrow> P $ (Suc i) = None" by (induct i arbitrary: P, simp, metis path_at.simps(2) path_cons_suc_is_P path_head.cases)
+lemma finite_path_at2: "\<lbrakk> P $ i = None; i \<le> j \<rbrakk> \<Longrightarrow> P $ j = None" by (induct "j - i" arbitrary: i, simp, metis Suc_diff_Suc diff_diff_cancel diff_le_self finite_path_none_Suc leD le_eq_less_or_eq not_less_eq)
 
 lemma finite_path_eventually_none: "finite_path P \<Longrightarrow> \<exists>i. \<forall>j. (j > i \<longrightarrow> P $ j = None)" by (meson finite_path_at finite_path_at2 less_or_eq_imp_le)
-lemma finite_path_eventually_none': assumes P_fin: "finite_path P" shows "\<exists>i. \<forall>j. (j > i \<longleftrightarrow> P $ j = None)" proof-
+lemma finite_path_eventually_none':
+  assumes P_fin: "finite_path P"
+  shows "\<exists>i. \<forall>j. (j > i \<longleftrightarrow> P $ j = None)"
+proof-
   def Q \<equiv> "\<lambda>i. P $ i = None"
   hence "\<exists>i'. Q i'" using finite_path_at P_fin by blast
   then obtain i' where i': "Q i'" "\<And>j. j < i' \<Longrightarrow> \<not>Q j" using obtain_min by blast
@@ -92,7 +104,7 @@ lemma finite_path_eventually_none': assumes P_fin: "finite_path P" shows "\<exis
     thus "P $ j = None" using Suc_leI `i < j` by blast
   qed
   moreover have "\<And>j. P $ j = None \<Longrightarrow> j > i" using Q_def i i'(2) not_less_eq by blast
-  ultimately show "\<exists>i. \<forall>j. (j > i \<longleftrightarrow> P $ j = None)" by blast
+  ultimately show ?thesis by blast
 qed
 
 lemma infinite_path_equiv: "infinite_path P \<longleftrightarrow> (\<forall>i. P $ i \<noteq> None)" using finite_path_at infinite_path_at infinite_path_def by blast
@@ -106,11 +118,12 @@ lemma paths_are_contiguous_suc: "P $ Suc i = Some w \<Longrightarrow> \<exists>v
 lemma path_dom_ends_on_finite_paths:
   assumes P_fin: "finite_path P"
   shows "\<exists>!i \<in> path_dom P. P $ Suc i = None"
-  proof -
+  proof-
     obtain i where i_def: "\<forall>j. (j > i \<longleftrightarrow> P $ j = None)" using P_fin finite_path_equiv by blast
     hence "i \<in> path_dom P \<and> P $ Suc i = None" by auto
     thus ?thesis by (metis (mono_tags) CollectD i_def less_antisym)
   qed
+lemma path_2_no_deadend: "P $ Suc i \<noteq> None \<Longrightarrow> \<not>path_deadend P" by (metis Path.collapse(2) path_at.simps(2))
 (* lemma path_inf_is_from_P: "v \<in> path_inf P \<Longrightarrow> \<exists>i. P i = Some v" apply (unfold path_inf_def; fastforce) done *)
 
 record 'a Graph =
@@ -132,13 +145,53 @@ lemma deadend_no_edge: "\<lbrakk> \<not>P \<Longrightarrow> v\<rightarrow>w ; de
 
 coinductive valid_path :: "'a Path \<Rightarrow> bool" where
   valid_path_deadend: "v \<in> V \<Longrightarrow> valid_path (PEnd v)"
-  | valid_path_cons: "v\<rightarrow>w \<Longrightarrow> valid_path Ps \<Longrightarrow> path_head Ps = w \<Longrightarrow> valid_path (path_cons v Ps)"
+  | valid_path_cons: "\<lbrakk> v \<in> V; w \<in> V; v\<rightarrow>w; valid_path Ps; path_head Ps = w \<rbrakk> \<Longrightarrow> valid_path (path_cons v Ps)"
 
-lemma valid_path_equiv [simp]: "valid_path P \<Longrightarrow> Pset P \<subseteq> V" proof-
-  print_statement
+lemma valid_path_cons': "\<lbrakk> v\<rightarrow>w; valid_path Ps; path_head Ps = w \<rbrakk> \<Longrightarrow> valid_path (path_cons v Ps)" using edges_are_in_V valid_path_cons by blast
+lemma valid_path_tail': "valid_path (path_cons v Ps) \<Longrightarrow> valid_path Ps" using valid_path.cases by auto
+lemma valid_path_tail: "\<lbrakk> \<not>path_deadend P; valid_path P \<rbrakk> \<Longrightarrow> valid_path (path_tail P)" by (metis Path.collapse(1) valid_path_tail')
+
+lemma valid_path_in_V: assumes "valid_path P" shows "Pset P \<subseteq> V" proof
+  fix x assume "x \<in> Pset P" thus "x \<in> V" using assms by (induct rule: Path.set_induct) (auto intro: valid_path.cases edges_are_in_V)
 qed
-lemma valid_path_equiv: "valid_path P \<Longrightarrow> \<forall>i v w. P $ i = Some v \<and> P $ Suc i = Some w \<longrightarrow> v\<rightarrow>w"
-lemma valid_path_equiv [simp]: "valid_path P \<Longrightarrow> Pset P \<subseteq> V \<and> (\<forall>i v w. P $ i = Some v \<and> P $ Suc i = Some w \<longrightarrow> v\<rightarrow>w)"
+
+lemma valid_path_drop: assumes "valid_path P" "P $ i \<noteq> None" shows "valid_path (Pdrop i P)" using assms proof (induct i)
+  case 0 thus ?case by (simp add: assms(1))
+next
+  case (Suc n)
+  hence "valid_path (Pdrop n P)" by (meson finite_path_none_Suc)
+  moreover have "\<not>path_deadend (Pdrop n P)" proof-
+    have "Pdrop n P $ Suc n - n \<noteq> None" by (metis Suc.prems(2) lessI less_imp_le path_drop_diff)
+    thus ?thesis by (simp add: path_2_no_deadend)
+  qed
+  ultimately have "valid_path (path_tail (Pdrop n P))" using valid_path_tail by blast
+  thus ?case by (simp add: Suc.prems(2) path_drop_comm)
+qed
+
+lemma valid_path_edges:
+  assumes "valid_path P" "P $ i = Some v" "P $ Suc i = Some w"
+  shows "v\<rightarrow>w" proof-
+  have "path_head (path_tail (Pdrop i P)) = w" by (metis assms(3) option.distinct(2) path_drop_comm path_drop_head path_tail_suc)
+  moreover have "valid_path (path_cons v (path_tail (Pdrop i P)))" proof-
+    have "path_head (Pdrop i P) = v" by (simp add: assms(2) path_drop_head)
+    moreover have "valid_path (Pdrop i P)" by (simp add: assms(1) assms(2) valid_path_drop)
+    moreover have "\<not>path_deadend (Pdrop i P)" by (simp add: assms(3) path_drop_no_deadend)
+    ultimately show ?thesis by (simp add: path_head_cons)
+  qed
+  ultimately show "v\<rightarrow>w" using valid_path.cases by fastforce
+qed
+
+lemma valid_path_impl1: "valid_path P \<Longrightarrow> Pset P \<subseteq> V \<and> (\<forall>i v w. P $ i = Some v \<and> P $ Suc i = Some w \<longrightarrow> v\<rightarrow>w)" using valid_path_edges valid_path_in_V by blast
+lemma valid_path_equiv: "Pset P \<subseteq> V \<and> (\<forall>i v w. P $ i = Some v \<and> P $ Suc i = Some w \<longrightarrow> v\<rightarrow>w) \<Longrightarrow> valid_path P" proof (coinduction arbitrary: P rule: valid_path.coinduct)
+  case (valid_path P)
+  { assume "\<not>(\<exists>v. P = PEnd v \<and> v \<in> V)"
+    then obtain v Ps where P: "P = path_cons v Ps" by (metis Path.set_intros(3) path_head.cases subsetCE valid_path)
+    have "valid_path Ps" sledgehammer
+    have "v \<in> V \<and> v \<rightarrow> w \<and> (Ps = P \<and> Pset P \<subseteq> V \<and> (\<forall>i v w. P $ i = Some v \<and> P $ Suc i = Some w \<longrightarrow> v \<rightarrow> w) \<or> valid_path Ps) \<and> path_head Ps = w" sorry
+    hence "\<exists>v w W Ps. P = path_cons v Ps \<and> v \<in> V \<and> w \<in> W \<and> v \<rightarrow> w \<and> (Ps = P \<and> Pset P \<subseteq> V \<and> (\<forall>i v w. P $ i = Some v \<and> P $ Suc i = Some w \<longrightarrow> v \<rightarrow> w) \<or> valid_path Ps) \<and> path_head Ps = w" sorry
+  }
+  thus ?case by blast
+qed
 
 lemma valid_path_is_infinite_or_finite: "valid_path P \<Longrightarrow> infinite_path P \<or> finite_path P" by simp
 lemma valid_path_is_contiguous_suc: "valid_path P \<Longrightarrow> P (Suc i) = Some w \<Longrightarrow> \<exists>v. P i = Some v"
