@@ -56,8 +56,10 @@ coinductive valid_path :: "'a Path \<Rightarrow> bool" where
 | valid_path_base': "v \<in> V \<Longrightarrow> valid_path (LCons v LNil)"
 | valid_path_cons: "\<lbrakk> v \<in> V; w \<in> V; v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)"
 
+inductive_simps valid_path_cons_simp: "valid_path (LCons x xs)"
+
 lemma valid_path_cons': "\<lbrakk> v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)" using edges_are_in_V valid_path_cons by auto
-lemma valid_path_ltl': "valid_path (LCons v Ps) \<Longrightarrow> valid_path Ps" using valid_path.cases valid_path_base by auto
+lemma valid_path_ltl': "valid_path (LCons v Ps) \<Longrightarrow> valid_path Ps" using valid_path.simps by blast
 lemma valid_path_ltl: "valid_path P \<Longrightarrow> valid_path (ltl P)" by (metis llist.exhaust_sel ltl_simps(1) valid_path_ltl')
 lemma valid_path_drop: "valid_path P \<Longrightarrow> valid_path (ldropn n P)"  unfolding ldropn_def by (induct rule: fun_iter_induct; simp add: valid_path_ltl)
 
@@ -70,14 +72,14 @@ lemma valid_path_finite_in_V': "\<lbrakk> valid_path P; enat i < llength P \<rbr
 
 lemma valid_path_edges': "valid_path (LCons v (LCons w Ps)) \<Longrightarrow> v\<rightarrow>w" using valid_path.cases by fastforce
 lemma valid_path_edges:
-  assumes "valid_path P" "enat (Suc n) < llength P" "P $ n = v" "P $ Suc n = w"
-  shows "v\<rightarrow>w"
+  assumes "valid_path P" "enat (Suc n) < llength P"
+  shows "P $ n \<rightarrow> (P $ Suc n)"
 proof-
   def P' \<equiv> "ldropn n P"
   have "enat n < llength P" using assms(2) enat_ord_simps(2) less_trans by blast
-  hence "P' $ 0 = v" by (simp add: P'_def assms(3))
-  moreover have "P' $ Suc 0 = w" by (metis One_nat_def P'_def Suc_eq_plus1 add.commute assms(2) assms(4) lnth_ldropn)
-  ultimately have "\<exists>Ps. P' = LCons v (LCons w Ps)" by (metis P'_def `enat n < llength P` assms(2) assms(3) assms(4) ldropn_Suc_conv_ldropn)
+  hence "P' $ 0 = P $ n" by (simp add: P'_def)
+  moreover have "P' $ Suc 0 = P $ Suc n" by (metis One_nat_def P'_def Suc_eq_plus1 add.commute assms(2) lnth_ldropn)
+  ultimately have "\<exists>Ps. P' = LCons (P $ n) (LCons (P $ Suc n) Ps)" by (metis P'_def `enat n < llength P` assms(2) ldropn_Suc_conv_ldropn)
   moreover have "valid_path P'" by (simp add: P'_def assms(1) valid_path_drop)
   ultimately show ?thesis using valid_path_edges' by blast
 qed

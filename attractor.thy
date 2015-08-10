@@ -619,8 +619,8 @@ qed
 
 abbreviation strategy_attracts_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_attracts_to p \<sigma> v0 W \<equiv> \<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>'
-        \<and> valid_path P \<and> P 0 = Some v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>'
-        \<longrightarrow> (\<exists>n. P n \<noteq> None \<and> the (P n) \<in> W)"
+        \<and> valid_path P \<and> \<not>lnull P \<and> path_conforms_with_strategy_maximally p P \<sigma>'
+        \<longrightarrow> (\<exists>n. enat n < llength P \<and> P $ n \<in> W)"
 definition attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_strategy_on p \<sigma> v0 A W \<equiv>
     valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_to p \<sigma> v0 W"
