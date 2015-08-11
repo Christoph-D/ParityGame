@@ -780,17 +780,21 @@ theorem attractor_has_strategy:
           moreover have "strategy_attracts_to p \<sigma> v0 W" proof-
             { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
                 "valid_path P" "\<not>lnull P" "P $ 0 = v0" "path_conforms_with_strategy_maximally p P \<sigma>'"
-              have "\<not>lnull (ltl P)"
-                using path_conforms_with_strategy_maximally_start_VVpstar `\<not>deadend v0` `v0 \<in> VV p**`
-                  \<sigma>' lprefix_lnull path_conforms_with_strategy_maximally_tail_VVpstar
-                  paths_can_be_restricted valid_path_ltl by blast
+              have "\<not>lnull (ltl P)" proof-
+                have "enat 0 < llength P" using \<sigma>'(4) zero_enat_def by auto
+                moreover have "\<not>deadend (P $ 0)" using \<sigma>'(5) `\<not>deadend v0` by blast
+                moreover have "P $ 0 \<in> VV p \<longrightarrow> (\<exists>w. \<sigma>' (P $ 0) = Some w)" using `v0 \<notin> VV p` `P $ 0 = v0` by blast
+                ultimately have "enat (Suc 0) < llength P" using \<sigma>'(6) path_conforms_with_strategy_maximally_def by blast
+                hence "enat 0 < llength (ltl P)" using enat_Suc_ltl by blast
+                thus ?thesis by auto
+              qed
               hence tail_valid: "valid_path (ltl P)" using \<sigma>'(3) valid_path_ltl by blast
               have "ltl P $ 0 \<in> S" using \<sigma>'(3) \<sigma>'(4) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>lnull (ltl P)` valid_path_def by (metis (no_types) \<sigma>'(5) lhd_LCons_ltl lnth_0_conv_lhd valid_path_edges')
               then obtain w where w_def: "w \<in> S" and tail_start: "ltl P $ 0 = w" using `\<not>lnull (ltl P)` by blast
               have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'"  proof-
                 have "eSuc 0 < llength P" using \<sigma>'(4) `\<not>lnull (ltl P)` by (simp add: enat_unfold_next llength_def)
                 hence "enat (Suc 0) < llength P" by (simp add: eSuc_enat zero_enat_def)
-                thus ?thesis using path_conforms_with_strategy_maximally_tail_VVpstar \<sigma>'(5) \<sigma>'(6) `v0 \<in> VV p**` by blast
+                thus ?thesis using path_conforms_with_strategy_maximally_tail \<sigma>'(5) \<sigma>'(6) sorry
               qed
               have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
               hence "\<exists>n. enat n < llength (ltl P) \<and> ltl P $ n \<in> W" using tail_valid tail_start tail_conforms
