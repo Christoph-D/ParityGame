@@ -271,7 +271,18 @@ qed
 lemma path_tail_conforms_suc:
   assumes "\<not>lnull P" "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)"
   shows "path_conforms_with_strategy_up_to p (ltl P) \<sigma> n"
-  using assms sorry
+proof-
+  let ?P = "ltl P"
+  { fix i w assume i: "enat i < llength ?P" "i < n" "?P $ i \<in> VV p" "\<sigma> (?P $ i) = Some w"
+    have "enat (Suc i) < llength P" by (metis i(1) ldrop_eSuc_ltl leD leI lnull_ldropn)
+    moreover have "Suc i < Suc n" using i(2) by simp
+    moreover have "P $ Suc i \<in> VV p" using assms(1) i(3) lnth_ltl by force
+    moreover have "\<sigma> (P $ Suc i) = Some w" using assms(1) i(4) lnth_ltl by fastforce
+    ultimately have "enat (Suc (Suc i)) < llength P \<and> P $ Suc (Suc i) = w" using assms(2) path_conforms_with_strategy_up_to_def by blast
+    hence "enat (Suc i) < llength ?P \<and> ?P $ Suc i = w" by (simp add: assms(1) enat_Suc_ltl lnth_ltl)
+  }
+  thus ?thesis unfolding path_conforms_with_strategy_up_to_def by blast
+qed
 
 lemma infinite_path_tail_head [simp]:
   assumes "\<not>lnull P" "P $ 0 \<in> VV p" "\<sigma> (P $ 0) = Some w" "path_conforms_with_strategy p P \<sigma>"
