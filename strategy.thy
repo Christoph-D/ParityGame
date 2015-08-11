@@ -90,29 +90,31 @@ qed
 lemma path_conforms_with_strategy_maximally_start:
   assumes "path_conforms_with_strategy_maximally p P \<sigma>"
     and "P $ 0 = v0" "v0 \<in> VV p" "\<sigma> v0 = Some w"
-    and "\<not>lnull P"
+    and P_notNull: "\<not>lnull P"
   shows "enat (Suc 0) < llength P \<and> \<sigma> v0 = Some (P $ Suc 0)"
   proof-
-    show ?thesis sorry
-    (*
+    have *: "P $ 0 \<in> VV p \<and> \<sigma> (P $ 0) = Some w" by (simp add: assms(2) assms(3) assms(4))
     { assume "path_conforms_with_strategy p P \<sigma>"
-      hence ?thesis using assms(2) assms(3) path_conforms_with_strategy_def by auto
+      moreover have "enat 0 < llength P" using P_notNull zero_enat_def by auto
+      ultimately have "enat (Suc 0) < llength P \<and> P $ Suc 0 = w" using * path_conforms_with_strategy_def by blast
+      hence ?thesis using assms(4) by blast
     }
     moreover
-    { assume "\<exists>n v. path_conforms_with_strategy_up_to p P \<sigma> n \<and> P $ n = Some v \<and> v \<in> VV p \<and> \<sigma> v = None"
-      then obtain n v where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "P $ n = Some v" "v \<in> VV p" "\<sigma> v = None" by blast
+    { assume "\<exists>n v. path_conforms_with_strategy_up_to p P \<sigma> n \<and> enat n < llength P \<and> P $ n = v \<and> v \<in> VV p \<and> \<sigma> v = None"
+      then obtain n v where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "enat n < llength P" "P $ n = v" "v \<in> VV p" "\<sigma> v = None" by blast
       have ?thesis proof (cases)
         assume "n = 0"
-        thus ?thesis using assms(2) assms(4) n_def(4) using n_def(2) by auto
+        thus ?thesis using assms(2) assms(4) n_def(2) n_def(3) n_def(5) by auto
       next
         assume "n \<noteq> 0"
         hence "path_conforms_with_strategy_up_to p P \<sigma> (Suc 0)" using n_def(1) by simp
-        thus ?thesis using assms(2) assms(3) path_conforms_with_strategy_up_to_def by simp
+        hence "enat (Suc 0) < llength P \<and> P $ Suc 0 = w" unfolding path_conforms_with_strategy_up_to_def using * P_notNull zero_enat_def by auto
+        thus ?thesis using assms(4) by blast
       qed
     }
     ultimately show ?thesis using assms(1) path_conforms_with_strategy_maximally_def by blast
-    *)
   qed
+
 lemma path_conforms_with_strategy_maximally_start_VVpstar:
   assumes "path_conforms_with_strategy_maximally p P \<sigma>"
     and v: "P $ 0 \<in> VV p**" "\<not>deadend (P $ 0)" "\<not>lnull P"
