@@ -863,9 +863,101 @@ lemma paths_can_be_restricted:
   assumes \<sigma>'_valid: "valid_strategy p \<sigma>"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma>' \<sigma>"
     and P_valid: "valid_path P"
+    and P_notNull: "\<not>lnull P"
     and P_conforms: "path_conforms_with_strategy_maximally p P \<sigma>"
   shows "\<exists>P'. \<not>lnull P' \<and> path_prefix P' P \<and> path_conforms_with_strategy_maximally p P' \<sigma>'"
-  sorry
+proof-
+  def n_end \<equiv> "\<lambda>n. enat n < llength P \<and> P $ n \<in> VV p \<and> \<sigma>' (P $ n) = None"
+  show ?thesis proof (cases)
+    assume "\<exists>n. n_end n"
+    then obtain n where n: "n_end n" "\<And>i. i < n \<Longrightarrow> \<not>n_end i" using obtain_min by blast
+    def [simp]: P' \<equiv> "ltake (eSuc (enat n)) P"
+    have P'_len: "llength P' = eSuc (enat n)" proof-
+      have "llength P' = min (eSuc (enat n)) (llength P)" by simp
+      moreover have "eSuc (enat n) \<le> llength P" using n_end_def n(1) by (simp add: ileI1)
+      ultimately show ?thesis by linarith
+    qed
+    have "\<not>lnull P'" by (simp add: P_notNull)
+    moreover have P'_prefix_P: "path_prefix P' P" by simp
+    moreover have "path_conforms_with_strategy_maximally p P' \<sigma>'" proof-
+      {
+        fix i assume i: "enat i < llength P'" "\<not>deadend (P' $ i)" "P' $ i \<in> VV p \<longrightarrow> (\<exists>w. \<sigma>' (P' $ i) = Some w)"
+        have "i \<noteq> n" proof (rule ccontr, simp)
+          assume "i = n"
+          hence 1: "P $ i \<in> VV p \<and> \<sigma>' (P $ i) = None" using n(1) n_end_def by auto
+          have "P' $ i = P $ i" using P'_prefix_P i(1) lprefix_lnthD by blast
+          hence 2: "P' $ i \<in> VV p \<and> \<sigma>' (P' $ i) = None" using 1 by simp
+          hence "\<exists>w. \<sigma>' (P' $ i) = Some w" using i(3) by blast
+          thus False using 2 by simp
+        qed
+        hence "enat (Suc i) < llength P'" using P'_len i(1) by auto
+      }
+      moreover have "\<exists>n. path_conforms_with_strategy_up_to p P' \<sigma>' n \<and> enat n < llength P' \<and> P' $ n \<in> VV p \<and> \<sigma>' (P' $ n) = None" proof-
+        have "path_conforms_with_strategy_up_to p P' \<sigma>' n" proof (unfold path_conforms_with_strategy_up_to_def, intro allI impI, elim conjE)
+          fix i w assume i: "enat i < llength P'" "i < n" "P' $ i \<in> VV p" "\<sigma>' (P' $ i) = Some w"
+          show "enat (Suc i) < llength P' \<and> P' $ Suc i = w" proof
+            show "enat (Suc i) < llength P'" using P'_len `i < n` by auto
+          next
+            have "enat (Suc i) < llength P \<and> P $ Suc i = w" proof-
+              have *: "P' $ i = P $ i" using P'_prefix_P i(1) lprefix_lnthD by blast
+              have "\<sigma> (P' $ i) = Some w" using \<sigma>_less_eq_\<sigma>' i(4) strategy_less_eq_def by auto
+              hence "\<sigma> (P $ i) = Some w" using P'_prefix_P i(1) path_prefix_included by fastforce
+              moreover have "enat i < llength P" using P'_prefix_P i(1) path_prefix_length by blast
+              moreover have "path_conforms_with_strategy_up_to p P \<sigma> (Suc i)" proof-
+                {
+                  assume "path_conforms_with_strategy p P \<sigma>"
+                  hence ?thesis using path_conforms_with_strategy_approximations2 by blast
+                }
+                moreover {
+                  assume "\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> enat n < llength P \<and> P $ n \<in> VV p \<and> \<sigma> (P $ n) = None"
+                  then obtain m where m: "path_conforms_with_strategy_up_to p P \<sigma> m" "enat m < llength P" "P $ m \<in> VV p" "\<sigma> (P $ m) = None" by blast
+                  with m(4) have "\<sigma>' (P $ m) = None" using \<sigma>_less_eq_\<sigma>' strategy_less_eq_not_none2 by blast
+                  with m(2) m(3) have "n_end m" using n_end_def by blast
+                  hence "n \<le> m" using le_less_linear n(2) by blast
+                  hence "Suc i \<le> m" using `i < n` by presburger
+                  with m(1) have ?thesis using path_conforms_with_strategy_less_eq by blast
+                }
+                moreover have "path_conforms_with_strategy p P \<sigma> \<or> (\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> enat n < llength P \<and> P $ n \<in> VV p \<and> \<sigma> (P $ n) = None)"
+                  using P_conforms path_conforms_with_strategy_maximally_def by blast
+                ultimately show ?thesis by blast
+              qed
+              moreover have "i < Suc i" by simp
+              moreover have "P $ i \<in> VV p" using i(3) * by simp
+              ultimately show ?thesis using path_conforms_with_strategy_up_to_def by blast
+            qed
+            thus "P' $ Suc i = w" by (simp add: eSuc_enat i(2) lnth_ltake)
+          qed
+        qed
+        thus ?thesis by (metis P'_len P'_prefix_P eSuc_enat enat_ord_simps(2) lessI n(1) n_end_def path_prefix_included)
+      qed
+      ultimately show ?thesis using path_conforms_with_strategy_maximally_def by blast
+    qed
+    ultimately show ?thesis by blast
+  next
+    assume no_n_end: "\<not>(\<exists>n. n_end n)"
+    have "path_conforms_with_strategy p P \<sigma>'" proof-
+      have *: "path_conforms_with_strategy p P \<sigma>" proof (rule ccontr)
+        assume "\<not>path_conforms_with_strategy p P \<sigma>"
+        then obtain n where n: "enat n < llength P" "P $ n \<in> VV p" "\<sigma> (P $ n) = None" using P_conforms path_conforms_with_strategy_maximally_def by blast
+        hence "\<sigma>' (P $ n) = None" using \<sigma>_less_eq_\<sigma>' strategy_less_eq_not_none2 by blast
+        thus False using n no_n_end n_end_def by blast
+      qed
+      {
+        fix i w assume i: "enat i < llength P" "P $ i \<in> VV p" "\<sigma>' (P $ i) = Some w"
+        hence "\<sigma> (P $ i) = Some w" using \<sigma>_less_eq_\<sigma>' strategy_less_eq_def by auto
+        hence "enat (Suc i) < llength P \<and> P $ Suc i = w" using i(1) i(2) * path_conforms_with_strategy_def by blast
+      }
+      thus ?thesis using path_conforms_with_strategy_def by blast
+    qed
+    moreover {
+      fix i assume i: "enat i < llength P" "\<not>deadend (P $ i)" "P $ i \<in> VV p \<longrightarrow> (\<exists>w. \<sigma>' (P $ i) = Some w)"
+      from i(3) have "P $ i \<in> VV p \<longrightarrow> (\<exists>w. \<sigma> (P $ i) = Some w)" using \<sigma>_less_eq_\<sigma>' strategy_less_eq_def by force
+      with i(1) i(2) have "enat (Suc i) < llength P" using P_conforms path_conforms_with_strategy_maximally_def by blast
+    }
+    ultimately have "path_conforms_with_strategy_maximally p P \<sigma>'" using path_conforms_with_strategy_maximally_def by blast
+    thus ?thesis using P_notNull by blast
+  qed
+qed
 
 end -- "context ParityGame"
 
