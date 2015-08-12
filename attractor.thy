@@ -209,14 +209,8 @@ lemma attractor_is_superset [simp]:
   shows "W \<subseteq> attractor_inductive p W" by (simp add: attractor_inductive.intros(1) subsetI)
 
 lemma attractor_is_bounded_by_V:
-  assumes "W \<subseteq> V" shows "attractor_inductive p W \<subseteq> V"
-  proof -
-    { fix v assume "v \<in> attractor_inductive p W"
-      hence "v \<in> W \<or> v \<in> VV p \<or> v \<in> VV p**" using attractor_inductive.simps by blast
-      hence "v \<in> V" by (metis (full_types) Diff_subset assms subsetCE valid_player0_set)
-    }
-    thus ?thesis by blast
-  qed
+  "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
+  using attractor_lowerbound attractor_step_bounded_by_V by auto
 
 (* lemma attractor_is_finite:
   "W \<subseteq> V \<Longrightarrow> finite (attractor p W)" by (metis assms attractor_is_bounded_by_V finite_vertex_set rev_finite_subset)
@@ -814,29 +808,28 @@ theorem attractor_has_strategy:
     thus ?thesis by blast
   qed
 
-(*
 corollary attractor_has_strategy_weak:
   fixes W p
   defines "A \<equiv> attractor p W"
   assumes "W \<subseteq> V" "W \<noteq> {}"
-  shows "\<exists>\<sigma>. strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W"
+  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W"
 proof -
   have "A \<subseteq> V" by (simp add: A_def assms(2) attractor_lowerbound)
   moreover have "\<And>v. v \<in> A \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v A W" using assms attractor_has_strategy by blast
   ultimately obtain \<sigma> where \<sigma>_def: "\<forall>v \<in> A. attractor_strategy_on p \<sigma> v A W" using merge_attractor_strategies `W \<subseteq> V` by blast
   have "A \<noteq> {}" by (simp add: A_def assms(3) attractor_set_non_empty)
   hence "\<exists>v \<in> A. attractor_strategy_on p \<sigma> v A W" using \<sigma>_def by blast
-  hence "strategy_only_on p \<sigma> (A - W)" using attractor_strategy_on_def by blast
+  hence "valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W)" using attractor_strategy_on_def by blast
   moreover have "strategy_attracts_from_to p \<sigma> A W" using assms sorry
   ultimately show ?thesis using strategy_less_eq_refl by blast
 qed
-*)
 
 (* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A. *)
-(* theorem attractor_has_outside_strategy:
+theorem attractor_has_outside_strategy:
   fixes W p
   defines "A \<equiv> attractor p** W"
   shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (V - A) \<and> strategy_avoids p \<sigma> (V - A) A"
+  sorry (*
   proof (intro exI conjI)
     (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
     the successor. *)

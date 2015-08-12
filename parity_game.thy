@@ -18,6 +18,8 @@ lemma enat_Suc_ltl: assumes "enat (Suc i) < llength xs" shows "enat i < llength 
   hence "enat i < epred (llength xs)" using eSuc_le_iff ileI1 by fastforce
   thus ?thesis by (simp add: epred_llength)
 qed
+lemma enat_ltl_Suc: assumes "enat i < llength (ltl xs)" shows "enat (Suc i) < llength xs"
+  by (metis assms eSuc_enat ldrop_ltl leD leI lnull_ldrop)
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
