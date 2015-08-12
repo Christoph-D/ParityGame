@@ -791,11 +791,7 @@ theorem attractor_has_strategy:
               hence tail_valid: "valid_path (ltl P)" using \<sigma>'(3) valid_path_ltl by blast
               have "ltl P $ 0 \<in> S" using \<sigma>'(3) \<sigma>'(4) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>lnull (ltl P)` valid_path_def by (metis (no_types) \<sigma>'(5) lhd_LCons_ltl lnth_0_conv_lhd valid_path_edges')
               then obtain w where w_def: "w \<in> S" and tail_start: "ltl P $ 0 = w" using `\<not>lnull (ltl P)` by blast
-              have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'"  proof-
-                have "eSuc 0 < llength P" using \<sigma>'(4) `\<not>lnull (ltl P)` by (simp add: enat_unfold_next llength_def)
-                hence "enat (Suc 0) < llength P" by (simp add: eSuc_enat zero_enat_def)
-                thus ?thesis using path_conforms_with_strategy_maximally_tail \<sigma>'(5) \<sigma>'(6) sorry
-              qed
+              have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'" using path_conforms_with_strategy_maximally_tail \<sigma>'(4) \<sigma>'(6) by blast
               have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
               hence "\<exists>n. enat n < llength (ltl P) \<and> ltl P $ n \<in> W" using tail_valid tail_start tail_conforms
                 using \<sigma>'(1) \<sigma>'(2) attractor_strategy_on_def `\<not>lnull (ltl P)` by blast
