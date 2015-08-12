@@ -270,18 +270,18 @@ proof (unfold path_conforms_with_strategy_def, intro allI impI, elim conjE)
   thus "enat (Suc i) < llength (ltl P) \<and> ltl P $ Suc i = w" using assms(1) ltl_inf by (metis enat_ord_code(4) lfinite_ltl llength_eq_infty_conv_lfinite)
 qed
 
-lemma path_tail_conforms_suc:
-  assumes "\<not>lnull P" "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)"
+lemma path_conforms_with_strategy_up_to_tail:
+  assumes "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" "\<not>lnull P"
   shows "path_conforms_with_strategy_up_to p (ltl P) \<sigma> n"
 proof-
   let ?P = "ltl P"
   { fix i w assume i: "enat i < llength ?P" "i < n" "?P $ i \<in> VV p" "\<sigma> (?P $ i) = Some w"
     have "enat (Suc i) < llength P" by (metis i(1) ldrop_eSuc_ltl leD leI lnull_ldropn)
     moreover have "Suc i < Suc n" using i(2) by simp
-    moreover have "P $ Suc i \<in> VV p" using assms(1) i(3) lnth_ltl by force
-    moreover have "\<sigma> (P $ Suc i) = Some w" using assms(1) i(4) lnth_ltl by fastforce
-    ultimately have "enat (Suc (Suc i)) < llength P \<and> P $ Suc (Suc i) = w" using assms(2) path_conforms_with_strategy_up_to_def by blast
-    hence "enat (Suc i) < llength ?P \<and> ?P $ Suc i = w" by (simp add: assms(1) enat_Suc_ltl lnth_ltl)
+    moreover have "P $ Suc i \<in> VV p" using assms(2) i(3) lnth_ltl by force
+    moreover have "\<sigma> (P $ Suc i) = Some w" using assms(2) i(4) lnth_ltl by fastforce
+    ultimately have "enat (Suc (Suc i)) < llength P \<and> P $ Suc (Suc i) = w" using assms(1) path_conforms_with_strategy_up_to_def by blast
+    hence "enat (Suc i) < llength ?P \<and> ?P $ Suc i = w" by (simp add: assms(2) enat_Suc_ltl lnth_ltl)
   }
   thus ?thesis unfolding path_conforms_with_strategy_up_to_def by blast
 qed
@@ -295,8 +295,7 @@ proof-
 qed
 
 lemma path_conforms_with_strategy_maximally_tail:
-  assumes "path_conforms_with_strategy_maximally p P \<sigma>"
-    and "\<not>lnull P"
+  assumes "path_conforms_with_strategy_maximally p P \<sigma>" "\<not>lnull P"
   shows "path_conforms_with_strategy_maximally p (ltl P) \<sigma>"
 proof-
   let ?P = "ltl P"
@@ -505,40 +504,38 @@ lemma strategy_less_eq_extensible:
 
 lemma strategy_only_on_extensible:
   assumes "valid_strategy p \<sigma>" "strategy_only_on p \<sigma> W'" "W' \<subseteq> W"
-  shows "\<exists>\<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> strategy_only_on p \<sigma>' W" proof-
-    let ?\<sigma>' = "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else if v \<in> W \<inter> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None"
-    have "valid_strategy p ?\<sigma>'" proof-
-      { fix v w assume v: "?\<sigma>' v = Some w"
-        hence "v \<in> VV p \<and> v\<rightarrow>w" proof (cases "\<sigma> v \<noteq> None")
-          case True
-          have "\<sigma> v = ?\<sigma>' v" by (simp add: True)
-          thus "v \<in> VV p \<and> v\<rightarrow>w" using assms(1) v valid_strategy_def by (metis (no_types, lifting))
-        next
-          case False
-          hence *: "v \<in> W \<inter> VV p \<and> \<not>deadend v" using v by (metis option.distinct(2))
-          hence "\<exists>w. v\<rightarrow>w" by blast
-          hence "v\<rightarrow>(SOME w. v\<rightarrow>w)" by (meson someI_ex)
-          hence "v\<rightarrow>the (Some (SOME w. v\<rightarrow>w))" by auto
-          moreover have "v \<in> VV p" using * by simp
-          ultimately show ?thesis using False v by (metis option.distinct(1) option.sel)
-        qed
-      }
-      thus ?thesis using valid_strategy_def by blast
+  shows "\<exists>\<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> strategy_only_on p \<sigma>' W"
+proof-
+  let ?\<sigma>' = "\<lambda>v. if \<sigma> v \<noteq> None then \<sigma> v else if v \<in> W \<inter> VV p \<and> \<not>deadend v then Some (SOME w. v\<rightarrow>w) else None"
+  have "valid_strategy p ?\<sigma>'" proof (unfold valid_strategy_def; intro allI impI)
+    fix v w assume v: "?\<sigma>' v = Some w"
+    thus "v \<in> VV p \<and> v\<rightarrow>w" proof (cases "\<sigma> v \<noteq> None")
+      case True
+      have "\<sigma> v = ?\<sigma>' v" by (simp add: True)
+      thus "v \<in> VV p \<and> v\<rightarrow>w" using assms(1) v valid_strategy_def by (metis (no_types, lifting))
+    next
+      case False
+      hence *: "v \<in> W \<inter> VV p \<and> \<not>deadend v" using v by (metis option.distinct(2))
+      hence "\<exists>w. v\<rightarrow>w" by blast
+      hence "v\<rightarrow>(SOME w. v\<rightarrow>w)" by (meson someI_ex)
+      hence "v\<rightarrow>the (Some (SOME w. v\<rightarrow>w))" by auto
+      moreover have "v \<in> VV p" using * by simp
+      ultimately show ?thesis using False v by (metis option.distinct(1) option.sel)
     qed
-    moreover have "strategy_only_on p ?\<sigma>' W" proof (unfold strategy_only_on_def; intro allI)
-      fix v
-      have "v \<in> W \<inter> VV p \<and> \<not>deadend v \<longrightarrow> (\<exists>w. ?\<sigma>' v = Some w)" (is ?A) by (metis option.collapse)
-      moreover have "v \<notin> W \<inter> VV p \<longrightarrow> ?\<sigma>' v = None" (is ?B) proof (clarify)
-        fix v assume assm: "v \<notin> W \<inter> VV p"
-        hence "v \<notin> W' \<inter> VV p" using assms(3) by blast
-        hence "\<sigma> v = None" using assms(2) strategy_only_on_def by blast
-        thus "?\<sigma>' v = None" using assm by auto
-      qed
-      ultimately show "?A \<and> ?B" by blast
-    qed
-    moreover have "strategy_less_eq \<sigma> ?\<sigma>'" using strategy_less_eq_not_none by presburger
-    ultimately show ?thesis using strategy_only_on_def by blast
   qed
+  moreover have "strategy_only_on p ?\<sigma>' W" proof (unfold strategy_only_on_def; intro allI conjI)
+    fix v
+    show "v \<in> W \<inter> VV p \<and> \<not>deadend v \<longrightarrow> (\<exists>w. ?\<sigma>' v = Some w)" (is ?A) by (metis option.collapse)
+    show "v \<notin> W \<inter> VV p \<longrightarrow> ?\<sigma>' v = None" (is ?B) proof (clarify)
+      fix v assume assm: "v \<notin> W \<inter> VV p"
+      hence "v \<notin> W' \<inter> VV p" using assms(3) by blast
+      hence "\<sigma> v = None" using assms(2) strategy_only_on_def by blast
+      thus "?\<sigma>' v = None" using assm by auto
+    qed
+  qed
+  moreover have "strategy_less_eq \<sigma> ?\<sigma>'" using strategy_less_eq_not_none by presburger
+  ultimately show ?thesis using strategy_only_on_def by blast
+qed
 
 (*
 lemma restricted_strategy_paths:
