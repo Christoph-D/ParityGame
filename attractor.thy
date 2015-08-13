@@ -295,24 +295,68 @@ qed
 
 lemma merge_attractor_strategies:
   fixes W p S
-  assumes "W \<subseteq> V"
-    and "S \<subseteq> V"
+  assumes "W \<subseteq> V" "S \<subseteq> V"
     and "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v S W"
   shows "\<exists>\<sigma>. \<forall>v \<in> S. attractor_strategy_on p \<sigma> v S W"
 proof-
   let ?good = "\<lambda>v. {\<sigma>. attractor_strategy_on p \<sigma> v S W}"
   def G \<equiv> "{ \<sigma>. \<exists>v \<in> S. attractor_strategy_on p \<sigma> v S W }"
-  obtain r where "well_order_on G r" using well_order_on by blast
-  def choose \<equiv> "\<lambda>v. THE \<sigma>. \<sigma> \<in> ?good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r \<longrightarrow> \<sigma>' \<notin> ?good v)"
-  def \<sigma> \<equiv> "\<lambda>v. if v \<in> S - W
-    then Some (choose v)
+  obtain r where r: "well_order_on G r" using well_order_on by blast
+  hence wf: "wf (r - Id)" using well_order_on_def by blast
+
+  def [simp]: choose' \<equiv> "\<lambda>v \<sigma>. \<sigma> \<in> ?good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> ?good v)"
+  def [simp]: choose \<equiv> "\<lambda>v. THE \<sigma>. choose' v \<sigma>"
+  def \<sigma> \<equiv> "\<lambda>v. if v \<in> (S - W) \<inter> VV p
+    then (choose v) v
     else None"
-  (* have "\<And>v. v \<in> S - W \<Longrightarrow> \<exists>!\<sigma>. ?good \<sigma> v \<and> (\<forall>\<sigma>'. ?good \<sigma>' v \<and> \<sigma> \<noteq> \<sigma>' \<longrightarrow> (\<sigma>,\<sigma>') \<in> r)" proof
-    fix v assume "v \<in> S - W"
-    have "\<exists>\<sigma>. ?good \<sigma> v" using `v \<in> S - W` assms(3) by auto
-    hence "\<exists>\<sigma>. ?good \<sigma> v \<and> (\<forall>\<sigma>'. ?good \<sigma>' v \<and> \<sigma> \<noteq> \<sigma>' \<longrightarrow> (\<sigma>,\<sigma>') \<in> r)" sorry
-  qed *)
-  show ?thesis sorry
+
+  { fix v assume "v \<in> S"
+    hence "\<exists>\<sigma>. \<sigma> \<in> ?good v" using assms(3) by blast
+    then obtain \<sigma> where \<sigma>: "choose' v \<sigma>" unfolding choose'_def by (meson local.wf wf_eq_minimal)
+    { fix \<sigma>' assume \<sigma>': "choose' v \<sigma>'"
+      have "(\<sigma>, \<sigma>') \<notin> r - Id" using \<sigma> \<sigma>' by auto
+      moreover have "(\<sigma>', \<sigma>) \<notin> r - Id" using \<sigma> \<sigma>' by auto
+      moreover have "\<sigma> \<in> G" using G_def \<sigma>(1) `v \<in> S` by auto
+      moreover have "\<sigma>' \<in> G" using G_def \<sigma>'(1) `v \<in> S` by auto
+      ultimately have "\<sigma>' = \<sigma>" using r Linear_order_in_diff_Id well_order_on_Field well_order_on_def by fastforce
+    }
+    with \<sigma> have "\<exists>!\<sigma>. choose' v \<sigma>" by blast
+    hence "choose' v (choose v)" using theI'[of "choose' v"] choose_def by fastforce
+  } note choose_works = this
+
+  { fix v assume "v \<in> S - W"
+    hence "\<not>deadend v" sorry
+  } note S_W_no_deadends = this
+
+  { fix v0 assume "v0 \<in> S"
+    {
+      { fix v w assume "\<sigma> v = Some w"
+        hence "v \<in> (S - W) \<inter> VV p" by (metis \<sigma>_def option.distinct(2))
+        hence "valid_strategy p (choose v)" using choose_works choose'_def attractor_strategy_on_def by blast
+        moreover have "(choose v) v = Some w" using \<sigma>_def `\<sigma> v = Some w` `v \<in> (S - W) \<inter> VV p` by auto
+        ultimately have "v \<in> VV p \<and> v \<rightarrow> w" using valid_strategy_def by blast
+      }
+      hence "valid_strategy p \<sigma>" unfolding valid_strategy_def by blast
+    }
+    moreover {
+      { fix v assume v: "v \<in> (S - W) \<inter> VV p" "\<not>deadend v"
+        from v(1) have "strategy_only_on p (choose v) (S - W)" using choose_works choose'_def attractor_strategy_on_def by blast
+        moreover from v(1) have "\<sigma> v = choose v v" by (simp add: \<sigma>_def)
+        ultimately have "\<exists>w. \<sigma> v = Some w" using strategy_only_on_def v(1) v(2) by auto
+      }
+      moreover have "\<And>v. v \<notin> (S - W) \<inter> VV p \<Longrightarrow> \<sigma> v = None" using \<sigma>_def by auto
+      ultimately have "strategy_only_on p \<sigma> (S - W)" unfolding strategy_only_on_def by blast
+    }
+    moreover {
+      { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
+          and P: "valid_path P" "\<not>lnull P" "path_conforms_with_strategy_maximally p P \<sigma>'" "P $ 0 = v0"
+        have "lset P \<inter> W \<noteq> {}" sorry
+      }
+      hence "\<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> \<not> lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>' \<longrightarrow> lset P \<inter> W \<noteq> {}" by blast
+    }
+    ultimately have "attractor_strategy_on p \<sigma> v0 S W" unfolding attractor_strategy_on_def by blast
+  }
+  thus ?thesis by blast
 qed
 
 theorem attractor_has_strategy:
