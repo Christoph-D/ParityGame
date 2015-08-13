@@ -12,10 +12,6 @@ definition strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set
 definition strategy_only_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_only_on p \<sigma> W \<equiv> \<forall>v. (v \<in> W \<inter> VV p \<and> \<not>deadend v \<longrightarrow> (\<exists>w. \<sigma> v = Some w)) \<and> (v \<notin> W \<inter> VV p \<longrightarrow> \<sigma> v = None)"
 
-(* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
-definition positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
-
 definition path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy p P \<sigma> \<equiv> \<forall>i w. enat i < llength P \<and> P $ i \<in> VV p \<and> \<sigma> (P $ i) = Some w \<longrightarrow> enat (Suc i) < llength P \<and> P $ Suc i = w"
 definition path_conforms_with_strategy_up_to :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> nat \<Rightarrow> bool" where
