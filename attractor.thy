@@ -616,6 +616,15 @@ abbreviation strategy_attracts_to :: "Player \<Rightarrow> 'a Strategy \<Rightar
   "strategy_attracts_to p \<sigma> v0 W \<equiv> \<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>'
         \<and> valid_path P \<and> \<not>lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>'
         \<longrightarrow> (\<exists>n. enat n < llength P \<and> P $ n \<in> W)"
+
+lemma assumes "\<And>v. v \<in> A \<Longrightarrow> strategy_attracts_to p \<sigma> v W"
+  shows "strategy_attracts_from_to p \<sigma> A W"
+proof (unfold strategy_attracts_from_to_def, intro allI impI, elim conjE)
+  fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 \<in> A"
+  from assms P(5) have "strategy_attracts_to p \<sigma> (P $ 0) W" by blast
+  show "lset P \<inter> W \<noteq> {}" sorry
+qed
+
 definition attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_strategy_on p \<sigma> v0 A W \<equiv>
     valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_to p \<sigma> v0 W"

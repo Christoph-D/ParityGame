@@ -20,6 +20,8 @@ lemma enat_Suc_ltl: assumes "enat (Suc i) < llength xs" shows "enat i < llength 
 qed
 lemma enat_ltl_Suc: assumes "enat i < llength (ltl xs)" shows "enat (Suc i) < llength xs"
   by (metis assms eSuc_enat ldrop_ltl leD leI lnull_ldrop)
+lemma lset_intersect_lnth: "lset xs \<inter> A \<noteq> {} \<Longrightarrow> \<exists>i. enat i < llength xs \<and> lnth xs i \<in> A"
+  by (metis assms disjoint_iff_not_equal in_lset_conv_lnth)
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"

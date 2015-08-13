@@ -28,7 +28,8 @@ proof -
     assume v_in_attractor: "v0 \<in> attractor p (?deadends p**)"
     have "winning_strategy p \<sigma>' v0" proof (unfold winning_strategy_def, clarify)
       fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "v0 = P $ 0"
-      obtain i where i_def: "enat i < llength P \<and> P $ i \<in> ?deadends p**" using \<sigma>'_attracts A_def v_in_attractor strategy_attracts_from_to_def P by blast
+      obtain i where i_def: "enat i < llength P \<and> P $ i \<in> ?deadends p**"
+        using \<sigma>'_attracts A_def v_in_attractor strategy_attracts_from_to_def P lset_intersect_lnth[of P "?deadends p**"] by blast
       have *: "enat (Suc i) = llength P" using P(2) i_def valid_path_ends_on_deadend by auto
       hence "lfinite P" using llength_eq_enat_lfiniteD by force
       moreover have "llast P \<in> VV p**" proof-

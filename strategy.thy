@@ -516,15 +516,9 @@ definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> '
 definition strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_attracts_from_to p \<sigma> A W \<equiv> (\<forall>P.
       \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> A
-    \<longrightarrow> (\<exists>i. enat i < llength P \<and> P $ i \<in> W))"
+    \<longrightarrow> lset P \<inter> W \<noteq> {})"
 lemma strategy_attracts_from_to_trivial [simp]:
-  "strategy_attracts_from_to p \<sigma> W W" by (metis ldropn_0 ldropn_eq_LConsD not_lnull_conv strategy_attracts_from_to_def)
-
-lemma strategy_attracts_from_to_extends:
-  assumes "strategy_attracts_from_to p \<sigma> A W"
-    and "strategy_less_eq \<sigma> \<sigma>'"
-  shows "strategy_attracts_from_to p \<sigma>' A W"
-  sorry
+  "strategy_attracts_from_to p \<sigma> W W" by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv strategy_attracts_from_to_def)
 
 definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P n.
@@ -560,6 +554,15 @@ proof-
 qed
 
 lemma path_conforms_preserved_under_extension:
+  assumes \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'" and P_conforms: "path_conforms_with_strategy p P \<sigma>'"
+  shows "path_conforms_with_strategy p P \<sigma>"
+proof (unfold path_conforms_with_strategy_def, intro allI impI, elim conjE)
+    fix i w assume i: "enat i < llength P" "P $ i \<in> VV p" "\<sigma> (P $ i) = Some w"
+    hence "\<sigma>' (P $ i) = Some w" using \<sigma>_less_eq_\<sigma>' strategy_less_eq_def by auto
+    with i(1) i(2) P_conforms show "enat (Suc i) < llength P \<and> P $ Suc i = w" unfolding path_conforms_with_strategy_def by blast
+qed
+
+(* lemma path_conforms_preserved_under_extension:
   assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
     and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
     and P_valid: "valid_path P"
@@ -615,6 +618,7 @@ proof (unfold path_conforms_with_strategy_def; intro allI impI; elim conjE)
     thus ?thesis using P(1) P(2) path_conforms_with_strategy_def by (simp add: P(3))
   qed
 qed
+*)
 
 lemma winning_strategy_preserved_under_extension:
   assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
@@ -870,6 +874,15 @@ proof-
     ultimately have "path_conforms_with_strategy_maximally p P \<sigma>'" using path_conforms_with_strategy_maximally_def by blast
     thus ?thesis using P_notNull by blast
   qed
+qed
+
+lemma strategy_attracts_from_to_extends:
+  assumes "strategy_attracts_from_to p \<sigma> A W" "strategy_less_eq \<sigma> \<sigma>'"
+  shows "strategy_attracts_from_to p \<sigma>' A W"
+proof (unfold strategy_attracts_from_to_def, intro allI impI, elim conjE)
+  fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "P $ 0 \<in> A"
+  from assms(2) P(4) have "path_conforms_with_strategy p P \<sigma>" using path_conforms_preserved_under_extension by blast
+  with P(1) P(2) P(3) P(5) assms(1) show "lset P \<inter> W \<noteq> {}" using strategy_attracts_from_to_def by blast
 qed
 
 end -- "context ParityGame"
