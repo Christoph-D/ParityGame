@@ -12,27 +12,6 @@ definition strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set
 definition strategy_only_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_only_on p \<sigma> W \<equiv> \<forall>v. (v \<in> W \<inter> VV p \<and> \<not>deadend v \<longrightarrow> (\<exists>w. \<sigma> v = Some w)) \<and> (v \<notin> W \<inter> VV p \<longrightarrow> \<sigma> v = None)"
 
-(*definition restrict_path :: "'a Path \<Rightarrow> 'a set \<Rightarrow> 'a Path" (infixl "\<restriction>\<^sub>P" 80) where
-  "restrict_path P W \<equiv> \<lambda>i. if the (P i) \<in> W then P i else None"
-definition restrict_strategy :: "'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a Strategy" (infixl "\<restriction>\<^sub>S" 80) where
-  "restrict_strategy \<sigma> W \<equiv> \<lambda>v. if v \<in> W \<and> the (\<sigma> v) \<in> W then \<sigma> v else None"
-
-lemma restricted_strategy_invariant [simp]:
-  assumes "v \<in> W" "the (\<sigma> v) \<in> W"
-  shows "(\<sigma> \<restriction>\<^sub>S W) v = \<sigma> v"
-  by (simp add: assms restrict_strategy_def)
-
-lemma restricted_path_invariant [simp]:
-  assumes "the (P i) \<in> W"
-  shows "(P \<restriction>\<^sub>P W) i = P i"
-  by (simp add: assms restrict_path_def)
-
-lemma restricted_path_dom [simp]:
-  assumes "i \<in> path_dom (P \<restriction>\<^sub>P W)"
-  shows "i \<in> path_dom P"
-  by (metis (mono_tags, lifting) assms mem_Collect_eq restrict_path_def)
-*)
-
 (* True iff \<sigma> is defined on all non-deadend nodes of the given player. *)
 definition positional_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "positional_strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> \<sigma> v \<noteq> None"
@@ -479,48 +458,6 @@ proof-
   ultimately show ?thesis using strategy_only_on_def by blast
 qed
 
-(*
-lemma restricted_strategy_paths:
-  assumes "path_conforms_with_strategy p P \<sigma>"
-  shows "path_conforms_with_strategy p (P \<restriction>\<^sub>P W) (\<sigma> \<restriction>\<^sub>S W)"d
-  proof (unfold path_conforms_with_strategy_def; clarify)
-    let ?P' = "P \<restriction>\<^sub>P W"
-    let ?\<sigma>' = "\<sigma> \<restriction>\<^sub>S W"
-    fix i v assume i: "i \<in> path_dom ?P'" and Pi: "the (?P' i) \<in> VV p" "?P' i = Some v"
-    hence "v \<in> W" by (metis option.distinct(1) option.sel restrict_path_def)
-    moreover
-    have Pii: "?P' i = P i" by (metis Pi(2) option.distinct(1) restrict_path_def)
-    moreover
-    hence "the (P i) \<in> VV p" using Pi(1) by auto
-    moreover
-    have "i \<in> path_dom P" using i restricted_path_dom by blast
-    ultimately have \<sigma>: "\<sigma>(the (P i)) = P (i+1)" using Pi(2) assms path_conforms_with_strategy_def by auto
-
-    show "?\<sigma>'(the (?P' i)) = ?P' (i+1)" proof (cases)
-      assume "the (P (i+1)) \<in> W" thus ?thesis using Pi(2) Pii \<sigma> `v \<in> W` by auto
-    next
-      assume "the (P (i+1)) \<notin> W" thus ?thesis using Pi(2) Pii \<sigma> `v \<in> W` by (simp add: restrict_path_def restrict_strategy_def)
-    qed
-  qed
-
-lemma restricted_strategy_paths_inv:
-  assumes "path_conforms_with_strategy p P (\<sigma> \<restriction>\<^sub>S W)"
-    "\<forall>i \<in> path_dom P. the (P i) \<in> W"
-  shows "path_conforms_with_strategy p P \<sigma>"
-  proof (unfold path_conforms_with_strategy_def; clarify)
-    fix i v assume i: "i \<in> path_dom P" and Pi: "the (P i) \<in> VV p" "P i = Some v"
-    hence "the (P i) \<in> W" using assms(2) by auto
-    { assume "P (i+1) = None"
-      have "\<sigma>(the (P i)) = P (i+1)" by sledgehamme
-      have "(\<sigma> \<restriction>\<^sub>S W)(the (P i)) = P (i+1)" using Pi(1) assms(1) i path_conforms_with_strategy_def by auto
-    }
-    { assume "P (i+1) \<noteq> None"
-      have "(\<sigma> \<restriction>\<^sub>S W)(the (P i)) = P (i+1)" using Pi(1) assms(1) i path_conforms_with_strategy_def by auto
-    }
-    show "\<sigma>(the (P i)) = P (i+1)" sorry
-  qed
-*)
-
 definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v \<longrightarrow> winning_path p P"
 
@@ -574,64 +511,6 @@ proof (unfold path_conforms_with_strategy_def, intro allI impI, elim conjE)
     hence "\<sigma>' (P $ i) = Some w" using \<sigma>_less_eq_\<sigma>' strategy_less_eq_def by auto
     with i(1) i(2) P_conforms show "enat (Suc i) < llength P \<and> P $ Suc i = w" unfolding path_conforms_with_strategy_def by blast
 qed
-
-(* lemma path_conforms_preserved_under_extension:
-  assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
-    and \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
-    and P_valid: "valid_path P"
-    and P_conforms: "path_conforms_with_strategy p P \<sigma>'"
-    and P_valid_start: "P $ 0 = v0" "\<not>lnull P"
-  shows "path_conforms_with_strategy p P \<sigma>"
-proof (unfold path_conforms_with_strategy_def; intro allI impI; elim conjE)
-  fix i w
-  assume P: "enat i < llength P" "P $ i \<in> VV p" "\<sigma> (P $ i) = Some w"
-  show "enat (Suc i) < llength P \<and> P $ Suc i = w" proof-
-    have no_deadend: "\<not>deadend (P $ i)" using P(3) \<sigma>_valid valid_strategy_none_on_deadends by fastforce
-    hence \<sigma>'_next: "\<sigma>' (P $ i) = Some (P $ Suc i)" using P_conforms P path_conforms_with_strategy_def \<sigma>_less_eq_\<sigma>' strategy_less_eq_def by auto
-    {
-      fix n
-      have "path_conforms_with_strategy_up_to p P \<sigma> n" proof (induct n)
-        case 0 thus ?case unfolding path_conforms_with_strategy_up_to_def by blast
-      next
-        case (Suc n)
-        show ?case proof (cases)
-          assume "\<not>enat n < llength P" thus ?thesis using path_conforms_empty by (meson P_valid Suc.hyps le_eq_less_or_eq lessI)
-        next
-          assume "\<not>\<not>enat n < llength P"
-          hence "enat n < llength P" by simp
-          show "path_conforms_with_strategy_up_to p P \<sigma> (Suc n)" sorry (* proof (cases)
-            assume assm: "P $ i \<in> VV p \<and> \<not>deadend (P $ i)"
-            hence "\<sigma> (P $ i) \<noteq> None" using \<sigma>_valid P_valid P_conforms P_valid_start valid_strategy_from_def Suc.hyps by (simp add: P(3))
-            hence "\<sigma> (P $ i) = \<sigma>' (P $ i)" using \<sigma>_less_eq_\<sigma>' using strategy_less_eq_def by blast
-            moreover have "\<sigma>' (P $ i) = Some (P $ Suc i)" using \<sigma>'_next by blast
-            ultimately have *: "\<sigma> (P $ i) = Some (P $ Suc i)" sledgehammer
-            show ?thesis proof (unfold path_conforms_with_strategy_up_to_def; intro allI impI)
-              fix i v' assume i_def: "i < Suc n \<and> P i = Some v' \<and> v' \<in> VV p"
-              show "\<sigma> v' = P (Suc i)" proof (cases)
-                assume "i < n"
-                hence "P i = Some v' \<Longrightarrow> v' \<in> VV p \<Longrightarrow> \<sigma> v' = P (Suc i)" using Suc.hyps path_conforms_with_strategy_up_to_def by blast
-                thus ?thesis using i_def by blast
-              next
-                assume "\<not>i < n"
-                hence "i = n" using i_def by auto
-                thus ?thesis using * by (metis i_def option.sel v_def)
-              qed
-            qed
-          next
-            assume "\<not>(P $ i \<in> VV p \<and> \<not>deadend (P $ i))"
-            thus ?thesis using P(2) no_deadend by blast
-            moreover { assume "P $ i \<notin> VV p" hence ?thesis using P(2) by blast }
-            moreover { assume "deadend (P $ i)" hence ?thesis using no_deadend by blast }
-            ultimately show ?thesis by blast
-          qed *)
-        qed
-      qed
-    }
-    hence "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_approximations by blast
-    thus ?thesis using P(1) P(2) path_conforms_with_strategy_def by (simp add: P(3))
-  qed
-qed
-*)
 
 lemma winning_strategy_preserved_under_extension:
   assumes \<sigma>_valid: "valid_strategy_from p \<sigma> v0"

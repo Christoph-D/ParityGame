@@ -212,18 +212,11 @@ lemma attractor_is_bounded_by_V:
   "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
   using attractor_lowerbound attractor_step_bounded_by_V by auto
 
-(* lemma attractor_is_finite:
-  "W \<subseteq> V \<Longrightarrow> finite (attractor p W)" by (metis assms attractor_is_bounded_by_V finite_vertex_set rev_finite_subset)
-*)
-
 lemma attractor_inductive_outside: "\<lbrakk> v \<notin> attractor_inductive p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor_inductive p W" by (metis attractor_inductive.VVp)
 lemma attractor_outside: "\<lbrakk> v \<notin> attractor p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor p W" using attractor_set_VVp by blast
 
 lemma directly_attracted_is_bounded_by_V:
   shows "directly_attracted p W \<subseteq> V" using directly_attracted_def by blast
-(* lemma directly_attracted_is_finite [simp]:
-  shows "finite (directly_attracted p W)" using directly_attracted_is_bounded_by_V finite_subset finite_vertex_set by blast
-*)
 lemma directly_attracted_is_disjoint_from_W [simp]:
   shows "W \<inter> directly_attracted p W = {}" using directly_attracted_def by blast
 lemma directly_attracted_is_eventually_empty [simp]:
@@ -282,336 +275,6 @@ lemma attractor_contains_no_deadends:
   "\<lbrakk> W \<subseteq> V; v \<in> attractor p W \<rbrakk> \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
   using attractor_inductive_contains_no_deadends attractor_inductive_is_attractor by auto
 
-(* True iff the given set is attractor closed. *)
-definition attractor_closed :: "Player \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "attractor_closed p W \<equiv> directly_attracted p W = {}"
-
-(* Show that the attractor set is indeed attractor closed. *)
-(*
-lemma attractor_is_attractor_closed [simp]:
-  shows "attractor_closed p (attractor p W)"
-  proof -
-    def A \<equiv> "attractor p W"
-    {
-      fix v assume v_assm: "v \<in> V - A"
-      hence "v \<in> V" by auto
-      hence "v \<in> VV p \<or> v \<in> VV p**" by (metis (full_types) DiffI Player.distinct(1) local.VV.elims other_player.simps(1) other_player.simps(2))
-      hence "v \<in> VV p - A \<or> v \<in> VV p** - A" using v_assm by auto
-    } note VV_A_disjoint = this
-    have "directly_attracted p A = {}" proof -
-      { fix v assume v_def: "v \<in> directly_attracted p A"
-        hence v_dom: "v \<in> V - A" using directly_attracted_def by auto
-        hence False proof (cases)
-          assume v_in_VVp: "v \<in> VV p - A"
-          hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<notin> A" by (metis A_def DiffD1 DiffD2 local.attractor.intros(2))
-          thus ?thesis using v_def directly_attracted_def v_in_VVp by blast
-        next
-          assume "v \<notin> VV p - A"
-          hence v_in_VVp_star: "v \<in> VV p** - A" using VV_A_disjoint v_dom by blast
-          hence "\<not>deadend v \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<notin> A" by (metis A_def DiffD1 DiffD2 local.attractor.intros(3))
-          thus ?thesis using v_def directly_attracted_def v_in_VVp_star by blast
-        qed
-      }
-      thus ?thesis by auto
-    qed
-    thus ?thesis by (simp add: A_def local.attractor_closed_def)
-  qed
-*)
-
-(* function attractor_set_fun :: "nat \<Rightarrow> Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
-  "attractor_set_fun 0 p W = W"
-  | "attractor_set_fun (Suc n) p W = (if directly_attracted p W = {} then W else attractor_set_fun n p (W \<union> directly_attracted p W))"
-  by pat_completeness auto
-  termination by lexicographic_order
-
-lemma attractor_set_fun_subset [simp]:
-  "W \<subseteq> attractor_set_fun n p W" proof (induct n arbitrary: W)
-    case 0 thus ?case by auto
-    case (Suc n) thus ?case by (metis Un_subset_iff attractor_set_fun.simps(2) eq_iff)
-  qed
-lemma attractor_set_fun_monotone:
-  "attractor_set_fun n p W \<subseteq> attractor_set_fun (Suc n) p W" by (induct n arbitrary: W; auto)
-lemma attractor_set_fun_monotone_generalized [simp]:
-  "attractor_set_fun n p W \<subseteq> attractor_set_fun (n + m) p W" by (induct n arbitrary: W m; simp)
-lemma attractor_set_fun_bounded_by_V:
-  "attractor_set_fun n p W \<subseteq> V \<union> W" proof (induct n arbitrary: W)
-    case 0 thus ?case by auto
-    case (Suc n)
-    have "directly_attracted p W \<subseteq> V" by (simp add: directly_attracted_is_bounded_by_V)
-    thus ?case using Suc.hyps by auto
-  qed
-*)
-
-(* lemma attractor_set_fun_finite:
-  "finite W \<Longrightarrow> finite (attractor_set_fun n p W)" by (metis attractor_set_fun_bounded_by_V finite_UnI finite_vertex_set rev_finite_subset)
-*)
-
-(* lemma attractor_set_fun_equivalence [iff]:
-  "attractor_set_fun (Suc n) p W = attractor_set_fun n p (W \<union> directly_attracted p W)"
-  by (metis Un_empty_right attractor_set_fun.elims attractor_set_fun.simps(2))
-
-lemma attractor_set_fun_directly_attracted:
-  "attractor_set_fun n p W \<union> directly_attracted p (attractor_set_fun n p W) = attractor_set_fun (Suc n) p W"
-  by (induct n arbitrary: W; auto)
-
-lemma attractor_set_fun_eventually_constant:
-  assumes "W \<subseteq> V"
-  shows "\<exists>n. attractor_set_fun n p W = attractor_set_fun (Suc n) p W"
-  proof-
-    have finite: "finite W" using assms finite_vertex_set rev_finite_subset by blast
-    have "card (attractor_set_fun 0 p W) \<ge> 0" by auto
-    {
-    fix n :: nat and W :: "'a set"
-    assume finite: "finite W"
-    have "attractor_set_fun n p W \<noteq> attractor_set_fun (Suc n) p W \<Longrightarrow>
-      card (attractor_set_fun n p W) < card (attractor_set_fun (Suc n) p W)" proof (induct n)
-      case 0
-      have "attractor_set_fun 1 p W = W \<union> directly_attracted p W" by auto
-      hence "W \<noteq> W \<union> directly_attracted p W" using "0.prems" by fastforce
-      hence "card W < card (W \<union> directly_attracted p W)" by (simp add: finite psubsetI psubset_card_mono)
-      thus ?case by auto
-    next
-      case (Suc n)
-      assume IH: "attractor_set_fun n p W \<noteq> attractor_set_fun (Suc n) p W \<Longrightarrow>
-          card (attractor_set_fun n p W) < card (attractor_set_fun (Suc n) p W)"
-        "attractor_set_fun (Suc n) p W \<noteq> attractor_set_fun (Suc (Suc n)) p W"
-      let ?DA = "directly_attracted p W"
-      from IH(2) have "?DA \<noteq> {}" by auto
-      have "attractor_set_fun (Suc n) p W \<subseteq> attractor_set_fun (Suc (Suc n)) p W" using attractor_set_fun_monotone by blast
-      moreover have "finite (attractor_set_fun (Suc n) p W)" using finite attractor_set_fun_finite by blast
-      ultimately show ?case by (metis Suc.prems attractor_set_fun_finite local.finite psubsetI psubset_card_mono)
-    qed
-    } note lemma1 = this
-    show ?thesis proof (rule ccontr)
-      assume contr: "\<not>(\<exists>n. attractor_set_fun n p W = attractor_set_fun (Suc n) p W)"
-      hence "\<forall>n. attractor_set_fun n p W < attractor_set_fun (Suc n) p W" using attractor_set_fun_monotone by (metis psubsetI)
-      { fix n
-      have "card (attractor_set_fun n p W) \<ge> n" proof (induct n)
-        case 0 thus ?case by simp
-        case (Suc n) thus ?case by (metis Suc_leI contr add_lessD1 le_Suc_ex lemma1 local.finite)
-      qed
-      }
-      thus False by (metis assms attractor_set_fun_bounded_by_V attractor_set_fun_monotone card_seteq contr finite_vertex_set subset_antisym sup.orderE)
-    qed
-  qed
-
-lemma attractor_set_fun_attractor:
-  assumes "W \<subseteq> V"
-  shows "\<exists>n. attractor_set_fun n p W = attractor p W"
-  proof -
-    obtain n where n_def: "attractor_set_fun n p W = attractor_set_fun (Suc n) p W" using assms attractor_set_fun_eventually_constant by blast
-    hence "attractor p W \<subseteq> attractor_set_fun n p W" proof -
-      {fix v
-      have "v \<in> attractor p W \<Longrightarrow> v \<in> attractor_set_fun n p W" proof (induct rule: attractor.induct)
-        case Base thus ?case using attractor_set_fun_subset by blast
-      next
-        case VVp
-        fix v assume v: "v \<in> VV p" "\<exists>w. v \<rightarrow> w \<and> w \<in> attractor p W \<and> w \<in> attractor_set_fun n p W"
-        then obtain w where w: "v \<rightarrow> w \<and> w \<in> attractor p W \<and> w \<in> attractor_set_fun n p W" by auto
-        hence "w \<in> V" using `W \<subseteq> V` attractor_is_bounded_by_V by blast
-        hence v2: "v \<in> VV p \<and> (\<exists>w \<in> V. v \<rightarrow> w \<and> w \<in> attractor_set_fun n p W)" using v(1) w by blast
-        hence "v \<notin> VV p**" using VV_impl2 by blast
-        hence v3: "\<not>deadend v" using `w \<in> V` w by blast
-        have "v \<in> attractor_set_fun (Suc n) p W" proof (rule ccontr)
-          assume assm: "v \<notin> attractor_set_fun (Suc n) p W"
-          hence "v \<notin> attractor_set_fun n p W" using n_def by blast
-          hence "v \<in> V - attractor_set_fun n p W" using v(1) by blast
-          hence "v \<in> directly_attracted p (attractor_set_fun n p W)"
-            using v2 v3 `v \<notin> VV p**` directly_attracted_def[of p "attractor_set_fun n p W"] by blast
-          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_directly_attracted by fastforce
-          thus "False" using assm by simp
-        qed
-        thus "v \<in> attractor_set_fun n p W" using n_def by blast
-      next
-        case VVpstar
-        fix v assume v: "\<not>deadend v" "v \<in> VV p**" "\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> attractor p W \<and> w \<in> attractor_set_fun n p W"
-        hence "v \<in> V" by blast
-        hence "v \<notin> VV p" using v(2) by simp
-        have w: "\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> attractor_set_fun n p W" by (simp add: v(3))
-        have "v \<in> attractor_set_fun (Suc n) p W" proof (rule ccontr)
-          assume assm: "v \<notin> attractor_set_fun (Suc n) p W"
-          hence "v \<notin> attractor_set_fun n p W" using n_def by blast
-          hence "v \<in> V - attractor_set_fun n p W" by (simp add: `v \<in> V`)
-          hence "v \<in> directly_attracted p (attractor_set_fun n p W)"
-            using v(1) w `v \<notin> VV p` directly_attracted_def[of p "attractor_set_fun n p W"] by blast
-          hence "v \<in> attractor_set_fun (Suc n) p W" using attractor_set_fun_directly_attracted by fastforce
-          thus "False" using assm by auto
-        qed
-        thus "v \<in> attractor_set_fun n p W" using n_def by blast
-      qed
-      } thus ?thesis by auto
-    qed
-    moreover
-    have "attractor_set_fun n p W \<subseteq> attractor p W" proof (induct n)
-      case 0 thus ?case by simp
-      case (Suc n)
-      assume IH: "attractor_set_fun n p W \<subseteq> attractor p W"
-      have "directly_attracted p (attractor_set_fun n p W) \<subseteq> attractor p W" proof (intro subsetI)
-        fix v assume v_direct: "v \<in> directly_attracted p (attractor_set_fun n p W)"
-        hence no_deadend: "\<not>deadend v" using directly_attracted_contains_no_deadends by blast
-        have "v \<in> V" using v_direct directly_attracted_def by auto
-        thus "v \<in> attractor p W" proof (cases rule: VV_cases)
-          assume "v \<in> VV p"
-          hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_set_fun n p W" using v_direct directly_attracted_def by blast
-          hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W" using IH by auto
-          thus ?thesis by (simp add: `v \<in> VV p` attractor.VVp)
-        next
-          assume "v \<in> VV p**"
-          hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_set_fun n p W" using v_direct directly_attracted_def by blast
-          hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W" using IH by (metis subsetCE)
-          thus ?thesis using `v \<in> VV p**` attractor.VVpstar no_deadend by auto
-        qed
-      qed
-      thus ?case using attractor_set_fun_directly_attracted by (metis Suc.hyps Un_subset_iff)
-    qed
-    ultimately show ?thesis by auto
-  qed
-
-lemma attractor_set_induction:
-  fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
-  assumes "W \<subseteq> V" "P W"
-    and step: "\<And>W'. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> P (W' \<union> (directly_attracted p W'))"
-    and union: "\<And>M. \<forall>S \<in> M. W \<subseteq> S \<and> S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)"
-  shows "P (attractor p W)"
-  proof -
-    print_statement attractorp.induct
-    have "P (attractor p W)" proof (induct rule: lfp_ordinal_induct_set[of attractor])
-    qed
-    obtain n where "attractor_set_fun n p W = attractor p W" using assms(1) attractor_set_fun_attractor by blast
-    moreover have "P (attractor_set_fun n p W)" proof (induct n)
-      case 0 thus ?case by (simp add: assms(2))
-    next
-      case (Suc n)
-      let ?W' = "attractor_set_fun n p W"
-      have "W \<subseteq> ?W'" by simp
-      moreover have "?W' \<subseteq> V" using attractor_set_fun_bounded_by_V assms(1) by blast
-      moreover have "P ?W'" by (simp add: Suc.hyps)
-      ultimately show ?case by (metis attractor_set_fun_directly_attracted assms(3))
-    qed
-    ultimately show ?thesis by simp
-  qed
-
-*)
-
-(* lemma attractor_induction:
-  fixes p :: Player and W :: "'a set" and P :: "'a set \<Rightarrow> bool"
-  assumes "W \<subseteq> V" and base: "P W"
-    and insert: "\<And>W' v. W \<subseteq> W' \<Longrightarrow> W' \<subseteq> V \<Longrightarrow> P W' \<Longrightarrow> v \<in> directly_attracted p W' \<Longrightarrow> P (insert v W')"
-  shows "P (attractor p W)"
-  using assms(1) assms(2) proof (induct rule: attractor_set_induction; simp)
-    fix W' assume IH: "W \<subseteq> W'" "W' \<subseteq> V" "P W'"
-    def D \<equiv> "directly_attracted p W'"
-    hence "finite D" by auto
-    hence "D \<subseteq> directly_attracted p W' \<Longrightarrow> P (W' \<union> D)" using IH proof (induct D rule: finite_induct)
-      case empty thus "P (W' \<union> {})" by simp
-    next
-      case (insert v D)
-      assume D: "finite D" "v \<notin> D"
-        "\<lbrakk> D \<subseteq> directly_attracted p W'; W \<subseteq> W'; W' \<subseteq> V; P W' \<rbrakk> \<Longrightarrow> P (W' \<union> D)"
-        "insert v D \<subseteq> directly_attracted p W'"
-        "W \<subseteq> W'" "W' \<subseteq> V" "P W'"
-      hence "D \<subseteq> directly_attracted p W'" by auto
-      hence "P (W' \<union> D)" by (simp add: insert.hyps(3) insert.prems(2) insert.prems(3) insert.prems(4))
-      moreover have "v \<in> directly_attracted p W'" using D(4) by auto
-      moreover have "W \<subseteq> W' \<union> D" by (simp add: insert.prems(2) le_supI1)
-      moreover have "W' \<union> D \<subseteq> V" using `D \<subseteq> directly_attracted p W'` directly_attracted_is_bounded_by_V insert.prems(3) by blast 
-      moreover have "v \<in> directly_attracted p (W' \<union> D)" by (simp add: directly_attracted_union calculation(2) insert.hyps(2))
-      ultimately have "P (insert v (W' \<union> D))" using assms(3)[of "W' \<union> D" v] by blast
-      thus "P (W' \<union> (insert v D))" by auto
-    qed
-    thus "P (W' \<union> D)" by (simp add: D_def)
-  qed
-*)
-
-(*
-lemma attractor_strategy_can_be_extended:
-  assumes W': "W \<subseteq> W'" "W' \<subseteq> V" "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> attractor_strategy_on p \<sigma> W' W"
-    and v_directly_attracted: "v \<in> directly_attracted p W'"
-  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> attractor_strategy_on p \<sigma> (insert v W') W"
-proof-
-  obtain \<sigma> where \<sigma>: "valid_strategy p \<sigma>" "attractor_strategy_on p \<sigma> W' W" using W'(3) by blast
-  have "v \<notin> W'" using directly_attracted_is_disjoint_from_W v_directly_attracted by blast
-  hence "v \<notin> W" using W'(1) by auto
-  show ?thesis proof (cases rule: VV_cases)
-    show "v \<in> V" using v_directly_attracted directly_attracted_def by auto
-  next
-    assume "v \<in> VV p" note v = this
-    then obtain w where w: "w \<in> W'" "v \<rightarrow> w" using v_directly_attracted directly_attracted_def by blast
-    let ?\<sigma>' = "\<sigma>(v \<mapsto> w)"
-    have "\<sigma> v = None" using \<sigma> `v \<notin> W'` by blast
-    hence \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> ?\<sigma>'" using strategy_less_eq_updates by blast
-    hence "strategy_attracts_from_to p ?\<sigma>' W' W" using \<sigma> by blast
-    have "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if `v \<notin> W`)
-    moreover have "strategy_only_on p ?\<sigma>' (insert v (W' - W))" using strategy_only_on_case_rule \<sigma> v `v \<notin> W'` `v\<rightarrow>w` by blast
-    ultimately have "strategy_only_on p ?\<sigma>' ((insert v W') - W)" by simp
-    moreover
-    have "\<forall>\<sigma>'. strategy_less_eq ?\<sigma>' \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' (insert v W') W" proof (unfold strategy_attracts_from_to_def, clarify)
-      fix \<sigma>'' assume \<sigma>'_less_eq_\<sigma>'': "strategy_less_eq ?\<sigma>' \<sigma>''"
-      fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>''" "the (P 0) \<in> insert v W'"
-      have \<sigma>_less_eq_\<sigma>'': "strategy_less_eq \<sigma> \<sigma>''" using strategy_less_eq_tran using \<sigma>_less_eq_\<sigma>' \<sigma>'_less_eq_\<sigma>'' by blast
-      thus "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" proof (cases)
-        assume "the (P 0) \<in> W'" thus ?thesis using P(1) P(2) P(3) \<sigma> \<sigma>_less_eq_\<sigma>'' strategy_attracts_from_to_def by blast
-      next
-        assume "the (P 0) \<notin> W'"
-        hence "the (P 0) = v" using P(4) by blast
-        have "\<sigma>'' v = ?\<sigma>' v" using \<sigma>'_less_eq_\<sigma>'' by (simp add: option.case_eq_if strategy_less_eq_def)
-        hence "\<sigma>'' v = Some w" by simp
-        have "P (Suc 0) \<noteq> None" by (metis P(1) P(2) `the (P 0) = v` directly_attracted_contains_no_deadends maximal_path_def v_directly_attracted valid_paths_are_nonempty)
-        have "the (P 0) \<in> VV p" by (simp add: `the (P 0) = v` v)
-        hence "\<sigma>'' (the (P 0)) = P (Suc 0)" using P(1) P(3) path_conforms_with_strategy_def valid_paths_are_nonempty by blast
-        hence "\<sigma>'' v = P (Suc 0)" using `the (P 0) = v` by blast
-        hence "w = the (P (Suc 0))" using `\<sigma>'' v = Some w` by (metis option.sel)
-        hence "the (P (Suc 0)) \<in> W'" using w(1) by blast
-        hence "the (ltl P 0) \<in> W'" by simp
-        moreover have "valid_path (ltl P)" using P(1) `P (Suc 0) \<noteq> None` valid_ltl by blast
-        moreover have "maximal_path (ltl P)" using P(2) by blast
-        moreover have "path_conforms_with_strategy p (ltl P) \<sigma>''" using P(3) by blast
-        ultimately have "\<exists>i. ltl P i \<noteq> None \<and> the (ltl P i) \<in> W" using \<sigma> \<sigma>_less_eq_\<sigma>'' strategy_attracts_from_to_def by blast
-        thus ?thesis by auto
-      qed
-    qed
-    moreover have "valid_strategy p ?\<sigma>'" proof-
-      { fix u assume "u \<in> VV p" "?\<sigma>' u \<noteq> None"
-        have "u \<rightarrow> the (?\<sigma>' u)" proof (cases "u = v"; insert w(2); simp)
-          assume "u \<noteq> v"
-          hence "\<sigma> u \<noteq> None" by (metis `?\<sigma>' u \<noteq> None` fun_upd_apply)
-          thus "u \<rightarrow> the (\<sigma> u)" using \<sigma>(1) `u \<in> VV p` valid_strategy_def by blast
-        qed
-      }
-      thus ?thesis using valid_strategy_def by blast
-    qed
-    ultimately show ?thesis by blast
-  next
-    assume "v \<in> VV p**" note v = this
-    have insert_eq: "(insert v W') - W = insert v (W' - W)" by (simp add: insert_Diff_if `v \<notin> W`)
-    hence "strategy_only_on p \<sigma> ((insert v W') - W)" by (simp add: VV_impl2 \<sigma> strategy_only_on_case_rule2 v)
-    moreover
-    have "\<forall>\<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<longrightarrow> strategy_attracts_from_to p \<sigma>' (insert v W') W" proof (unfold strategy_attracts_from_to_def, clarify)
-      fix \<sigma>' assume \<sigma>_less_eq_\<sigma>': "strategy_less_eq \<sigma> \<sigma>'"
-      fix P assume P: "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "the (P 0) \<in> insert v W'"
-      thus "\<exists>i. P i \<noteq> None \<and> the (P i) \<in> W" proof (cases "the (P 0) \<in> W'")
-        assume "the (P 0) \<in> W'" thus ?thesis using P(1) P(2) P(3) \<sigma> \<sigma>_less_eq_\<sigma>' strategy_attracts_from_to_def by blast
-      next
-        assume "the (P 0) \<notin> W'"
-        hence "P 0 = Some v" using P(4) by (metis P(1) insertE option.collapse valid_paths_are_nonempty)
-        have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W'" using directly_attracted_def `v \<in> VV p**` v_directly_attracted by blast
-        have "P (Suc 0) \<noteq> None" by (metis P(1) P(2) P(4) `the (P 0) \<notin> W'` directly_attracted_contains_no_deadends insertE maximal_path_def v_directly_attracted valid_paths_are_nonempty)
-        have "\<not>deadend v" using directly_attracted_contains_no_deadends v_directly_attracted by blast
-        hence "the (P 0) \<rightarrow> the (P (Suc 0))" by (metis P(1) P(2) P(4) `the (P 0) \<notin> W'` insertE maximal_path_def valid_path_def)
-        hence "the (P (Suc 0)) \<in> W'" using P(4) `\<forall>w. v \<rightarrow> w \<longrightarrow> w \<in> W'` `the (P 0) \<notin> W'` by blast
-        hence "the (ltl P 0) \<in> W'" by simp
-        moreover have "valid_path (ltl P)" using P(1) `P (Suc 0) \<noteq> None` valid_ltl by blast
-        moreover have "maximal_path (ltl P)" using P(2) by blast
-        moreover have "path_conforms_with_strategy p (ltl P) \<sigma>'" using P(3) by blast
-        ultimately have "\<exists>i. ltl P i \<noteq> None \<and> the (ltl P i) \<in> W" using \<sigma> \<sigma>_less_eq_\<sigma>' strategy_attracts_from_to_def by blast
-        thus ?thesis by auto
-      qed
-    qed
-    ultimately show ?thesis using \<sigma>(1) by blast
-  qed
-qed
-*)
-
 abbreviation strategy_attracts_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_attracts_to p \<sigma> v0 W \<equiv> \<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>'
         \<and> valid_path P \<and> \<not>lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>'
@@ -655,17 +318,6 @@ lemma attractor_strategy_on_extends:
     ultimately have "attractor_strategy_on p \<sigma>' v0 A W" using attractor_strategy_on_def by blast
     thus ?thesis using \<sigma>'_def(2) by blast
   qed
-(* ML_val {*
-(*proof body with digest*)
-val body = Proofterm.strip_thm (Thm.proof_body_of @{thm obtain_min});
-(*proof term only*)
-val prf = Proofterm.proof_of body;
-Pretty.writeln (Proof_Syntax.pretty_proof @{context} prf);
-(*all theorems used in the graph of nested proofs*)
-val all_thms =
-Proofterm.fold_body_thms
-(fn (name, _, _) => insert (op =) name) [body] [];
-*} *)
 
 lemma merge_attractor_strategies:
   fixes W p S
@@ -914,5 +566,17 @@ proof (intro exI conjI)
 qed
 
 end -- "context ParityGame"
+
+(* ML_val {*
+(*proof body with digest*)
+val body = Proofterm.strip_thm (Thm.proof_body_of @{thm obtain_min});
+(*proof term only*)
+val prf = Proofterm.proof_of body;
+Pretty.writeln (Proof_Syntax.pretty_proof @{context} prf);
+(*all theorems used in the graph of nested proofs*)
+val all_thms =
+Proofterm.fold_body_thms
+(fn (name, _, _) => insert (op =) name) [body] [];
+*} *)
 
 end
