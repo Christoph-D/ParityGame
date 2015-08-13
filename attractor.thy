@@ -615,22 +615,29 @@ qed
 abbreviation strategy_attracts_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_attracts_to p \<sigma> v0 W \<equiv> \<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>'
         \<and> valid_path P \<and> \<not>lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>'
-        \<longrightarrow> (\<exists>n. enat n < llength P \<and> P $ n \<in> W)"
+        \<longrightarrow> lset P \<inter> W \<noteq> {}"
 
-lemma assumes "\<And>v. v \<in> A \<Longrightarrow> strategy_attracts_to p \<sigma> v W"
+lemma strategy_attracts_from_to_exhaust:
+  assumes "valid_strategy p \<sigma>" "\<And>v. v \<in> A \<Longrightarrow> strategy_attracts_to p \<sigma> v W"
   shows "strategy_attracts_from_to p \<sigma> A W"
-proof (unfold strategy_attracts_from_to_def, intro allI impI, elim conjE)
-  fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 \<in> A"
-  from assms P(5) have "strategy_attracts_to p \<sigma> (P $ 0) W" by blast
-  show "lset P \<inter> W \<noteq> {}" sorry
-qed
+  using assms maximal_path_conforms_maximally strategy_attracts_from_to_def strategy_less_eq_refl by blast
 
 definition attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "attractor_strategy_on p \<sigma> v0 A W \<equiv>
     valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_to p \<sigma> v0 W"
 
+lemma strategy_attracts_from_to_exhaust_attractor:
+  assumes "\<And>v. v \<in> A \<Longrightarrow> attractor_strategy_on p \<sigma> v A W"
+  shows "strategy_attracts_from_to p \<sigma> A W"
+proof (cases "A = {}", simp)
+  assume "A \<noteq> {}"
+  with assms have "valid_strategy p \<sigma>" using attractor_strategy_on_def by blast
+  moreover with assms have "\<And>v. v \<in> A \<Longrightarrow> strategy_attracts_to p \<sigma> v W" using attractor_strategy_on_def by blast
+  ultimately show ?thesis using strategy_attracts_from_to_exhaust by blast
+qed
+
 lemma strategy_attracts_trivial: "v \<in> W \<Longrightarrow> strategy_attracts_to p \<sigma> v W"
-  by (metis i0_less llength_eq_0 zero_enat_def)
+  by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv)
 
 lemma strategy_attracts_to_extends:
   "\<lbrakk> strategy_attracts_to p \<sigma> v0 W; strategy_less_eq \<sigma> \<sigma>' \<rbrakk> \<Longrightarrow> strategy_attracts_to p \<sigma>' v0 W"
@@ -755,10 +762,9 @@ theorem attractor_has_strategy:
               have "lhd (ltl P) = w" using tail_start by (simp add: lhd_conv_lnth)
               hence "lhd P' = w" using P'_def(1) P'_def(2) lprefix_lhdD by blast
               moreover have "valid_path P'" using P'_def(2) tail_valid path_prefix_valid by blast
-              ultimately obtain n where n_def: "enat n < llength P'" "P' $ n \<in> W" using \<sigma>_def(1) \<sigma>_def(3) strategy_less_eq_refl by (metis P'_def(1) P'_def(3) lhd_conv_lnth)
-              have "P' $ n = ltl P $ n" using n_def(1) P'_def(2) path_prefix_included by blast
-              hence "enat n < llength (ltl P) \<and> ltl P $ n \<in> W" using n_def using P'_def(2) path_prefix_length by auto
-              hence "\<exists>n. enat n < llength P \<and> P $ n \<in> W" using in_lset_conv_lnth in_lset_ltlD by force
+              ultimately have "lset P' \<inter> W \<noteq> {}" using \<sigma>_def(1) \<sigma>_def(3) P'_def(1) P'_def(3)
+                by (metis lhd_conv_lnth strategy_less_eq_refl)
+              with P'_def(2) have "lset P \<inter> W \<noteq> {}" using lprefix_lsetD lset_ltl by fastforce
             }
             thus ?thesis by blast
           qed
@@ -796,9 +802,9 @@ theorem attractor_has_strategy:
               then obtain w where w_def: "w \<in> S" and tail_start: "ltl P $ 0 = w" using `\<not>lnull (ltl P)` by blast
               have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'" using path_conforms_with_strategy_maximally_tail \<sigma>'(4) \<sigma>'(6) by blast
               have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
-              hence "\<exists>n. enat n < llength (ltl P) \<and> ltl P $ n \<in> W" using tail_valid tail_start tail_conforms
+              hence "lset (ltl P) \<inter> W \<noteq> {}" using tail_valid tail_start tail_conforms
                 using \<sigma>'(1) \<sigma>'(2) attractor_strategy_on_def `\<not>lnull (ltl P)` by blast
-              hence "\<exists>n. enat n < llength P \<and> P $ n \<in> W" using in_lset_conv_lnth in_lset_ltlD by force
+              with \<sigma>'(4) have "lset P \<inter> W \<noteq> {}" using llist.set_sel(2) by fastforce
             }
             thus ?thesis by blast
           qed
@@ -829,7 +835,7 @@ proof -
   have "A \<noteq> {}" by (simp add: A_def assms(3) attractor_set_non_empty)
   hence "\<exists>v \<in> A. attractor_strategy_on p \<sigma> v A W" using \<sigma>_def by blast
   hence "valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W)" using attractor_strategy_on_def by blast
-  moreover have "strategy_attracts_from_to p \<sigma> A W" using assms sorry
+  moreover have "strategy_attracts_from_to p \<sigma> A W" using \<sigma>_def by (simp add: strategy_attracts_from_to_exhaust_attractor)
   ultimately show ?thesis using strategy_less_eq_refl by blast
 qed
 

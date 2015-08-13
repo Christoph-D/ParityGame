@@ -127,6 +127,17 @@ lemma path_conforms_with_strategy_maximally_start_VVpstar:
     ultimately show ?thesis using path_conforms_with_strategy_maximally_def assms(1) v(2) by metis
   qed
 
+lemma maximal_path_conforms_maximally:
+  assumes P_conforms: "path_conforms_with_strategy p P \<sigma>"
+    and P_maximal: "maximal_path P"
+  shows "path_conforms_with_strategy_maximally p P \<sigma>"
+proof-
+  { fix i assume "enat i < llength P" "\<not>deadend (P $ i)"
+    with P_maximal have "enat (Suc i) < llength P" using maximal_path_impl1 by blast
+  }
+  with P_conforms show ?thesis unfolding path_conforms_with_strategy_maximally_def by blast
+qed
+
 definition valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "valid_strategy p \<sigma> \<equiv> \<forall>v w. \<sigma> v = Some w \<longrightarrow> v \<in> VV p \<and> v\<rightarrow>w"
 definition valid_strategy_from :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
@@ -519,6 +530,8 @@ definition strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Righ
     \<longrightarrow> lset P \<inter> W \<noteq> {})"
 lemma strategy_attracts_from_to_trivial [simp]:
   "strategy_attracts_from_to p \<sigma> W W" by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv strategy_attracts_from_to_def)
+lemma strategy_attracts_from_to_empty [simp]:
+  "strategy_attracts_from_to p \<sigma> {} W" by (simp add: strategy_attracts_from_to_def)
 
 definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P n.
