@@ -545,12 +545,10 @@ proof (unfold valid_strategy_from_def; intro conjI)
 qed
 
 lemma valid_strategy_is_valid_strategy_from_V:
-  assumes \<sigma>_valid: "valid_strategy p \<sigma>"
-    and \<sigma>_on: "strategy_on p \<sigma> V"
-    and v0_def: "v0 \<in> V"
-  shows "valid_strategy_from p \<sigma> v0"
-  by (metis Diff_cancel \<sigma>_on \<sigma>_valid empty_iff strategy_avoids_def v0_def valid_strategy_is_valid_strategy_from)
+  "\<lbrakk> valid_strategy p \<sigma>; strategy_on p \<sigma> V; v0 \<in> V \<rbrakk> \<Longrightarrow> valid_strategy_from p \<sigma> v0"
+  by (metis Diff_cancel empty_iff strategy_avoids_def valid_strategy_is_valid_strategy_from)
 
+(* temporarily commented out
 primrec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> nat \<Rightarrow> 'a option" where
   "greedy_conforming_path p \<sigma> v0 0 = Some v0"
   | "greedy_conforming_path p \<sigma> v0 (Suc n) = (
@@ -566,8 +564,6 @@ theorem strategy_conforming_path_exists:
   fixes p \<sigma>
   assumes v0_def: "v0 \<in> V" and \<sigma>_dom: "strategy_on p \<sigma> V" and \<sigma>_valid: "valid_strategy_from p \<sigma> v0"
   shows "\<exists>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0"
-  sorry
-(* temporarily commented out
   proof (intro exI conjI)
     (* Recursively construct a path starting from v0. *)
     def P \<equiv> "greedy_conforming_path p \<sigma> v0"

@@ -450,9 +450,11 @@ theorem attractor_has_strategy:
                 thus ?thesis by auto
               qed
               hence tail_valid: "valid_path (ltl P)" using \<sigma>'(3) valid_path_ltl by blast
-              have "ltl P $ 0 \<in> S" using \<sigma>'(3) \<sigma>'(4) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>lnull (ltl P)` valid_path_def by (metis (no_types) \<sigma>'(5) lhd_LCons_ltl lnth_0_conv_lhd valid_path_edges')
-              then obtain w where w_def: "w \<in> S" and tail_start: "ltl P $ 0 = w" using `\<not>lnull (ltl P)` by blast
-              have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'" using path_conforms_with_strategy_maximally_tail \<sigma>'(4) \<sigma>'(6) by blast
+              then obtain w where w_def: "w \<in> S" and tail_start: "ltl P $ 0 = w"
+                using \<sigma>'(3) \<sigma>'(4) \<sigma>'(5) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>lnull (ltl P)` valid_path_edges'
+                by (metis (no_types) lhd_LCons_ltl lnth_0_conv_lhd)
+              from \<sigma>'(4) \<sigma>'(6) have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'"
+                using path_conforms_with_strategy_maximally_tail by blast
               have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
               hence "lset (ltl P) \<inter> W \<noteq> {}" using tail_valid tail_start tail_conforms
                 using \<sigma>'(1) \<sigma>'(2) attractor_strategy_on_def `\<not>lnull (ltl P)` by blast
@@ -499,10 +501,10 @@ theorem attractor_has_outside_strategy:
 proof (intro exI conjI)
   (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
   the successor. *)
-  def \<sigma> \<equiv> "\<lambda>v. (
-    if v \<in> (V - A) \<and> v \<in> VV p \<and> \<not>deadend v
+  def \<sigma> \<equiv> "\<lambda>v.
+    if v \<in> V - A \<and> v \<in> VV p \<and> \<not>deadend v
       then Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)
-      else None)"
+      else None"
   (* We need to show that \<sigma> is well-defined.  This means we have to show that \<sigma> always applies
   the SOME quantifier to a non-empty set. *)
   have \<sigma>_correct: "\<And>v. \<sigma> v \<noteq> None \<Longrightarrow> the (\<sigma> v) \<notin> A \<and> v\<rightarrow>(the (\<sigma> v))" using \<sigma>_def proof-
@@ -557,8 +559,8 @@ proof (intro exI conjI)
           thus ?thesis by (simp add: "**")
         next
           assume "P $ i \<in> VV p**"
-          moreover have "(P $ i) \<rightarrow> (P $ Suc i)" using P_valid Suc.prems valid_path_def valid_path_edges by blast
-          ultimately show "P $ Suc i \<notin> A" apply (insert P_i_not_in_A; unfold A_def) using attractor_outside[of "P $ i" "p**" W "P $ Suc i"] by simp
+          moreover have "P $ i \<rightarrow> P $ Suc i" using P_valid Suc.prems valid_path_def valid_path_edges by blast
+          ultimately show "P $ Suc i \<notin> A" by (insert P_i_not_in_A; unfold A_def) (simp add: attractor_outside[of "P $ i" "p**" W "P $ Suc i"])
         qed
       qed
     qed

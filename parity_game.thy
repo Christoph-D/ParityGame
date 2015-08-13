@@ -28,7 +28,7 @@ type_synonym 'a Edge = "'a \<times> 'a"
 (* A path is a possibly infinite list of vertices. *)
 type_synonym 'a Path = "'a llist"
 
-notation lnth (infix "$" 60)
+notation lnth (infix "$" 61)
 
 (* The set of nodes that occur infinitely often on a given path. *)
 definition path_inf :: "'a Path \<Rightarrow> 'a set" where
