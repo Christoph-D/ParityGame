@@ -363,11 +363,17 @@ proof-
       ultimately have "strategy_only_on p \<sigma> (S - W)" unfolding strategy_only_on_def by blast
     }
     moreover {
-      { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
-          and P: "valid_path P" "\<not>lnull P" "path_conforms_with_strategy_maximally p P \<sigma>'" "P $ 0 = v0"
-        have "lset P \<inter> W \<noteq> {}" sorry
-      }
-      hence "\<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> \<not> lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>' \<longrightarrow> lset P \<inter> W \<noteq> {}" by blast
+      fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
+        and P: "valid_path P" "\<not>lnull P" "path_conforms_with_strategy_maximally p P \<sigma>'" "P $ 0 = v0"
+      have "lset P \<inter> W \<noteq> {}" proof (cases)
+        assume "v0 \<in> S - W"
+        show "lset P \<inter> W \<noteq> {}" sorry
+      next
+        assume "v0 \<notin> S - W"
+        with `v0 \<in> S` have "v0 \<in> W" by blast
+        with `P $ 0 = v0` `\<not>lnull P` show "lset P \<inter> W \<noteq> {}"
+          by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv)
+      qed
     }
     ultimately have "attractor_strategy_on p \<sigma> v0 S W" unfolding attractor_strategy_on_def using \<sigma>_valid by blast
   }
