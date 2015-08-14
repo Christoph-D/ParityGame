@@ -323,22 +323,37 @@ proof-
     with \<sigma> have "\<exists>!\<sigma>. choose' v \<sigma>" by blast
     hence "choose' v (choose v)" using theI'[of "choose' v"] choose_def by fastforce
   } note choose_works = this
+  
+  have \<sigma>_valid: "valid_strategy p \<sigma>" proof (unfold valid_strategy_def, intro allI impI)
+    fix v w assume "\<sigma> v = Some w"
+    hence "v \<in> (S - W) \<inter> VV p" by (metis \<sigma>_def option.distinct(2))
+    hence "valid_strategy p (choose v)" using choose_works choose'_def attractor_strategy_on_def by blast
+    moreover have "(choose v) v = Some w" using \<sigma>_def `\<sigma> v = Some w` `v \<in> (S - W) \<inter> VV p` by auto
+    ultimately show "v \<in> VV p \<and> v \<rightarrow> w" using valid_strategy_def by blast
+  qed
 
-  { fix v assume "v \<in> S - W"
-    hence "\<not>deadend v" sorry
-  } note S_W_no_deadends = this
+  have S_W_no_deadends: "\<And>v. v \<in> S - W \<Longrightarrow> \<not>deadend v" proof (rule ccontr, subst (asm) not_not)
+    fix v assume "v \<in> S - W" "deadend v"
+    def [simp]: P \<equiv> "LCons v LNil"
+    obtain \<sigma>' where \<sigma>': "valid_strategy p \<sigma>'" "strategy_attracts_to p \<sigma>' v W" using `v \<in> S - W` assms attractor_strategy_on_def by (metis Diff_iff)
+    moreover have "valid_path P" using `v \<in> S - W` assms(2) valid_path_base' by auto
+    moreover have "\<not>lnull P \<and> P $ 0 = v" by simp
+    moreover have "path_conforms_with_strategy_maximally p P \<sigma>'" proof-
+      have "llength P = eSuc 0" by simp
+      hence *: "\<And>i. enat i < llength P \<Longrightarrow> i = 0" by (simp add: enat_0_iff(1))
+      moreover from \<sigma>'(1) `deadend v` have "v \<in> VV p \<Longrightarrow> \<sigma>' v = None"
+        using valid_strategy_none_on_deadends by blast
+      ultimately have "path_conforms_with_strategy p P \<sigma>'"
+        unfolding path_conforms_with_strategy_def by (metis `\<not>lnull P \<and> P $ 0 = v` option.distinct(1))
+      with * `\<not>lnull P \<and> P $ 0 = v` `deadend v` show ?thesis
+        unfolding path_conforms_with_strategy_maximally_def by blast
+    qed
+    ultimately have "lset P \<inter> W \<noteq> {}" using strategy_less_eq_def by blast
+    with `v \<in> S - W` show False by auto
+  qed
 
   { fix v0 assume "v0 \<in> S"
     {
-      { fix v w assume "\<sigma> v = Some w"
-        hence "v \<in> (S - W) \<inter> VV p" by (metis \<sigma>_def option.distinct(2))
-        hence "valid_strategy p (choose v)" using choose_works choose'_def attractor_strategy_on_def by blast
-        moreover have "(choose v) v = Some w" using \<sigma>_def `\<sigma> v = Some w` `v \<in> (S - W) \<inter> VV p` by auto
-        ultimately have "v \<in> VV p \<and> v \<rightarrow> w" using valid_strategy_def by blast
-      }
-      hence "valid_strategy p \<sigma>" unfolding valid_strategy_def by blast
-    }
-    moreover {
       { fix v assume v: "v \<in> (S - W) \<inter> VV p" "\<not>deadend v"
         from v(1) have "strategy_only_on p (choose v) (S - W)" using choose_works choose'_def attractor_strategy_on_def by blast
         moreover from v(1) have "\<sigma> v = choose v v" by (simp add: \<sigma>_def)
@@ -354,7 +369,7 @@ proof-
       }
       hence "\<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>' \<and> valid_path P \<and> \<not> lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>' \<longrightarrow> lset P \<inter> W \<noteq> {}" by blast
     }
-    ultimately have "attractor_strategy_on p \<sigma> v0 S W" unfolding attractor_strategy_on_def by blast
+    ultimately have "attractor_strategy_on p \<sigma> v0 S W" unfolding attractor_strategy_on_def using \<sigma>_valid by blast
   }
   thus ?thesis by blast
 qed
