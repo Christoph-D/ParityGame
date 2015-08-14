@@ -365,9 +365,35 @@ proof-
     moreover {
       fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
         and P: "valid_path P" "\<not>lnull P" "path_conforms_with_strategy_maximally p P \<sigma>'" "P $ 0 = v0"
+      (* Towards a contradiction... *)
+      assume "lset P \<inter> W = {}"
+
+      have "\<not>lfinite P" sorry
+      have "lset P \<subseteq> S - W" sorry
       have "lset P \<inter> W \<noteq> {}" proof (cases)
         assume "v0 \<in> S - W"
-        show "lset P \<inter> W \<noteq> {}" sorry
+        show "lset P \<inter> W \<noteq> {}" proof (cases)
+          assume "\<exists>n. lset (ldropn n P) \<subseteq> VV p**"
+          then obtain n where n: "lset (ldropn n P) \<subseteq> VV p**" by blast
+          def [simp]: P' \<equiv> "ldropn n P"
+          from `\<not>lfinite P` have "\<not>lfinite P'" by simp
+          from `\<not>lfinite P` have "\<not>lnull P'" using P'_def infinite_no_deadend lfinite_ldropn by blast
+          with `lset P \<subseteq> S - W` `\<not>lfinite P'` have "P' $ 0 \<in> S - W" using llist_nth_set by fastforce
+          with assms obtain \<sigma>'' where \<sigma>'': "attractor_strategy_on p \<sigma>'' (P' $ 0) S W" by blast
+          have "path_conforms_with_strategy_maximally p P' \<sigma>''" proof-
+            from n `\<not>lfinite P'` have "\<And>i. P' $ i \<in> VV p**" using P'_def llist_set_nth by blast
+            hence "\<And>i. P' $ i \<notin> VV p" by auto
+            hence "path_conforms_with_strategy p P' \<sigma>''" using path_conforms_with_strategy_def by blast
+            with `\<not>lfinite P'` show ?thesis unfolding path_conforms_with_strategy_maximally_def using infinite_small_llength by blast
+          qed
+          moreover from P(1) have "valid_path P'" by (simp add: valid_path_drop)
+          ultimately have "lset P' \<inter> W \<noteq> {}"
+            using \<sigma>'' `\<not>lnull P'` strategy_less_eq_refl attractor_strategy_on_def by blast
+          thus ?thesis using in_lset_ldropnD by fastforce
+        next
+          assume "\<not>(\<exists>n. lset (ldropn n P) \<subseteq> VV p**)"
+          show ?thesis sorry
+        qed
       next
         assume "v0 \<notin> S - W"
         with `v0 \<in> S` have "v0 \<in> W" by blast
