@@ -11,6 +11,28 @@ definition directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a s
       (v \<in> VV p   \<longrightarrow> (\<exists>w. v\<rightarrow>w \<and> w \<in> W))
     \<and> (v \<in> VV p** \<longrightarrow> (\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W))}"
 
+abbreviation "attractor_step p W S \<equiv> W \<union> S \<union> directly_attracted p S"
+
+(* The attractor set of a given set of vertices, defined as a least fixed point *)
+definition attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
+  "attractor p W = lfp (attractor_step p W)"
+
+(* The attractor set of a given set of vertices, defined inductively. *)
+inductive_set attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
+  for p :: Player and W :: "'a set" where
+  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W" |
+  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W" |
+  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W"
+
+definition strategy_attracts_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "strategy_attracts_to p \<sigma> v0 W \<equiv> \<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>'
+        \<and> valid_path P \<and> \<not>lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>'
+        \<longrightarrow> lset P \<inter> W \<noteq> {}"
+
+definition attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "attractor_strategy_on p \<sigma> v0 A W \<equiv>
+    valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_to p \<sigma> v0 W"
+
 lemma directly_attracted_disjoint [simp]: "directly_attracted p W \<inter> W = {}"
   and directly_attracted_empty [simp]: "directly_attracted p {} = {}"
   and directly_attracted_V_empty [simp]: "directly_attracted p V = {}"
@@ -40,7 +62,7 @@ proof-
   qed
 qed
 
-abbreviation "attractor_step p W S \<equiv> W \<union> S \<union> directly_attracted p S"
+(* attractor_step *)
 
 lemma attractor_step_empty: "attractor_step p {} {} = {}"
   and attractor_step_bounded_by_V: "\<lbrakk> W \<subseteq> V; S \<subseteq> V \<rbrakk> \<Longrightarrow> attractor_step p W S \<subseteq> V"
@@ -80,9 +102,7 @@ proof (unfold mono_def; intro allI impI)
   qed
 qed
 
-(* The attractor set of a given set of vertices, defined as a least fixed point *)
-definition attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
-  "attractor p W = lfp (attractor_step p W)"
+(* attractor *)
 
 lemma attractor_unfolding: "attractor p W = attractor_step p W (attractor p W)"
   unfolding attractor_def using attractor_step_mono lfp_unfold by blast
@@ -165,12 +185,12 @@ proof (rule ccontr)
   thus False using * attractor_unfolding by auto
 qed
 
-(* The attractor set of a given set of vertices, defined inductively. *)
-inductive_set attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
-  for p :: Player and W :: "'a set" where
-  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W" |
-  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W" |
-  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W"
+lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
+  using attractor_lowerbound attractor_step_bounded_by_V by auto
+lemma attractor_outside: "\<lbrakk> v \<notin> attractor p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor p W"
+  using attractor_set_VVp by blast
+
+(* attractor_inductive *)
 
 (* Show that the inductive definition and the definition via lfp are the same. *)
 lemma attractor_inductive_is_attractor:
@@ -227,12 +247,8 @@ proof
 qed
 
 lemma attractor_is_superset [simp]: "W \<subseteq> attractor_inductive p W" by blast
-lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
-  using attractor_lowerbound attractor_step_bounded_by_V by auto
 lemma attractor_inductive_outside: "\<lbrakk> v \<notin> attractor_inductive p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor_inductive p W"
   by (metis attractor_inductive.VVp)
-lemma attractor_outside: "\<lbrakk> v \<notin> attractor p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor p W"
-  using attractor_set_VVp by blast
 
 lemma attractor_inductive_contains_no_deadends:
   "v \<in> attractor_inductive p W \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
@@ -249,18 +265,13 @@ qed
 lemma attractor_contains_no_deadends: "\<lbrakk> W \<subseteq> V; v \<in> attractor p W \<rbrakk> \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
   using attractor_inductive_contains_no_deadends attractor_inductive_is_attractor by auto
 
-abbreviation strategy_attracts_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_attracts_to p \<sigma> v0 W \<equiv> \<forall>P \<sigma>'. valid_strategy p \<sigma>' \<and> strategy_less_eq \<sigma> \<sigma>'
-        \<and> valid_path P \<and> \<not>lnull P \<and> P $ 0 = v0 \<and> path_conforms_with_strategy_maximally p P \<sigma>'
-        \<longrightarrow> lset P \<inter> W \<noteq> {}"
+(* strategy_attracts_to *)
 
 lemma strategy_attracts_from_to_exhaust:
   "\<lbrakk> valid_strategy p \<sigma>; \<And>v. v \<in> A \<Longrightarrow> strategy_attracts_to p \<sigma> v W \<rbrakk> \<Longrightarrow> strategy_attracts_from_to p \<sigma> A W"
-  using maximal_path_conforms_maximally strategy_attracts_from_to_def strategy_less_eq_refl by blast
+  using maximal_path_conforms_maximally strategy_attracts_from_to_def strategy_less_eq_refl strategy_attracts_to_def by blast
 
-definition attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "attractor_strategy_on p \<sigma> v0 A W \<equiv>
-    valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_to p \<sigma> v0 W"
+(* attractor_strategy_on *)
 
 lemma strategy_attracts_from_to_exhaust_attractor:
   assumes "\<And>v. v \<in> A \<Longrightarrow> attractor_strategy_on p \<sigma> v A W"
@@ -273,11 +284,11 @@ proof (cases "A = {}", simp)
 qed
 
 lemma strategy_attracts_trivial: "v \<in> W \<Longrightarrow> strategy_attracts_to p \<sigma> v W"
-  by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv)
+  by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv strategy_attracts_to_def)
 
 lemma strategy_attracts_to_extends:
   "\<lbrakk> strategy_attracts_to p \<sigma> v0 W; strategy_less_eq \<sigma> \<sigma>' \<rbrakk> \<Longrightarrow> strategy_attracts_to p \<sigma>' v0 W"
-  using strategy_less_eq_tran by blast
+  using strategy_less_eq_tran strategy_attracts_to_def by blast
 
 lemma attractor_strategy_on_extends:
   assumes "attractor_strategy_on p \<sigma> v0 S W" "S \<subseteq> A"
@@ -348,7 +359,7 @@ proof-
       with * `\<not>lnull P \<and> P $ 0 = v` `deadend v` show ?thesis
         unfolding path_conforms_with_strategy_maximally_def by blast
     qed
-    ultimately have "lset P \<inter> W \<noteq> {}" using strategy_less_eq_def by blast
+    ultimately have "lset P \<inter> W \<noteq> {}" unfolding strategy_attracts_to_def using strategy_less_eq_def by blast
     with `v \<in> S - W` show False by auto
   qed
 
@@ -388,7 +399,7 @@ proof-
           qed
           moreover from P(1) have "valid_path P'" by (simp add: valid_path_drop)
           ultimately have "lset P' \<inter> W \<noteq> {}"
-            using \<sigma>'' `\<not>lnull P'` strategy_less_eq_refl attractor_strategy_on_def by blast
+            using \<sigma>'' `\<not>lnull P'` strategy_less_eq_refl attractor_strategy_on_def strategy_attracts_to_def by blast
           thus ?thesis using in_lset_ldropnD by fastforce
         next
           assume "\<not>(\<exists>n. lset (ldropn n P) \<subseteq> VV p**)"
@@ -401,7 +412,9 @@ proof-
           by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv)
       qed
     }
-    ultimately have "attractor_strategy_on p \<sigma> v0 S W" unfolding attractor_strategy_on_def using \<sigma>_valid by blast
+    ultimately have "attractor_strategy_on p \<sigma> v0 S W"
+      unfolding attractor_strategy_on_def strategy_attracts_to_def
+      using \<sigma>_valid by blast
   }
   thus ?thesis by blast
 qed
@@ -480,10 +493,10 @@ proof-
             hence "lhd P' = w" using P'_def(1) P'_def(2) lprefix_lhdD by blast
             moreover have "valid_path P'" using P'_def(2) tail_valid path_prefix_valid by blast
             ultimately have "lset P' \<inter> W \<noteq> {}" using \<sigma>_def(1) \<sigma>_def(3) P'_def(1) P'_def(3)
-              by (metis lhd_conv_lnth strategy_less_eq_refl)
+              by (metis lhd_conv_lnth strategy_less_eq_refl strategy_attracts_to_def)
             with P'_def(2) have "lset P \<inter> W \<noteq> {}" using lprefix_lsetD lset_ltl by fastforce
           }
-          thus ?thesis by blast
+          thus ?thesis unfolding strategy_attracts_to_def by blast
         qed
         ultimately have "attractor_strategy_on p ?\<sigma> v0 (S \<union> {v0}) W"
           by (unfold attractor_strategy_on_def; intro conjI)
@@ -521,11 +534,12 @@ proof-
             from \<sigma>'(4) \<sigma>'(6) have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'"
               using path_conforms_with_strategy_maximally_tail by blast
             have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
-            hence "lset (ltl P) \<inter> W \<noteq> {}" using tail_valid tail_start tail_conforms
-              using \<sigma>'(1) \<sigma>'(2) attractor_strategy_on_def `\<not>lnull (ltl P)` by blast
+            with \<sigma>'(1) \<sigma>'(2) `\<not>lnull (ltl P)` tail_valid tail_start tail_conforms
+              have "lset (ltl P) \<inter> W \<noteq> {}"
+              using attractor_strategy_on_def strategy_attracts_to_def by blast
             with \<sigma>'(4) have "lset P \<inter> W \<noteq> {}" using llist.set_sel(2) by fastforce
           }
-          thus ?thesis by blast
+          thus ?thesis unfolding strategy_attracts_to_def by blast
         qed
         ultimately have "attractor_strategy_on p \<sigma> v0 (S \<union> {v0}) W" using attractor_strategy_on_def by blast
         moreover have "S \<union> {v0} \<subseteq> W \<union> S \<union> directly_attracted p S" using step.prems by blast

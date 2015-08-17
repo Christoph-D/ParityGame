@@ -17,6 +17,36 @@ definition path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Righta
 definition path_conforms_with_strategy_up_to :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> nat \<Rightarrow> bool" where
   [simp]: "path_conforms_with_strategy_up_to p P \<sigma> n \<equiv> \<forall>i w. enat i < llength P \<and> i < n \<and> P $ i \<in> VV p \<and> \<sigma> (P $ i) = Some w \<longrightarrow> enat (Suc i) < llength P \<and> P $ Suc i = w"
 
+(* "Conform to \<sigma> as long as possible." *)
+definition path_conforms_with_strategy_maximally :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+  [simp]: "path_conforms_with_strategy_maximally p P \<sigma> \<equiv> (path_conforms_with_strategy p P \<sigma>
+      \<or> (\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> enat (Suc n) = llength P \<and> P $ n \<in> VV p \<and> \<sigma> (P $ n) = None))
+    \<and> (\<forall>i. enat i < llength P \<and> \<not>deadend (P $ i) \<and> (P $ i \<in> VV p \<longrightarrow> (\<exists>w. \<sigma> (P $ i) = Some w)) \<longrightarrow> enat (Suc i) < llength P)"
+
+definition valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+  "valid_strategy p \<sigma> \<equiv> \<forall>v w. \<sigma> v = Some w \<longrightarrow> v \<in> VV p \<and> v\<rightarrow>w"
+definition valid_strategy_from :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
+  "valid_strategy_from p \<sigma> v0 \<equiv> (\<forall>v w. \<sigma> v = Some w \<longrightarrow> v \<in> VV p \<and> v\<rightarrow>w)
+    \<and> (\<forall>P n. enat n < llength P \<and> valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> P $ 0 = v0 \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n)
+        \<longrightarrow> (\<exists>w. \<sigma> (P $ n) = Some w))"
+
+definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
+  [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v \<longrightarrow> winning_path p P"
+
+definition strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "strategy_attracts_from_to p \<sigma> A W \<equiv> (\<forall>P.
+      \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> A
+    \<longrightarrow> lset P \<inter> W \<noteq> {})"
+
+definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
+  "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P n.
+      \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> P $ 0 \<in> A
+    \<longrightarrow> (\<forall>i \<le> n. enat i < llength P \<longrightarrow> P $ i \<notin> W))"
+
+definition strategy_less_eq :: "'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
+  "strategy_less_eq \<sigma> \<sigma>' \<equiv> \<forall>v w. \<sigma> v = Some w \<longrightarrow> \<sigma> v = \<sigma>' v"
+abbreviation "strategy_less \<equiv> \<lambda>\<sigma> \<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<and> \<sigma> \<noteq> \<sigma>'"
+
 lemma path_conforms_with_strategy_approximations:
   assumes "\<And>n. path_conforms_with_strategy_up_to p P \<sigma> n"
   shows "path_conforms_with_strategy p P \<sigma>"
@@ -59,12 +89,6 @@ proof (subst valid_path_equiv, intro conjI)
     thus "P $ i \<rightarrow> (P $ Suc i)" using "*" assms(1) assms(2) dual_order.strict_trans path_prefix_included valid_path_edges by fastforce
   qed
 qed
-
--- "Conform to \<sigma> as long as possible."
-definition path_conforms_with_strategy_maximally :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  [simp]: "path_conforms_with_strategy_maximally p P \<sigma> \<equiv> (path_conforms_with_strategy p P \<sigma>
-      \<or> (\<exists>n. path_conforms_with_strategy_up_to p P \<sigma> n \<and> enat (Suc n) = llength P \<and> P $ n \<in> VV p \<and> \<sigma> (P $ n) = None))
-    \<and> (\<forall>i. enat i < llength P \<and> \<not>deadend (P $ i) \<and> (P $ i \<in> VV p \<longrightarrow> (\<exists>w. \<sigma> (P $ i) = Some w)) \<longrightarrow> enat (Suc i) < llength P)"
 
 lemma path_conforms_with_strategy_maximally_empty [simp]: "path_conforms_with_strategy_maximally p LNil \<sigma>" by simp
 
@@ -115,13 +139,6 @@ proof-
   }
   with P_conforms show ?thesis unfolding path_conforms_with_strategy_maximally_def by blast
 qed
-
-definition valid_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  "valid_strategy p \<sigma> \<equiv> \<forall>v w. \<sigma> v = Some w \<longrightarrow> v \<in> VV p \<and> v\<rightarrow>w"
-definition valid_strategy_from :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  "valid_strategy_from p \<sigma> v0 \<equiv> (\<forall>v w. \<sigma> v = Some w \<longrightarrow> v \<in> VV p \<and> v\<rightarrow>w)
-    \<and> (\<forall>P n. enat n < llength P \<and> valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> P $ 0 = v0 \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n)
-        \<longrightarrow> (\<exists>w. \<sigma> (P $ n) = Some w))"
 
 lemma valid_strategy_none_on_VVpstar: "valid_strategy p \<sigma> \<Longrightarrow> v \<notin> VV p \<Longrightarrow> \<sigma> v = None" by (metis not_None_eq valid_strategy_def)
 lemma valid_strategy_none_on_VVpstar2: "valid_strategy p \<sigma> \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<sigma> v = None" by (metis DiffD2 Player.distinct(1) valid_strategy_none_on_VVpstar)
@@ -330,9 +347,7 @@ proof (case_tac "lnull P", simp)
   qed
 qed
 
-definition strategy_less_eq :: "'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-  "strategy_less_eq \<sigma> \<sigma>' \<equiv> \<forall>v w. \<sigma> v = Some w \<longrightarrow> \<sigma> v = \<sigma>' v"
-abbreviation "strategy_less \<equiv> \<lambda>\<sigma> \<sigma>'. strategy_less_eq \<sigma> \<sigma>' \<and> \<sigma> \<noteq> \<sigma>'"
+(* strategy_less_eq *)
 
 lemma strategy_less_eq_equiv: "\<lbrakk> \<And>v. \<sigma> v \<noteq> None \<Longrightarrow> \<sigma>' v = \<sigma> v \<rbrakk> \<Longrightarrow> strategy_less_eq \<sigma> \<sigma>'"
   by (simp add: strategy_less_eq_def)
@@ -464,18 +479,14 @@ proof (unfold path_conforms_with_strategy_def, intro allI impI, elim conjE)
   with i(1) i(2) assms(1) show "enat (Suc i) < llength P \<and> P $ Suc i = w" unfolding path_conforms_with_strategy_def by blast
 qed
 
-definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  [simp]: "winning_strategy p \<sigma> v \<equiv> \<forall>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v \<longrightarrow> winning_path p P"
+(* winning_strategy *)
 
 lemma winning_strategy_preserved_under_extension:
   assumes "winning_strategy p \<sigma> v0" "valid_strategy_from p \<sigma> v0" "strategy_less_eq \<sigma> \<sigma>'"
   shows "winning_strategy p \<sigma>' v0"
   using assms path_conforms_preserved_under_extension winning_strategy_def by blast
 
-definition strategy_attracts_from_to :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_attracts_from_to p \<sigma> A W \<equiv> (\<forall>P.
-      \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> A
-    \<longrightarrow> lset P \<inter> W \<noteq> {})"
+(* strategy_attracts_from_to *)
 
 lemma strategy_attracts_from_to_trivial [simp]: "strategy_attracts_from_to p \<sigma> W W"
   by (metis disjoint_iff_not_equal lnth_0 lset_intros(1) not_lnull_conv strategy_attracts_from_to_def)
@@ -491,10 +502,7 @@ proof (unfold strategy_attracts_from_to_def, intro allI impI, elim conjE)
   with P(1) P(2) P(3) P(5) assms(1) show "lset P \<inter> W \<noteq> {}" using strategy_attracts_from_to_def by blast
 qed
 
-definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P n.
-      \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> P $ 0 \<in> A
-    \<longrightarrow> (\<forall>i \<le> n. enat i < llength P \<longrightarrow> P $ i \<notin> W))"
+(* strategy_avoids *)
 
 lemma strategy_avoids_trivial [simp]: "strategy_avoids p \<sigma> {} W"
   by (meson empty_iff strategy_avoids_def)
