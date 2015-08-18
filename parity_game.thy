@@ -24,6 +24,9 @@ lemma lset_intersect_lnth: "lset xs \<inter> A \<noteq> {} \<Longrightarrow> \<e
   by (metis assms disjoint_iff_not_equal in_lset_conv_lnth)
 lemma infinite_small_llength: "\<not>lfinite xs \<Longrightarrow> enat i < llength xs"
   using enat_iless lfinite_conv_llength_enat neq_iff by blast
+lemma lnull_0_llength: "\<not>lnull xs \<Longrightarrow> enat 0 < llength xs"
+  using zero_enat_def by auto
+
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
