@@ -18,7 +18,7 @@ lemma enat_Suc_ltl: assumes "enat (Suc i) < llength xs" shows "enat i < llength 
   hence "enat i < epred (llength xs)" using eSuc_le_iff ileI1 by fastforce
   thus ?thesis by (simp add: epred_llength)
 qed
-lemma enat_ltl_Suc: assumes "enat i < llength (ltl xs)" shows "enat (Suc i) < llength xs"
+lemma enat_ltl_Suc: "enat i < llength (ltl xs) \<Longrightarrow> enat (Suc i) < llength xs"
   by (metis assms eSuc_enat ldrop_ltl leD leI lnull_ldrop)
 lemma lset_intersect_lnth: "lset xs \<inter> A \<noteq> {} \<Longrightarrow> \<exists>i. enat i < llength xs \<and> lnth xs i \<in> A"
   by (metis assms disjoint_iff_not_equal in_lset_conv_lnth)
@@ -26,7 +26,16 @@ lemma infinite_small_llength: "\<not>lfinite xs \<Longrightarrow> enat i < lleng
   using enat_iless lfinite_conv_llength_enat neq_iff by blast
 lemma lnull_0_llength: "\<not>lnull xs \<Longrightarrow> enat 0 < llength xs"
   using zero_enat_def by auto
-
+lemma ltake_lnth: "ltake n xs = ltake n ys \<Longrightarrow> enat m < n \<Longrightarrow> lnth xs m = lnth ys m"
+  by (metis lnth_ltake)
+lemma enat_0_lt_Suc [simp]: "0 < enat (Suc n)"
+  by (simp add: enat_0_iff(1))
+lemma lprefix_lset' [simp]: "n \<le> m \<Longrightarrow> lset (ltake n xs) \<subseteq> lset (ltake m xs)"
+  by (simp add: lprefix_lsetD)
+lemma lset_lnth: "lset xs \<subseteq> A \<Longrightarrow> enat n < llength xs \<Longrightarrow> lnth xs n \<in> A"
+  by (meson contra_subsetD in_lset_conv_lnth)
+lemma lset_ltake_Suc [simp]: "lset (ltake n xs) \<subseteq> A \<Longrightarrow> lset (ltake (eSuc n) (LCons x xs)) \<subseteq> insert x A"
+  by auto
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"

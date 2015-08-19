@@ -413,38 +413,69 @@ proof-
             assume P: "\<not>lnull P" "valid_path P" "maximal_path P"
               "path_conforms_with_strategy p P ?\<sigma>" "P $ 0 = v0"
 
-            have tail_start: "\<not>lnull (ltl P) \<and> ltl P $ 0 = w" sorry
-            (* proof-
-              have *: "\<sigma>' v0 = Some w" using \<sigma>'(2) strategy_less_eq_def by force
-              moreover hence "\<sigma>' v0 = Some (P $ Suc 0)" using \<sigma>'(6) `P $ 0 = v0` `\<not>lnull P` `v0 \<in> VV p` path_conforms_with_strategy_maximally_start by blast
-              moreover have "\<not>lnull (ltl P)" proof-
-                have "\<not>deadend (P $ 0)" using \<sigma>'(5) v0_no_deadend by auto
-                moreover have "enat 0 < llength P" using \<sigma>'(4) zero_enat_def by auto
-                ultimately have "enat (Suc 0) < llength P" using "*" path_conforms_with_strategy_maximally_start
-                  by (metis \<sigma>'(5) \<sigma>'(6) `enat 0 < llength P` path_conforms_with_strategy_maximally_def)
-                thus ?thesis by (metis idiff_enat_enat ldrop_eSuc_ltl ldropn_Suc_conv_ldropn llength_ldropn llength_lnull lnull_lprefix lprefix_llength_eq_imp_eq not_lnull_conv zero_diff zero_enat_def)
-              qed
-              ultimately show ?thesis by (simp add: \<sigma>'(4) lnth_ltl)
-            qed *)
-            moreover have tail_valid: "valid_path (ltl P)" by (simp add: P(2) valid_path_ltl)
-            moreover have tail_conforms: "path_conforms_with_strategy p (ltl P) ?\<sigma>" using P(4) by blast
-            ultimately obtain P' where P'_def: "\<not>lnull P'" "path_prefix P' (ltl P)" "path_conforms_with_strategy p P' \<sigma>"
-              using paths_can_be_restricted \<sigma>' by blast
+            def [simp]: P'' \<equiv> "ltl P"
+            have P''_not_null: "\<not>lnull P'' \<and> P'' $ 0 = w" sorry
+            from P(2) P(3) P(4) have P'': "valid_path P''" "maximal_path P''" "path_conforms_with_strategy p P'' ?\<sigma>"
+              using valid_path_ltl maximal_tail path_conforms_with_strategy_ltl by auto
 
-            have "lhd (ltl P) = w" using tail_start by (simp add: lhd_conv_lnth)
-            hence "lhd P' = w" using P'_def(1) P'_def(2) lprefix_lhdD by blast
-            moreover have "valid_path P'" using P'_def(2) tail_valid path_prefix_valid by blast
-            ultimately have "lset P' \<inter> W \<noteq> {}" using \<sigma>_def(1) \<sigma>_def(3) P'_def(1) P'_def(3)
-              by (metis lhd_conv_lnth strategy_less_eq_refl strategy_attracts_to_def)
-            with P'_def(2) have "lset P \<inter> W \<noteq> {}" using lprefix_lsetD lset_ltl by fastforce
+            have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" proof (cases)
+              assume "v0 \<in> lset P'' \<and> ?\<sigma> v0 \<noteq> \<sigma> v0"
+
+              with \<sigma>_def(1) `strategy p ?\<sigma>` `v0 \<in> VV p` P'' P''_not_null v0_no_deadend
+                obtain P' n where
+                  P': "\<not>lnull P'" "valid_path P'" "maximal_path P'" "path_conforms_with_strategy p P' \<sigma>"
+                  and n_valid: "enat (Suc n) < llength P'" "enat (Suc n) < llength P''"
+                  and P'_P''_same_prefix: "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P''"
+                  and P''_n: "P'' $ n \<in> VV p" "\<not>deadend (P'' $ n)" "?\<sigma> (P'' $ n) \<noteq> \<sigma> (P'' $ n)"
+                using path_conforms_with_strategy_update_path by blast
+
+              from P''_n(3) have "P'' $ n = v0" by (meson fun_upd_apply)
+              from P''_not_null P'_P''_same_prefix have "P' $ 0 = w" using ltake_lnth[of "enat (Suc n)" P' P'' 0] by simp
+
+              with P' \<sigma>_def(2)
+                obtain m where m: "enat m < llength P'" "P' $ m \<in> W" "lset (ltake (enat m) P') \<subseteq> S"
+                unfolding strategy_attracts_via_def by blast
+
+              have "m \<le> n" proof (rule ccontr)
+                assume "\<not>m \<le> n"
+                hence "Suc n \<le> m" by presburger
+                hence "enat (Suc n) \<le> enat m" by simp
+                with m(3) have "lset (ltake (enat (Suc n)) P') \<subseteq> S" by (meson lprefix_lset' order_trans)
+                with P'_P''_same_prefix have *: "lset (ltake (enat (Suc n)) P'') \<subseteq> S" by simp
+                with n_valid(2) have "enat n < llength P''" using Suc_ile_eq le_less by blast
+                hence "enat n < llength (ltake (enat (Suc n)) P'')" by simp
+                with * have "P'' $ n \<in> S"
+                  using lset_lnth[of "ltake (enat (Suc n)) P''" S n]
+                  by (metis (no_types) lprefix_lnthD ltake_is_lprefix)
+                with `P'' $ n = v0` `v0 \<notin> S` show False by blast
+              qed
+              with P'_P''_same_prefix have "P' $ m = P'' $ m" using ltake_lnth[of "enat (Suc n)" P' P'' m] by simp
+              with m(2) have "P'' $ m \<in> W" by simp
+              hence 1: "P $ Suc m \<in> W" by (simp add: P(1) lnth_ltl)
+
+              from P'_P''_same_prefix `m \<le> n` m(3)
+                have "lset (ltake (enat m) P'') \<subseteq> S"
+                using ltake_eq_ltake_antimono by fastforce
+              hence "lset (ltake (eSuc (enat m)) P) \<subseteq> insert v0 S"
+                by (metis P''_def P(1) P(5) lnth_0 ltl_simps(2) lset_ltake_Suc not_lnull_conv)
+              hence 2: "lset (ltake (enat (Suc m)) P) \<subseteq> insert v0 S" by (simp add: eSuc_enat)
+
+              from `m \<le> n` n_valid(2) have "enat (Suc m) < llength P''"
+                by (metis Suc_ile_eq dual_order.strict_iff_order dual_order.strict_trans enat_ord_simps(2))
+              hence 3: "enat (Suc m) < llength P" using dual_order.strict_trans enat_ltl_Suc by force
+
+              with 1 2 3 show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" by blast
+            next
+              assume "\<not>(v0 \<in> lset P'' \<and> ?\<sigma> v0 \<noteq> \<sigma> v0)"
+              have "?\<sigma> v0 = \<sigma> v0 \<Longrightarrow> ?\<sigma> = \<sigma>" by simp
+              show ?thesis sorry
+            qed
           }
-          thus ?thesis unfolding strategy_attracts_to_def by blast
+          thus ?thesis unfolding strategy_attracts_via_def by blast
         qed
-        ultimately have "attractor_strategy_on p ?\<sigma> v0 (S \<union> {v0}) W"
-          by (unfold attractor_strategy_on_def; intro conjI)
         moreover have "S \<union> {v0} \<subseteq> W \<union> S \<union> directly_attracted p S" using step.prems by blast
         ultimately show ?thesis
-          using attractor_strategy_on_extends[of p ?\<sigma> v0 "S \<union> {v0}" W "W \<union> S \<union> directly_attracted p S"] by blast
+          using attractor_strategy_on_extends[of p ?\<sigma> v0 "S \<union> {v0}" W "W \<union> S \<union> directly_attracted p S"] by auto
       next
         assume "v0 \<notin> VV p"
         hence "v0 \<in> VV p**" using `v0 \<in> V` by blast

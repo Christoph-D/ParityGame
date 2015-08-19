@@ -321,16 +321,16 @@ proof-
 qed
 
 lemma path_conforms_with_strategy_update_path:
-  assumes \<sigma>: "strategy p \<sigma>"
+  assumes \<sigma>: "strategy p \<sigma>" and \<sigma>': "strategy p \<sigma>'"
     and P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
     (* P is influenced by changing \<sigma> to \<sigma>'. *)
     and v: "v \<in> lset P" "v \<in> VV p" "\<not>deadend v" "\<sigma> v \<noteq> \<sigma>' v"
   shows "\<exists>P' n.
     \<not>lnull P' \<and> valid_path P' \<and> maximal_path P' \<and> path_conforms_with_strategy p P' \<sigma>'
     \<and> enat (Suc n) < llength P' \<and> enat (Suc n) < llength P
-    \<and> ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P (* The first n+1 elements are the same. *)
-    \<and> P' $ Suc n \<noteq> P $ Suc n (* The n+2nd element is different (exists because maximal_path). *)
-    \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n)"
+    \<and> ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P
+    \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n)
+    \<and> \<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)"
   sorry
 
 end -- "context ParityGame"
