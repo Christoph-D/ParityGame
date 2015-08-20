@@ -481,43 +481,42 @@ proof-
         hence "v0 \<in> VV p**" using `v0 \<in> V` by blast
         have "\<not>deadend v0" using attracted directly_attracted_contains_no_deadends by blast
         have "\<forall>w. v0\<rightarrow>w \<longrightarrow> w \<in> S" using attracted by (simp add: directly_attracted_def `v0 \<in> VV p**`)
-        obtain \<sigma> where \<sigma>_def: "\<And>v. v \<in> S \<Longrightarrow> attractor_strategy_on p \<sigma> v S W"
+        obtain \<sigma> where \<sigma>_def: "strategy p \<sigma> \<and> strategy_attracts p \<sigma> S W"
           using merge_attractor_strategies[of W S p] assms(1) step.hyps(1) step.hyps(2) by blast
-        have "strategy_only_on p \<sigma> ((S \<union> {v0}) - W)" proof-
-          have "strategy_only_on p \<sigma> (S - W)" using \<sigma>_def `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>deadend v0` attractor_strategy_on_def by blast
-          hence "strategy_only_on p \<sigma> ((S - W) \<union> {v0})" by (simp add: `v0 \<notin> VV p` strategy_only_on_case_rule2)
-          thus ?thesis by (simp add: attracted(2) insert_Diff_if)
-        qed
-        moreover have "valid_strategy p \<sigma>" using \<sigma>_def `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not> deadend v0` attractor_strategy_on_def by blast
-        moreover have "strategy_attracts_to p \<sigma> v0 W" proof-
-          { fix P \<sigma>' assume \<sigma>': "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'"
-              "valid_path P" "\<not>lnull P" "P $ 0 = v0" "path_conforms_with_strategy_maximally p P \<sigma>'"
-            have "\<not>lnull (ltl P)" proof-
-              have "enat 0 < llength P" using \<sigma>'(4) zero_enat_def by auto
-              moreover have "\<not>deadend (P $ 0)" using \<sigma>'(5) `\<not>deadend v0` by blast
-              moreover have "P $ 0 \<in> VV p \<longrightarrow> (\<exists>w. \<sigma>' (P $ 0) = Some w)" using `v0 \<notin> VV p` `P $ 0 = v0` by blast
-              ultimately have "enat (Suc 0) < llength P" using \<sigma>'(6) path_conforms_with_strategy_maximally_def by blast
-              hence "enat 0 < llength (ltl P)" using enat_Suc_ltl by blast
+        moreover have "strategy_attracts_via p \<sigma> v0 (insert v0 S) W" proof-
+          { fix P
+            assume P: "\<not>lnull P" "valid_path P" "maximal_path P"
+              "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v0"
+            def [simp]: P' \<equiv> "ltl P"
+            from P(2) P(3) P(4) have ltl_P: "valid_path P'" "maximal_path P'" "path_conforms_with_strategy p P' \<sigma>"
+              using valid_path_ltl maximal_tail path_conforms_with_strategy_ltl by auto
+            moreover have "\<not>lnull P'" proof-
+              from P(1) have "enat 0 < llength P" using lnull_0_llength by blast
+              moreover from P(5) `\<not>deadend v0` have "\<not>deadend (P $ 0)" by blast
+              ultimately have "enat (Suc 0) < llength P" using P(3) maximal_path_impl1 by blast
+              hence "enat 0 < llength P'" using enat_Suc_ltl P'_def by blast
               thus ?thesis by auto
             qed
-            hence tail_valid: "valid_path (ltl P)" using \<sigma>'(3) valid_path_ltl by blast
-            then obtain w where w_def: "w \<in> S" and tail_start: "ltl P $ 0 = w"
-              using \<sigma>'(3) \<sigma>'(4) \<sigma>'(5) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` `\<not>lnull (ltl P)` valid_path_edges'
-              by (metis (no_types) lhd_LCons_ltl lnth_0_conv_lhd)
-            from \<sigma>'(4) \<sigma>'(6) have tail_conforms: "path_conforms_with_strategy_maximally p (ltl P) \<sigma>'"
-              using path_conforms_with_strategy_maximally_tail by blast
-            have "attractor_strategy_on p \<sigma> w S W" using w_def \<sigma>_def by blast
-            with \<sigma>'(1) \<sigma>'(2) `\<not>lnull (ltl P)` tail_valid tail_start tail_conforms
-              have "lset (ltl P) \<inter> W \<noteq> {}"
-              using attractor_strategy_on_def strategy_attracts_to_def by blast
-            with \<sigma>'(4) have "lset P \<inter> W \<noteq> {}" using llist.set_sel(2) by fastforce
+            moreover have "P' $ 0 \<in> S" proof-
+              from `\<not>lnull P'` ltl_P P(1) P(2) have "P $ 0 \<rightarrow> P' $ 0" by (metis P'_def lhd_LCons_ltl lnth_0_conv_lhd valid_path_edges')
+              with P(5) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` show ?thesis by blast
+            qed
+            ultimately obtain n where n: "enat n < llength P'" "P' $ n \<in> W" "lset (ltake (enat n) P') \<subseteq> S"
+              using \<sigma>_def unfolding strategy_attracts_def strategy_attracts_via_def by blast
+            from n(1) have "enat (Suc n) < llength P" using P'_def enat_ltl_Suc by blast
+            moreover from n(2) P(1) have "P $ Suc n \<in> W" using P'_def by (simp add: lnth_ltl)
+            moreover have "lset (ltake (enat (Suc n)) P) \<subseteq> insert v0 S" proof-
+              from n(3) have "lset (ltake (eSuc (enat n)) (LCons v0 P')) \<subseteq> insert v0 S" using lset_ltake_Suc[of "enat n" P' S v0] by blast
+              moreover from P(1) P(5) have "LCons v0 P' = P" unfolding P'_def by (metis lnth_0 ltl_simps(2) not_lnull_conv)
+              ultimately show ?thesis by (simp add: eSuc_enat)
+            qed
+            ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" by blast
           }
-          thus ?thesis unfolding strategy_attracts_to_def by blast
+          thus ?thesis unfolding strategy_attracts_via_def by blast
         qed
-        ultimately have "attractor_strategy_on p \<sigma> v0 (S \<union> {v0}) W" using attractor_strategy_on_def by blast
         moreover have "S \<union> {v0} \<subseteq> W \<union> S \<union> directly_attracted p S" using step.prems by blast
         ultimately show ?thesis
-          using attractor_strategy_on_extends[of p \<sigma> v0 "S \<union> {v0}" W "W \<union> S \<union> directly_attracted p S"] by blast
+          using attractor_strategy_on_extends[of p \<sigma> v0 "S \<union> {v0}" W "W \<union> S \<union> directly_attracted p S"] by auto
       qed
     }
     ultimately show ?case using step.prems by blast
