@@ -414,7 +414,16 @@ proof-
               "path_conforms_with_strategy p P ?\<sigma>" "P $ 0 = v0"
 
             def [simp]: P'' \<equiv> "ltl P"
-            have P''_not_null: "\<not>lnull P'' \<and> P'' $ 0 = w" sorry
+            have P''_not_null: "\<not>lnull P'' \<and> P'' $ 0 = w" proof
+              from P(1) have "enat 0 < llength P" using lnull_0_llength by blast
+              moreover from P(5) `\<not>deadend v0` have "\<not>deadend (P $ 0)" by blast
+              ultimately have "enat (Suc 0) < llength P" using P(3) maximal_path_impl1 by blast
+              hence "enat 0 < llength P''" using enat_Suc_ltl P''_def by blast
+              then show "\<not>lnull P''" by auto
+              from P(1) P(5) have "P = LCons v0 P''" by (metis P''_def lnth_0 ltl_simps(2) not_lnull_conv)
+              with P(4) `v0 \<in> VV p` `\<not>lnull P''` have "lhd P'' = ?\<sigma> v0" by (metis lhd_LCons_ltl path_conforms_with_strategy_start)
+              thus "P'' $ 0 = w" using `\<not> lnull P''` lhd_conv_lnth by force
+            qed
             from P(2) P(3) P(4) have P'': "valid_path P''" "maximal_path P''" "path_conforms_with_strategy p P'' ?\<sigma>"
               using valid_path_ltl maximal_tail path_conforms_with_strategy_ltl by auto
 

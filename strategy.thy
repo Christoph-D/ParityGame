@@ -143,6 +143,10 @@ lemma path_conforms_with_strategy_irrelevant':
   shows "path_conforms_with_strategy p P \<sigma>"
   by (metis assms fun_upd_triv fun_upd_upd path_conforms_with_strategy_irrelevant)
 
+lemma path_conforms_with_strategy_start:
+  "path_conforms_with_strategy p (LCons v (LCons w P)) \<sigma> \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<sigma> v = w"
+  by (drule path_conforms_with_strategy.cases) simp_all
+
 (* strategy_attracts_from_to *)
 
 lemma strategy_attracts_irrelevant:
