@@ -577,11 +577,8 @@ proof (intro exI conjI)
     show "strategy p \<sigma>"
     unfolding \<sigma>_def using valid_strategy_updates_set valid_arbitrary_strategy by blast
 
-  show "strategy_avoids p \<sigma> (V - A) A" proof (cases)
-    assume "V - A = {}"
-    show ?thesis by (simp add: `V - A = {}`)
-  next
-    assume "V - A \<noteq> {}"
+  show "strategy_avoids p \<sigma> (V - A) A" proof (cases "V - A = {}", simp del: Diff_eq_empty_iff)
+    case False
     {
       fix P v
       have "v \<in> lset P \<Longrightarrow> \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> V - A \<longrightarrow> v \<notin> A"
