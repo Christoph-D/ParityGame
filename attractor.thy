@@ -506,70 +506,56 @@ proof-
   thus ?thesis unfolding strategy_attracts_via_def by blast
 qed
 
-theorem attractor_has_strategy:
-  fixes W p
+theorem attractor_has_strategy_single:
   assumes "W \<subseteq> V"
     and v0_def: "v0 \<in> attractor p W" (is "_ \<in> ?A")
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 ?A W"
-proof-
-  from v0_def have ?thesis proof (induct arbitrary: v0 rule: attractor_set_induction)
-    case base thus ?case using `W \<subseteq> V` .
-  next
-    case (step S)
-    { assume "v0 \<in> S"
-      then obtain \<sigma> where \<sigma>_def: "strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 S W" using step.hyps by blast
-      moreover have "S \<subseteq> W \<union> S \<union> directly_attracted p S" by blast
-      ultimately have "\<exists>\<sigma>'. strategy p \<sigma>' \<and> strategy_attracts_via p \<sigma>' v0 (W \<union> S \<union> directly_attracted p S) W"
-        using attractor_strategy_on_extends by blast
-    }
-    moreover { assume "v0 \<in> W"
-      hence "strategy p \<sigma>_arbitrary \<and> strategy_attracts_via p \<sigma>_arbitrary v0 {} W" using strategy_attracts_via_trivial valid_arbitrary_strategy by blast
-      hence "\<exists>\<sigma>'. strategy p \<sigma>' \<and> strategy_attracts_via p \<sigma>' v0 (W \<union> S \<union> directly_attracted p S) W" using attractor_strategy_on_extends by blast
-    }
-    moreover { assume attracted: "v0 \<in> directly_attracted p S" "v0 \<notin> S"
-      from assms(1) step.hyps(1) step.hyps(2)
-        have "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> S W"
-        using merge_attractor_strategies by auto
-      with attracted
-        have "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 (insert v0 S) W"
-        using strategy_attracts_extends_VVp strategy_attracts_extends_VVpstar by blast
-      moreover
-        have "insert v0 S \<subseteq> W \<union> S \<union> directly_attracted p S"
-        using step.prems by blast
-      ultimately
-        have "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 (W \<union> S \<union> directly_attracted p S) W"
-        using attractor_strategy_on_extends[of p _ v0 "insert v0 S" W "W \<union> S \<union> directly_attracted p S"] by blast
-    }
-    ultimately show ?case using step.prems by blast
-  next
-    case (union M)
-    then obtain S where "S \<in> M" "v0 \<in> S" by blast
-    thus ?case by (meson Union_upper attractor_strategy_on_extends union.hyps)
-  qed
-  thus ?thesis by blast
+using v0_def proof (induct arbitrary: v0 rule: attractor_set_induction)
+  case base thus ?case using `W \<subseteq> V` .
+next
+  case (step S)
+  have "v0 \<in> W \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 {} W"
+    using strategy_attracts_via_trivial valid_arbitrary_strategy by blast
+  moreover {
+    assume *: "v0 \<in> directly_attracted p S" "v0 \<notin> S"
+    from assms(1) step.hyps(1) step.hyps(2)
+      have "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> S W"
+      using merge_attractor_strategies by auto
+    with *
+      have "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 (insert v0 S) W"
+      using strategy_attracts_extends_VVp strategy_attracts_extends_VVpstar by blast
+  }
+  ultimately show ?case
+    using step.prems step.hyps(2)
+    attractor_strategy_on_extends[of p _ v0 "insert v0 S" W "W \<union> S \<union> directly_attracted p S"]
+    attractor_strategy_on_extends[of p _ v0 "S" W "W \<union> S \<union> directly_attracted p S"]
+    attractor_strategy_on_extends[of p _ v0 "{}" W "W \<union> S \<union> directly_attracted p S"]
+    by blast
+next
+  case (union M)
+  hence "\<exists>S. S \<in> M \<and> v0 \<in> S" by blast
+  thus ?case by (meson Union_upper attractor_strategy_on_extends union.hyps)
 qed
 
-corollary attractor_has_strategy_weak:
-  fixes W p
-  defines "A \<equiv> attractor p W"
-  assumes "W \<subseteq> V" "W \<noteq> {}"
-  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W) \<and> strategy_attracts_from_to p \<sigma> A W"
+corollary attractor_has_strategy:
+  assumes "W \<subseteq> V"
+  shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> (attractor p W) W"
 proof-
-  have "A \<subseteq> V" by (simp add: A_def assms(2) attractor_lowerbound)
-  moreover have "\<And>v. v \<in> A \<Longrightarrow> \<exists>\<sigma>. attractor_strategy_on p \<sigma> v A W" using assms attractor_has_strategy by blast
-  ultimately obtain \<sigma> where \<sigma>_def: "\<forall>v \<in> A. attractor_strategy_on p \<sigma> v A W" using merge_attractor_strategies `W \<subseteq> V` by blast
-  have "A \<noteq> {}" by (simp add: A_def assms(3) attractor_set_non_empty)
-  hence "\<exists>v \<in> A. attractor_strategy_on p \<sigma> v A W" using \<sigma>_def by blast
-  hence "valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (A - W)" using attractor_strategy_on_def by blast
-  moreover have "strategy_attracts_from_to p \<sigma> A W" using \<sigma>_def by (simp add: strategy_attracts_from_to_exhaust_attractor)
-  ultimately show ?thesis using strategy_less_eq_refl by blast
+  let ?A = "attractor p W"
+  from `W \<subseteq> V`
+    have "?A \<subseteq> V"
+    by (simp add: attractor_is_bounded_by_V)
+  moreover from `W \<subseteq> V`
+    have "\<And>v. v \<in> ?A \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v ?A W"
+    using attractor_has_strategy_single by blast
+  ultimately show ?thesis using merge_attractor_strategies `W \<subseteq> V` by blast
 qed
 
 (* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A. *)
 theorem attractor_has_outside_strategy:
   fixes W p
   defines "A \<equiv> attractor p** W"
-  shows "\<exists>\<sigma>. valid_strategy p \<sigma> \<and> strategy_only_on p \<sigma> (V - A) \<and> strategy_avoids p \<sigma> (V - A) A"
+  shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_avoids p \<sigma> (V - A) A"
 proof (intro exI conjI)
   (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
   the successor. *)
