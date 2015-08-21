@@ -44,6 +44,8 @@ proof-
   moreover from assms have "LCons x (ltl xs) = xs" by (metis lnth_0 ltl_simps(2) not_lnull_conv)
   ultimately show ?thesis by (simp add: eSuc_enat)
 qed
+lemma lnth_lprefix: "\<not>lnull xs \<Longrightarrow> lprefix xs ys \<Longrightarrow> lnth xs 0 = lnth ys 0"
+  by (simp add: lnth_0_conv_lhd lprefix_lhdD lprefix_not_lnullD)
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"

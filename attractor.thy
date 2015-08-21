@@ -557,33 +557,25 @@ theorem attractor_has_outside_strategy:
   defines "A \<equiv> attractor p** W"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_avoids p \<sigma> (V - A) A"
 proof (intro exI conjI)
-  (* Define a strategy on the p-Nodes in V - A.  \<sigma> simply chooses an arbitrary node not in A as
-  the successor. *)
-  def \<sigma> \<equiv> "\<lambda>v.
-    if v \<in> V - A \<and> v \<in> VV p \<and> \<not>deadend v
-      then Some (SOME w. w \<notin> A \<and> v\<rightarrow>w)
-      else None"
+  (*  \<sigma>' simply chooses an arbitrary node not in A as the successor. *)
+  def \<sigma>' \<equiv> "\<lambda>v. SOME w. w \<notin> A \<and> v\<rightarrow>w"
+  def \<sigma> \<equiv> "override_on \<sigma>_arbitrary \<sigma>' (V - A)"
   (* We need to show that \<sigma> is well-defined.  This means we have to show that \<sigma> always applies
-  the SOME quantifier to a non-empty set. *)
-  have \<sigma>_correct: "\<And>v. \<sigma> v \<noteq> None \<Longrightarrow> the (\<sigma> v) \<notin> A \<and> v\<rightarrow>(the (\<sigma> v))" using \<sigma>_def proof-
-    fix v assume \<sigma>_v_not_None: "\<sigma> v \<noteq> None"
-    have "\<not>(v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v) \<Longrightarrow> \<sigma> v = None" using \<sigma>_def by auto
-    hence v_not_in_A_no_deadend: "v \<in> (V - A) \<inter> VV p \<and> \<not>deadend v" using \<sigma>_v_not_None by blast
-    hence "the (\<sigma> v) = (SOME w. w \<notin> A \<and> v\<rightarrow>w)" using \<sigma>_def by auto
-    moreover have "\<exists>w. w \<notin> A \<and> v\<rightarrow>w" proof (rule ccontr)
+  the SOME quantifier to a non-empty set (for the nodes that matter). *)
+  {
+    fix v assume v: "v \<in> V - A" "v \<in> VV p" "\<not>deadend v"
+    have "\<exists>w. w \<notin> A \<and> v\<rightarrow>w" proof (rule ccontr)
       assume "\<not>(\<exists>w. w \<notin> A \<and> v\<rightarrow>w)"
-      hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> A" by auto
-      hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p** W" using A_def by simp
-      hence "v \<in> attractor p** W" using v_not_in_A_no_deadend attractor_set_VVpstar by auto
-      hence "v \<in> A" using A_def by simp
-      thus False using v_not_in_A_no_deadend by blast
+      hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p** W" using A_def by blast
+      hence "v \<in> attractor p** W" using v A_def attractor_set_VVpstar by auto
+      thus False using v A_def by blast
     qed
-    ultimately show "the (\<sigma> v) \<notin> A \<and> v\<rightarrow>(the (\<sigma> v))" by (metis (mono_tags, lifting) someI_ex)
-  qed
+    with v(1) have "\<sigma>' v \<notin> A" "v\<rightarrow>\<sigma>' v" unfolding \<sigma>'_def using someI_ex[of "\<lambda>w. w \<notin> A \<and> v\<rightarrow>w"] by auto
+  } note \<sigma>'_correct = this
 
-  show "valid_strategy p \<sigma>" using \<sigma>_correct valid_strategy_def by (metis (no_types, lifting) \<sigma>_def option.distinct(1) option.sel)
-
-  show "strategy_only_on p \<sigma> (V - A)" using \<sigma>_def strategy_only_on_def[of p \<sigma> "V - A"] by auto
+  from \<sigma>'_correct(2)
+    show "strategy p \<sigma>"
+    unfolding \<sigma>_def using valid_strategy_updates_set valid_arbitrary_strategy by blast
 
   show "strategy_avoids p \<sigma> (V - A) A" proof (cases)
     assume "V - A = {}"
@@ -592,34 +584,69 @@ proof (intro exI conjI)
     assume "V - A \<noteq> {}"
     show ?thesis proof (unfold strategy_avoids_def; intro allI impI; elim conjE)
       fix P n i
-      assume "\<not>lnull P"
-        and P_valid: "valid_path P"
-        and P_conforms: "path_conforms_with_strategy_up_to p P \<sigma> n"
-        and P_valid_start: "P $ 0 \<in> V - A"
-      show "i \<le> n \<Longrightarrow> enat i < llength P \<Longrightarrow> P $ i \<notin> A" proof (induct i)
-        case 0 thus ?case using P_valid_start by auto
-      next
-        case (Suc i)
-        have "i \<le> n" using Suc.prems(1) by presburger
-        have P_i_not_None: "enat i < llength P" using Suc.prems P_valid dual_order.strict_trans enat_ord_simps(2) by blast
-        hence P_i_not_in_A: "P $ i \<notin> A" using Suc.hyps `i \<le> n` by blast
-        have "P $ i \<in> V" using P_i_not_None P_valid valid_path_finite_in_V' by blast
-        thus "P $ Suc i \<notin> A" proof (cases rule: VV_cases)
-          assume *: "P $ i \<in> VV p"
-          have "P $ i \<in> V - A" using `P $ i \<in> V` P_i_not_in_A by blast
-          moreover from P_valid Suc.prems(2) have "\<not>deadend (P $ i)" using valid_path_no_deadends by blast
-          ultimately obtain w where w: "\<sigma> (P $ i) = Some w" by (simp add: "*" \<sigma>_def)
-          moreover have "i < n" using Suc.prems(1) by presburger
-          ultimately have "P $ Suc i = w" using P_conforms P_i_not_None * path_conforms_with_strategy_up_to_def by blast
-          with w have **: "\<sigma> (P $ i) = Some (P $ Suc i)" by blast
-          hence "\<sigma> (P $ i) \<noteq> None" by (simp add: Suc.prems)
-          hence "the (\<sigma> (P $ i)) \<notin> A" using \<sigma>_correct[of "P $ i"] by blast
-          thus ?thesis by (simp add: "**")
-        next
-          assume "P $ i \<in> VV p**"
-          moreover have "P $ i \<rightarrow> P $ Suc i" using P_valid Suc.prems valid_path_def valid_path_edges by blast
-          ultimately show "P $ Suc i \<notin> A" by (insert P_i_not_in_A; unfold A_def) (simp add: attractor_outside[of "P $ i" "p**" W "P $ Suc i"])
+      assume "\<not>lnull P" "valid_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 \<in> V - A"
+
+      thus "lset P \<inter> A = {}" proof (induct P)
+        case adm
+        show ?case proof (rule ccpo.admissibleI)
+          fix X assume
+            X: "Complete_Partial_Order.chain path_prefix X"
+               "\<forall>P \<in> X. \<not>lnull P \<longrightarrow> valid_path P \<longrightarrow> path_conforms_with_strategy p P \<sigma> \<longrightarrow> P $ 0 \<in> V - A \<longrightarrow> lset P \<inter> A = {}"
+          {
+            assume lSupX: "valid_path (lSup X)" "path_conforms_with_strategy p (lSup X) \<sigma>" "lSup X $ 0 \<in> V - A"
+            have "lset (lSup X) \<inter> A = {}" proof (rule ccontr)
+              assume "lset (lSup X) \<inter> A \<noteq> {}"
+              then obtain P where P: "P \<in> X" "lset P \<inter> A \<noteq> {}" using X(1) lset_lSup by blast
+              have *: "lprefix P (lSup X)" by (simp add: P(1) X(1) llist.lub_upper)
+              from P(2) have "\<not>lnull P" using lset_eq_empty by fastforce
+              moreover with * lSupX(3) have "P $ 0 \<in> V - A" using lnth_lprefix by force
+              moreover from * lSupX(1) have "valid_path P" using valid_path_prefix by blast
+              moreover from * lSupX(2) have "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_prefix by blast
+              ultimately show False using X(2) P by blast
+            qed
+          }
+          thus "\<not>lnull (lSup X) \<longrightarrow> valid_path (lSup X) \<longrightarrow> path_conforms_with_strategy p (lSup X) \<sigma> \<longrightarrow> lSup X $ 0 \<in> V - A \<longrightarrow> lset (lSup X) \<inter> A = {}" by blast
         qed
+      next
+        case LNil thus ?case by simp
+      next
+        case (LCons v P)
+        have "lnull P \<Longrightarrow> lset P \<inter> A = {}" by (simp add: lset_lnull)
+        moreover from LCons(2) LCons.prems(2) LCons.prems(3)
+          have "\<not>lnull P \<Longrightarrow> P $ 0 \<in> V - A \<Longrightarrow> lset P \<inter> A = {}"
+          using valid_path_ltl maximal_tail path_conforms_with_strategy_ltl by force
+        moreover {
+          assume "\<not>lnull P" "P $ 0 \<notin> V - A"
+          then obtain P' w where w: "P = LCons w P'" by (meson not_lnull_conv)
+          have "\<not>deadend v" using LCons.prems(2) edges_are_in_V valid_path_edges' w by blast
+          have "v \<in> V - A" using LCons.prems(4) by auto
+          from `\<not>lnull P` `P $ 0 \<notin> V - A` LCons.prems(2) w
+            have "w \<in> A"
+            by (metis DiffI llist.set_intros(1) lnth_0 not_lnull_conv rev_subsetD valid_path_in_V valid_path_ltl')
+          have False proof (cases)
+            assume "v \<in> VV p"
+            with w LCons.prems(3)
+              have "path_conforms_with_strategy p (LCons v (LCons w P')) \<sigma>" by blast
+            with `v \<in> VV p`
+              have "\<sigma> v = w"
+              using path_conforms_with_strategy_start by blast
+            from `v \<in> VV p` `\<not>deadend v` `v \<in> V - A`
+              have "\<sigma>' v \<notin> A"
+              using \<sigma>'_correct(1) by blast
+            with \<sigma>_def `\<sigma> v = w` `v \<in> V - A` `w \<in> A` show False by auto
+          next
+            assume "v \<notin> VV p"
+            with `v \<in> V - A`
+              have "v \<in> VV p**" by auto
+            moreover from `w \<in> A` LCons.prems(2) w
+              have "\<exists>w. v\<rightarrow>w \<and> w \<in> A" using valid_path_edges' by blast
+            ultimately
+              have "v \<in> directly_attracted p** A"
+              using `\<not>deadend v` `v \<in> V - A` unfolding directly_attracted_def by auto
+            with `v \<in> V - A` assms show False unfolding A_def using attractor_unfolding by fastforce
+          qed
+        }
+        ultimately show "lset (LCons v P) \<inter> A = {}" using LCons.prems(4) by auto
       qed
     qed
   qed
