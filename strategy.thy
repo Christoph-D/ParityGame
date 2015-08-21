@@ -313,8 +313,16 @@ theorem strategy_conforming_path_exists:
   qed
 *)
 
-lemma attractor_strategy_on_extends: "\<lbrakk> strategy_attracts_via p \<sigma> v0 A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A' W"
-  sorry
+lemma attractor_strategy_on_extends:
+  assumes "strategy_attracts_via p \<sigma> v0 A W" "A \<subseteq> A'"
+  shows "strategy_attracts_via p \<sigma> v0 A' W"
+proof-
+  { fix P assume "\<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0"
+    with assms(1) have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" unfolding strategy_attracts_via_def by blast
+    with `A \<subseteq> A'` have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A'" by blast
+  }
+  thus ?thesis unfolding strategy_attracts_via_def by blast
+qed
 
 lemma strategy_attracts_via_trivial: assumes "v0 \<in> W" shows "strategy_attracts_via p \<sigma> v0 A W"
 proof-
