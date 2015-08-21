@@ -228,11 +228,20 @@ primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarr
 lemma greedy_path_LNil [simp]: "greedy_conforming_path p \<sigma> v0 \<noteq> LNil"
   using greedy_conforming_path.disc_iff llist.discI(1) by blast
 
-lemma greedy_path_deadend [simp]: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v0"
-  by (metis greedy_conforming_path.disc_iff greedy_conforming_path.simps(3) llist.disc(1) ltl_simps(2))
-
 lemma greedy_path_lhd: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> v = v0"
   using greedy_conforming_path.code by auto
+
+lemma greedy_path_deadend_v0: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v0"
+  by (metis greedy_conforming_path.disc_iff greedy_conforming_path.simps(3) llist.disc(1) ltl_simps(2))
+corollary greedy_path_deadend_v0': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v0"
+  using greedy_path_deadend_v0 by blast
+
+corollary greedy_path_deadend_v: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v"
+  using greedy_path_deadend_v0 greedy_path_lhd by metis
+corollary greedy_path_deadend_v': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v"
+  using greedy_path_deadend_v by blast
+(* corollary greedy_path_deadend': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v"
+  using greedy_path_deadend greedy_path_lhd by blast *)
 
 lemma greedy_path_ltl:
   assumes "greedy_conforming_path p \<sigma> v0 = LCons v P"
@@ -246,156 +255,72 @@ lemma greedy_path_ltl_ex:
   shows "P = LNil \<or> (\<exists>v. P = greedy_conforming_path p \<sigma> v \<or> P = greedy_conforming_path p \<sigma> v)"
   using assms greedy_path_ltl by blast
 
+lemma greedy_path_ltl_VVp:
+  assumes "greedy_conforming_path p \<sigma> v0 = LCons v0 P" "v0 \<in> VV p" "\<not>deadend v0"
+  shows "\<sigma> v0 = lhd P"
+  using assms greedy_conforming_path.code by auto
+
 theorem strategy_conforming_path_exists:
   assumes "v0 \<in> V" "strategy p \<sigma>"
   shows "\<exists>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0"
 proof (intro exI conjI)
   def [simp]: P \<equiv> "greedy_conforming_path p \<sigma> v0"
+
   show "\<not>lnull P" by simp
-  from assms show "valid_path P" unfolding P_def proof (coinduction arbitrary: v0)
-    case (valid_path v0)
+
+  show "P $ 0 = v0" by (metis P_def `\<not>lnull P` greedy_path_lhd lnth_0 not_lnull_conv)
+
+  {
+    fix v0 assume "v0 \<in> V"
     let ?P = "greedy_conforming_path p \<sigma> v0"
-    {
-      assume asm: "\<not>(\<exists>v. ?P = LCons v LNil \<and> v \<in> V)"
-      then obtain P' where P': "?P = LCons v0 P'" by (metis greedy_path_LNil greedy_path_lhd neq_LNil_conv)
-      hence "\<not>deadend v0" using asm greedy_path_deadend valid_path(1) by blast
-      from P' have "\<not>lnull P'" using asm llist.collapse(1) valid_path(1) by blast
-      moreover have "v0\<rightarrow>lhd P'" proof (cases)
-        assume "v0 \<in> VV p"
-        with `\<not>deadend v0` assms(2) have "v0\<rightarrow>\<sigma> v0" unfolding strategy_def by blast
-        with `\<not>deadend v0` `v0 \<in> VV p` P' show "v0\<rightarrow>lhd P'" using greedy_conforming_path.code by auto
-      next
-        assume "v0 \<notin> VV p"
-        with `\<not>deadend v0` P' have "lhd P' = (SOME w. v0\<rightarrow>w)" using greedy_conforming_path.code by auto
-        with `\<not>deadend v0` show "v0\<rightarrow>lhd P'" using someI_ex[of "\<lambda>w. v0\<rightarrow>w"] by auto
-      qed
-      moreover hence "lhd P' \<in> V" using edges_are_in_V by auto
-      moreover have "\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V"
-        by (metis P' calculation(1) calculation(3) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
-      ultimately have ?case using assms(2) P' edges_are_in_V by blast
-    }
-    thus ?case by blast
+    assume asm: "\<not>(\<exists>v. ?P = LCons v LNil)"
+    obtain P' where P': "?P = LCons v0 P'" by (metis greedy_path_LNil greedy_path_lhd neq_LNil_conv)
+    hence "\<not>deadend v0" using asm greedy_path_deadend_v0 `v0 \<in> V` by blast
+    from P' have 1: "\<not>lnull P'" using asm llist.collapse(1) `v0 \<in> V` greedy_path_deadend_v0 by blast
+    moreover have 2: "v0\<rightarrow>lhd P'" proof (cases)
+      assume "v0 \<in> VV p"
+      with `\<not>deadend v0` assms(2) have "v0\<rightarrow>\<sigma> v0" unfolding strategy_def by blast
+      with `\<not>deadend v0` `v0 \<in> VV p` P' show "v0\<rightarrow>lhd P'" using greedy_conforming_path.code by auto
+    next
+      assume "v0 \<notin> VV p"
+      with `\<not>deadend v0` P' have "lhd P' = (SOME w. v0\<rightarrow>w)" using greedy_conforming_path.code by auto
+      with `\<not>deadend v0` show "v0\<rightarrow>lhd P'" using someI_ex[of "\<lambda>w. v0\<rightarrow>w"] by auto
+    qed
+    moreover hence "lhd P' \<in> V" using edges_are_in_V by auto
+    moreover have "\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V"
+      by (metis P' calculation(1) calculation(3) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
+    (* The conjunction of all the above *)
+    ultimately
+      have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V)"
+      using P' by blast
+  } note coinduction_helper = this
+
+  show "valid_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
+    case (valid_path v0)
+    from `v0 \<in> V` assms(2) edges_are_in_V show ?case using coinduction_helper[of v0] greedy_path_lhd by metis
+  qed
+
+  show "maximal_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
+    case (maximal_path v0)
+    from `v0 \<in> V` assms(2) edges_are_in_V show ?case using coinduction_helper[of v0] greedy_path_lhd greedy_path_deadend_v' by blast
+  qed
+
+  show "path_conforms_with_strategy p P \<sigma>" using assms unfolding P_def proof (coinduction arbitrary: v0)
+    case (path_conforms_with_strategy v0)
+    show ?case proof (cases "v0 \<in> VV p")
+      case True
+      { assume "\<not>(\<exists>v. greedy_conforming_path p \<sigma> v0 = LCons v LNil)"
+        with `v0 \<in> V` obtain P' where P': "greedy_conforming_path p \<sigma> v0 = LCons v0 P'" "\<not>lnull P'" "v0\<rightarrow>lhd P'" "lhd P' \<in> V" "\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V"
+          using coinduction_helper by blast
+        with `v0 \<in> VV p` have "\<sigma> v0 = lhd P'" using greedy_path_ltl_VVp by fastforce
+        with `v0 \<in> VV p` P'(1) P'(2) P'(5) have ?thesis by (metis lhd_LCons not_lnull_conv path_conforms_with_strategy(2))
+      }
+      thus ?thesis by fastforce
+    next
+      case False thus ?thesis using coinduction_helper path_conforms_with_strategy by fastforce
+    qed
   qed
 qed
-(* temporarily commented out
-  proof (intro exI conjI)
-    (* Recursively construct a path starting from v0. *)
-    def P \<equiv> "greedy_conforming_path p \<sigma> v0"
-    (* We need a simplification rule on P (not on greedy_conforming_path) for the proofs below. *)
-    have P_simp [simp]: "\<And>n. P (Suc n) = (
-      if P n = None
-      then None
-      else if (the (P n)) \<in> VV p
-        then \<sigma> (the (P n))
-        else if deadend (the (P n)) then None else Some (SOME w. w \<in> V \<and> (the (P n))\<rightarrow>w))"
-        apply (subst P_def)+ by simp
-    (* have P_simp2 [simp]: "\<And>n. P n = None \<Longrightarrow> P (Suc n) = None" by simp *)
-    have P_simp3: "\<And>n v. P n = Some v \<Longrightarrow> P (Suc n) =
-      (if v \<in> VV p
-        then \<sigma> v
-        else if deadend v then None else Some (SOME w. w \<in> V \<and> v\<rightarrow>w))"
-       proof-
-        fix n v assume assm: "P n = Some v"
-        have *: "the (P n) = v" using assm by (metis option.sel)
-        have "P n \<noteq> None" using assm by blast
-        thus "P (Suc n) = (if v \<in> VV p then \<sigma> v else if deadend v then None else Some (SOME w. w \<in> V \<and> v \<rightarrow> w))"
-          apply (subst P_simp) apply (subst "*")+ by presburger
-      qed
-
-    show P_valid_start: "P 0 = Some v0" unfolding P_def using v0_def by auto
-
-    (* The key lemma.  Show simultaneously that
-      1) the path is in V and
-      2) there is an edge between every two consecutive entries. *)
-    have edges_exist: "\<And>i v w. P i = Some v \<Longrightarrow> v \<in> V \<and> (P (Suc i) = Some w \<longrightarrow> v\<rightarrow>w)" proof-
-      have *:
-        "\<And>i v w. \<lbrakk> P i = Some v; v \<in> V; P (Suc i) = Some w \<rbrakk> \<Longrightarrow> w \<in> V \<and> v\<rightarrow>w" proof-
-        fix i v w
-        assume P_i: "P i = Some v" "v \<in> V" and P_Suc_i: "P (Suc i) = Some w"
-        have no_deadend: "\<not>deadend v" proof (cases rule: VV_cases[of "v" p])
-          show "v \<in> V" using P_i(2) .
-        next
-          assume P_i_in_VVp: "v \<in> VV p"
-          hence "\<sigma> v = P (Suc i)" using P_i(1) P_simp3 by presburger
-          then obtain w where "\<sigma> v = Some w" using P_Suc_i by auto
-          hence "v\<rightarrow>w" using \<sigma>_valid P_i_in_VVp valid_strategy_from_def by blast
-          thus ?thesis using valid_edge_set by auto
-        next
-          assume "v \<in> VV p**"
-          hence "v \<notin> VV p" by auto
-          thus ?thesis by (metis (no_types, hide_lams) P_Suc_i P_i(1) P_simp option.distinct(1) option.sel)
-        qed
-        show "w \<in> V \<and> v\<rightarrow>w" proof(cases)
-          assume P_i_in_VVp: "v \<in> VV p"
-          hence *: "\<sigma> v = P (Suc i)" using P_simp P_i(1) by presburger
-          hence "\<sigma> v \<noteq> None" using P_Suc_i by auto
-          hence "v\<rightarrow>the (\<sigma> v)" using \<sigma>_valid P_i_in_VVp valid_strategy_from_def by blast
-          hence "v\<rightarrow>w" using * by auto
-          moreover hence "the (P (Suc i)) \<in> V" using valid_edge_set by blast
-          ultimately show ?thesis using valid_edge_set by auto
-        next
-          assume P_i_not_in_VVp: "v \<notin> VV p"
-          hence P_Suc_i_simp1: "P (Suc i) = (if deadend (the (P i)) then None else Some (SOME w. w \<in> V \<and> (the (P i))\<rightarrow>w))" by (simp add: P_i(1))
-          hence "P (Suc i) = Some (SOME w. w \<in> V \<and> (the (P i))\<rightarrow>w)" using no_deadend by auto
-          hence "the (P (Suc i)) = (SOME w. w \<in> V \<and> (the (P i))\<rightarrow>w)" by (metis (no_types, lifting) option.sel)
-          moreover have "\<exists>w. w \<in> V \<and> the (P i)\<rightarrow>w" by (metis P_Suc_i_simp1 option.discI w_def)
-          ultimately show ?thesis by (metis (no_types, lifting) someI_ex)
-        qed
-      qed
-      fix i show "P i \<noteq> None \<Longrightarrow> the (P i) \<in> V \<and> (P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i)))" proof (induct i)
-        case 0 thus ?case using P_valid_start v0_def * by blast
-      next
-        case (Suc i) thus ?case using * by (meson DiffD1 P_simp)
-      qed
-    qed
-
-    show P_conforms: "path_conforms_with_strategy p P \<sigma>" proof (unfold path_conforms_with_strategy_def; intro allI impI; elim conjE)
-      fix i assume i_def: "P i \<noteq> None" "the (P i) \<in> VV p"
-      show "\<sigma> (the (P i)) = P (Suc i)" by (simp add: i_def)
-    qed
-
-    show P_valid: "valid_path P" proof (unfold valid_path_def; intro conjI)
-      show P_0_not_None: "P 0 \<noteq> None" using P_def by auto
-      show "infinite_path P \<or> finite_path P" proof (subst disj_comms; rule disjCI)
-        let ?Q = "{i. P i = None}"
-        assume "\<not>infinite_path P"
-        then obtain i where "i \<in> ?Q" by auto
-        then obtain i where i_def: "i \<in> ?Q" and i_min: "\<And>j. j < i \<longrightarrow> j \<notin> ?Q" by (meson less_than_iff wf_less_than wfE_min)
-        hence "i \<noteq> 0" using P_0_not_None by (meson CollectD)
-        then obtain n where n_def: "Suc n = i" using gr0_conv_Suc by auto
-        show "finite_path P" proof (unfold finite_path_def; rule_tac x="n" in exI; intro allI)
-          fix j
-          have "j > n \<Longrightarrow> P j = None" proof (induct j, simp)
-            case (Suc j)
-            show ?case proof (cases)
-              assume "j = n" thus ?thesis using i_def n_def by auto
-            next
-              assume "j \<noteq> n" thus ?thesis using Suc.hyps Suc.prems P_def by auto
-            qed
-          qed
-          moreover have "\<not>j > n \<Longrightarrow> P j \<noteq> None" using n_def i_min by auto
-          ultimately show "j > n \<longleftrightarrow> P j = None" by blast
-        qed
-      qed
-      show "\<forall>i. P i \<noteq> None \<longrightarrow> the (P i) \<in> V" using edges_exist by simp
-      show "\<forall>i. P i \<noteq> None \<and> P (Suc i) \<noteq> None \<longrightarrow> the (P i)\<rightarrow>the (P (Suc i))" using edges_exist by simp
-    qed
-
-    show "maximal_path P" proof (unfold maximal_path_def; intro allI impI; elim conjE)
-      fix i assume P_i: "P i \<noteq> None" and P_i_no_deadend: "\<not>deadend (the (P i))"
-      show "P (Suc i) \<noteq> None" proof (cases)
-        assume P_i_VV_p: "the (P i) \<in> VV p"
-        hence "\<sigma> (the (P i)) \<noteq> None" using P_i_no_deadend strategy_on_def \<sigma>_dom by blast
-        moreover have "P (Suc i) = \<sigma> (the (P i))" by (simp add: P_i P_i_VV_p)
-        ultimately show "P (Suc i) \<noteq> None" by simp
-      next
-        assume "the (P i) \<notin> VV p"
-        hence "P (Suc i) = Some (SOME w. w \<in> V \<and> (the (P i))\<rightarrow>w)" using P_i P_i_no_deadend P_simp by presburger
-        thus "P (Suc i) \<noteq> None" by auto
-      qed
-    qed
-  qed
-*)
 
 lemma attractor_strategy_on_extends: "\<lbrakk> strategy_attracts_via p \<sigma> v0 A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A' W"
   unfolding strategy_attracts_via_def by blast
