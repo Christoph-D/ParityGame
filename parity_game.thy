@@ -151,6 +151,11 @@ lemma valid_path_no_deadends: "\<lbrakk> valid_path P; enat (Suc i) < llength P;
 lemma valid_path_ends_on_deadend: "\<lbrakk> valid_path P; enat i < llength P; deadend (P $ i) \<rbrakk> \<Longrightarrow> enat (Suc i) = llength P"
   by (meson Suc_ile_eq antisym_conv le_less_linear valid_path_no_deadends)
 
+lemma valid_path_prefix: "valid_path P \<Longrightarrow> lprefix P' P \<Longrightarrow> valid_path P'"
+apply (subst valid_path_equiv, subst (asm) valid_path_equiv)
+apply (intro conjI, blast dest: lprefix_lsetD)
+by (metis Suc_ile_eq less_le_trans lprefix_llength_le lprefix_lnthD order.strict_implies_order)
+
 coinductive maximal_path where
   "maximal_path LNil"
 | "deadend v \<Longrightarrow> maximal_path (LCons v LNil)"
