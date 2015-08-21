@@ -8,17 +8,21 @@ type_synonym 'a Strategy = "'a \<Rightarrow> 'a"
 
 context ParityGame begin
 
+(* A strategy for player p is a function on VV p assigning a successor to each node. *)
 definition strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> v\<rightarrow>\<sigma> v"
 
+(* If path_conforms_with_strategy p P \<sigma> is True, then we call P a \<sigma>-path.
+This means that P follows \<sigma> on all nodes of player p except maybe the last node on the path. *)
 coinductive path_conforms_with_strategy :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
 path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
 | path_conforms_LCons_LNil: "path_conforms_with_strategy p (LCons v LNil) \<sigma>"
 | path_conforms_VVp: "\<lbrakk> v \<in> VV p; w = \<sigma> v; path_conforms_with_strategy p (LCons w Ps) \<sigma> \<rbrakk> \<Longrightarrow> path_conforms_with_strategy p (LCons v (LCons w Ps)) \<sigma>"
 | path_conforms_VVpstar: "\<lbrakk> v \<notin> VV p; path_conforms_with_strategy p Ps \<sigma> \<rbrakk> \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
 
+(* A strategy is winning for player p from v0 if every maximal \<sigma>-path starting in v0 is winning. *)
 definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  [simp]: "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0 \<longrightarrow> winning_path p P"
+  "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0 \<longrightarrow> winning_path p P"
 
 (* All \<sigma>-paths starting from v0 visit W and until then they stay in A. *)
 definition strategy_attracts_via :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
@@ -28,8 +32,9 @@ definition strategy_attracts_via :: "Player \<Rightarrow> 'a Strategy \<Rightarr
 
 (* All \<sigma>-paths starting from A visit W and until then they stay in A. *)
 definition strategy_attracts :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  [simp]: "strategy_attracts p \<sigma> A W \<equiv> \<forall>v0 \<in> A. strategy_attracts_via p \<sigma> v0 A W"
+  "strategy_attracts p \<sigma> A W \<equiv> \<forall>v0 \<in> A. strategy_attracts_via p \<sigma> v0 A W"
 
+(* All \<sigma>-paths starting from A never visit W. *)
 definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P.
       \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> A
