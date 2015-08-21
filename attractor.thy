@@ -478,8 +478,15 @@ proof-
               with 1 2 3 show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" by blast
             next
               assume "\<not>(v0 \<in> lset P'' \<and> ?\<sigma> v0 \<noteq> \<sigma> v0)"
-              have "?\<sigma> v0 = \<sigma> v0 \<Longrightarrow> ?\<sigma> = \<sigma>" by simp
-              show ?thesis sorry
+              with P''(3)
+                have "path_conforms_with_strategy p P'' \<sigma>"
+                using path_conforms_with_strategy_irrelevant'[of p P'' \<sigma> v0 w] by auto
+              with P'' \<sigma>_def(2) `P'' $ 0 = w` `\<not>lnull P''`
+                have "\<exists>n. enat n < llength P'' \<and> P'' $ n \<in> W \<and> lset (ltake (enat n) P'') \<subseteq> S"
+                unfolding strategy_attracts_via_def by auto
+              with P(1) P(5)
+                show ?thesis
+                unfolding P''_def using lset_ltake_Suc' enat_ltl_Suc lnth_ltl by metis
             qed
           }
           thus ?thesis unfolding strategy_attracts_via_def by blast
@@ -512,16 +519,10 @@ proof-
               from `\<not>lnull P'` ltl_P P(1) P(2) have "P $ 0 \<rightarrow> P' $ 0" by (metis P'_def lhd_LCons_ltl lnth_0_conv_lhd valid_path_edges')
               with P(5) `\<forall>w. v0 \<rightarrow> w \<longrightarrow> w \<in> S` show ?thesis by blast
             qed
-            ultimately obtain n where n: "enat n < llength P'" "P' $ n \<in> W" "lset (ltake (enat n) P') \<subseteq> S"
+            ultimately have "\<exists>n. enat n < llength P' \<and> P' $ n \<in> W \<and> lset (ltake (enat n) P') \<subseteq> S"
               using \<sigma>_def unfolding strategy_attracts_def strategy_attracts_via_def by blast
-            from n(1) have "enat (Suc n) < llength P" using P'_def enat_ltl_Suc by blast
-            moreover from n(2) P(1) have "P $ Suc n \<in> W" using P'_def by (simp add: lnth_ltl)
-            moreover have "lset (ltake (enat (Suc n)) P) \<subseteq> insert v0 S" proof-
-              from n(3) have "lset (ltake (eSuc (enat n)) (LCons v0 P')) \<subseteq> insert v0 S" using lset_ltake_Suc[of "enat n" P' S v0] by blast
-              moreover from P(1) P(5) have "LCons v0 P' = P" unfolding P'_def by (metis lnth_0 ltl_simps(2) not_lnull_conv)
-              ultimately show ?thesis by (simp add: eSuc_enat)
-            qed
-            ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" by blast
+            with P(1) P(5) have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S"
+              unfolding P'_def using lset_ltake_Suc' enat_ltl_Suc lnth_ltl by metis
           }
           thus ?thesis unfolding strategy_attracts_via_def by blast
         qed

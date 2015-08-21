@@ -34,8 +34,16 @@ lemma lprefix_lset' [simp]: "n \<le> m \<Longrightarrow> lset (ltake n xs) \<sub
   by (simp add: lprefix_lsetD)
 lemma lset_lnth: "lset xs \<subseteq> A \<Longrightarrow> enat n < llength xs \<Longrightarrow> lnth xs n \<in> A"
   by (meson contra_subsetD in_lset_conv_lnth)
-lemma lset_ltake_Suc [simp]: "lset (ltake n xs) \<subseteq> A \<Longrightarrow> lset (ltake (eSuc n) (LCons x xs)) \<subseteq> insert x A"
+lemma lset_ltake_Suc: "lset (ltake n xs) \<subseteq> A \<Longrightarrow> lset (ltake (eSuc n) (LCons x xs)) \<subseteq> insert x A"
   by auto
+lemma lset_ltake_Suc':
+  assumes "\<not>lnull xs" "lnth xs 0 = x" "lset (ltake (enat n) (ltl xs)) \<subseteq> A"
+  shows "lset (ltake (enat (Suc n)) xs) \<subseteq> insert x A"
+proof-
+  from assms(3) have "lset (ltake (eSuc (enat n)) (LCons x (ltl xs))) \<subseteq> insert x A" using lset_ltake_Suc[of "enat n" "ltl xs" A x] by blast
+  moreover from assms have "LCons x (ltl xs) = xs" by (metis lnth_0 ltl_simps(2) not_lnull_conv)
+  ultimately show ?thesis by (simp add: eSuc_enat)
+qed
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
