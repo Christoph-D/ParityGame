@@ -126,6 +126,11 @@ qed
 lemma valid_strategy_updates: "\<lbrakk> strategy p \<sigma>; v0\<rightarrow>w0 \<rbrakk> \<Longrightarrow> strategy p (\<sigma>(v0 := w0))"
   unfolding strategy_def by auto
 
+lemma valid_strategy_updates_set:
+  assumes "strategy p \<sigma>" "\<And>v. \<lbrakk> v \<in> A; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> v\<rightarrow>\<sigma>' v"
+  shows "strategy p (override_on \<sigma> \<sigma>' A)"
+  unfolding strategy_def by (metis assms override_on_def strategy_def)
+
 lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> \<sigma> v \<in> V"
   unfolding strategy_def using valid_edge_set by auto
 
