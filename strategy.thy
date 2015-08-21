@@ -143,6 +143,35 @@ lemma path_conforms_with_strategy_ltl [intro]:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ltl P) \<sigma>"
   by (drule path_conforms_with_strategy.cases) (simp_all add: path_conforms_with_strategy.intros(1))
 
+lemma path_conforms_with_strategy_prefix:
+  "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_prefix P' P \<Longrightarrow> path_conforms_with_strategy p P' \<sigma>"
+proof (coinduction arbitrary: P P')
+  case (path_conforms_with_strategy P P')
+  thus ?case proof (cases rule: path_conforms_with_strategy.cases)
+    case path_conforms_LNil
+    thus ?thesis using path_conforms_with_strategy(2) by auto
+  next
+    case path_conforms_LCons_LNil
+    thus ?thesis by (metis lprefix_LCons_conv lprefix_antisym lprefix_code(1) path_conforms_with_strategy(2))
+  next
+    case (path_conforms_VVp v w)
+    thus ?thesis proof (cases "P' = LNil \<or> P' = LCons v LNil")
+      case True thus ?thesis by auto
+    next
+      case False
+      hence "\<exists>Q. P' = LCons v (LCons w Q)" by (metis local.path_conforms_VVp(1) lprefix_LCons_conv path_conforms_with_strategy(2))
+      thus ?thesis using local.path_conforms_VVp(1) local.path_conforms_VVp(3) local.path_conforms_VVp(4) path_conforms_with_strategy(2) by force
+    qed
+  next
+    case (path_conforms_VVpstar v)
+    thus ?thesis proof (cases "P' = LNil", simp)
+      case False
+      hence "\<exists>Q. P' = LCons v Q" using local.path_conforms_VVpstar(1) lprefix_LCons_conv path_conforms_with_strategy(2) by fastforce
+      thus ?thesis using local.path_conforms_VVpstar path_conforms_with_strategy(2) by auto
+    qed
+  qed
+qed
+
 lemma path_conforms_with_strategy_irrelevant:
   assumes "path_conforms_with_strategy p P \<sigma>" "v \<notin> lset P"
   shows "path_conforms_with_strategy p P (\<sigma>(v := w))"
