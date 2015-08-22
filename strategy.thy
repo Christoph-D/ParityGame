@@ -186,6 +186,25 @@ lemma path_conforms_with_strategy_start:
   "path_conforms_with_strategy p (LCons v (LCons w P)) \<sigma> \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<sigma> v = w"
   by (drule path_conforms_with_strategy.cases) simp_all
 
+lemma path_conforms_with_strategy_drop: "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ldropn n P) \<sigma>"
+  unfolding ldropn_def by (induct rule: fun_iter_induct; simp add: path_conforms_with_strategy_ltl)
+
+lemma path_conforms_with_strategy_conforms:
+  assumes "valid_path P" "path_conforms_with_strategy p P \<sigma>" "enat (Suc n) < llength P" "P $ n \<in> VV p"
+  shows "\<sigma> (P $ n) = P $ Suc n"
+proof-
+  def P' \<equiv> "ldropn n P"
+  have "valid_path P'" by (simp add: P'_def assms(1) valid_path_drop)
+  have "path_conforms_with_strategy p P' \<sigma>" by (simp add: P'_def assms(2) path_conforms_with_strategy_drop)
+  from assms(3) have "\<not>lnull P'" using P'_def less_le_trans by fastforce
+  moreover from assms(3) have "\<not>lnull (ltl P')" by (metis P'_def enat_Suc_ltl leD lnull_ldropn ltl_ldropn)
+  ultimately obtain v w P'' where P'': "P' = LCons v (LCons w P'')" by (metis lhd_LCons_ltl)
+  from assms(3) have "enat n < llength P" using dual_order.strict_trans enat_ord_simps(2) by blast
+  with assms(4) have "v \<in> VV p" by (metis P'' P'_def ldropn_Suc_conv_ldropn llist.inject)
+  hence "\<sigma> v = w" using P'' `path_conforms_with_strategy p P' \<sigma>` path_conforms_with_strategy_start by blast
+  thus ?thesis by (metis P'' P'_def `enat n < llength P` assms(3) ldropn_Suc_conv_ldropn llist.inject)
+qed
+
 (* strategy_attracts_from_to *)
 
 lemma strategy_attracts_irrelevant:
@@ -354,7 +373,45 @@ lemma path_conforms_with_strategy_update_path:
     \<and> ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P
     \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n)
     \<and> \<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)"
-  sorry
+proof-
+  (* Determine the first index where P fails to follow \<sigma>'. *)
+  def fail \<equiv> "\<lambda>n. enat (Suc n) < llength P \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n) \<and> \<sigma>' (P $ n) \<noteq> P $ Suc n"
+  hence "\<exists>n. fail n" proof-
+    from v(1) obtain n where n: "enat n < llength P" "P $ n = v" by (meson in_lset_conv_lnth)
+    with v(3) `maximal_path P`
+      have "enat (Suc n) < llength P" using maximal_path_impl1 by blast
+    moreover from n(2) v(2)
+      have "P $ n \<in> VV p" by simp
+    moreover with P(4) `enat (Suc n) < llength P` n(2) v(4) assms(4)
+      have "\<sigma>' (P $ n) \<noteq> P $ Suc n" using path_conforms_with_strategy_conforms by auto
+    ultimately show ?thesis unfolding fail_def using n(2) v(3) by blast
+  qed
+  then obtain n where "fail n" and n_min: "\<And>m. m < n \<Longrightarrow> \<not>fail m" using obtain_min[of fail] by blast
+  hence n: "enat (Suc n) < llength P" "P $ n \<in> VV p" "\<not>deadend (P $ n)" "\<sigma>' (P $ n) \<noteq> P $ Suc n" unfolding fail_def by blast+
+  def P' \<equiv> "lappend (ltake (enat (Suc n)) P) (greedy_conforming_path p \<sigma>' \<sigma>_arbitrary (\<sigma>' (P $ n)))" (is "lappend ?A ?B")
+
+  have "llength ?A = min (enat (Suc n)) (llength P)" using llength_ltake by blast
+  with n(1) have "llength ?A = enat (Suc n)" by (simp add: min.strict_order_iff)
+
+  from P(4) n(1) n(2) n(4) assms(4)
+    have "\<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)" using path_conforms_with_strategy_conforms by auto
+  moreover have "\<not>lnull P'" unfolding P'_def by simp
+  moreover have "enat (Suc n) < llength P'" unfolding P'_def using `llength ?A = enat (Suc n)` by simp
+  moreover have "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P" unfolding P'_def using `llength ?A = enat (Suc n)`
+    by (metis P'_def `enat (Suc n) < llength P'` llength_ltake lprefix_lappendD lprefix_llength_eq_imp_eq ltake_is_lprefix min.strict_order_iff)
+
+  moreover have "valid_path P'" proof-
+    show ?thesis sorry
+  qed
+  moreover have "maximal_path P'" proof-
+    show ?thesis sorry
+  qed
+  moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
+    show ?thesis sorry
+  qed
+
+  ultimately show ?thesis using n by blast
+qed
 
 end -- "context ParityGame"
 
