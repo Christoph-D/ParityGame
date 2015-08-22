@@ -217,110 +217,125 @@ lemma strategy_attracts_from_to_empty [simp]: "strategy_attracts p \<sigma> {} W
 lemma strategy_avoids_trivial [simp]: "strategy_avoids p \<sigma> {} W"
   unfolding strategy_avoids_def by simp
 
-primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a Path" where
-  "greedy_conforming_path p \<sigma> v0 =
-    (if deadend v0
-      then LCons v0 LNil
+primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a Path" where
+  "greedy_conforming_path p \<sigma> \<sigma>' v0 =
+    LCons v0 (if deadend v0
+      then LNil
       else if v0 \<in> VV p
-        then LCons v0 (greedy_conforming_path p \<sigma> (\<sigma> v0))
-        else LCons v0 (greedy_conforming_path p \<sigma> (SOME w. v0\<rightarrow>w)))"
+        then greedy_conforming_path p \<sigma> \<sigma>' (\<sigma> v0)
+        else greedy_conforming_path p \<sigma> \<sigma>' (\<sigma>' v0))"
 
-lemma greedy_path_LNil [simp]: "greedy_conforming_path p \<sigma> v0 \<noteq> LNil"
+lemma greedy_path_LNil [simp]: "greedy_conforming_path p \<sigma> \<sigma>' v0 \<noteq> LNil"
   using greedy_conforming_path.disc_iff llist.discI(1) by blast
 
-lemma greedy_path_lhd: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> v = v0"
+lemma greedy_path_lhd: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> v = v0"
   using greedy_conforming_path.code by auto
 
-lemma greedy_path_deadend_v0: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v0"
-  by (metis greedy_conforming_path.disc_iff greedy_conforming_path.simps(3) llist.disc(1) ltl_simps(2))
-corollary greedy_path_deadend_v0': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v0"
+lemma greedy_path_deadend_v0: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v0"
+  by (metis (no_types, lifting) greedy_conforming_path.disc_iff greedy_conforming_path.simps(3) llist.disc(1) ltl_simps(2))
+corollary greedy_path_deadend_v0': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil \<Longrightarrow> deadend v0"
   using greedy_path_deadend_v0 by blast
 
-corollary greedy_path_deadend_v: "greedy_conforming_path p \<sigma> v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v"
+corollary greedy_path_deadend_v: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v"
   using greedy_path_deadend_v0 greedy_path_lhd by metis
-corollary greedy_path_deadend_v': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v"
+corollary greedy_path_deadend_v': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil \<Longrightarrow> deadend v"
   using greedy_path_deadend_v by blast
 (* corollary greedy_path_deadend': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v"
   using greedy_path_deadend greedy_path_lhd by blast *)
 
 lemma greedy_path_ltl:
-  assumes "greedy_conforming_path p \<sigma> v0 = LCons v P"
-  shows "P = LNil \<or> P = greedy_conforming_path p \<sigma> (\<sigma> v0) \<or> P = greedy_conforming_path p \<sigma> (SOME w. v0\<rightarrow>w)"
-  using assms by
-    (cases "deadend v0", simp add: greedy_conforming_path.code)
-    (cases "v0 \<in> VV p"; metis eq_LConsD greedy_conforming_path.simps(3))
+  assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P"
+  shows "P = LNil \<or> P = greedy_conforming_path p \<sigma> \<sigma>' (\<sigma> v0) \<or> P = greedy_conforming_path p \<sigma> \<sigma>' (\<sigma>' v0)"
+  apply (insert assms, frule greedy_path_lhd)
+  apply (cases "deadend v0", simp add: greedy_conforming_path.code)
+  by (metis (no_types, lifting) greedy_conforming_path.sel(2) ltl_simps(2))
 
 lemma greedy_path_ltl_ex:
-  assumes "greedy_conforming_path p \<sigma> v0 = LCons v P"
-  shows "P = LNil \<or> (\<exists>v. P = greedy_conforming_path p \<sigma> v \<or> P = greedy_conforming_path p \<sigma> v)"
+  assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P"
+  shows "P = LNil \<or> (\<exists>v. P = greedy_conforming_path p \<sigma> \<sigma>' v)"
   using assms greedy_path_ltl by blast
 
 lemma greedy_path_ltl_VVp:
-  assumes "greedy_conforming_path p \<sigma> v0 = LCons v0 P" "v0 \<in> VV p" "\<not>deadend v0"
+  assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 = lhd P"
   using assms greedy_conforming_path.code by auto
 
+lemma greedy_path_ltl_VVpstar:
+  assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P" "v0 \<in> VV p**" "\<not>deadend v0"
+  shows "\<sigma>' v0 = lhd P"
+  using assms greedy_conforming_path.code by auto
+
 theorem strategy_conforming_path_exists:
-  assumes "v0 \<in> V" "strategy p \<sigma>"
-  shows "\<exists>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0"
-proof (intro exI conjI)
-  def [simp]: P \<equiv> "greedy_conforming_path p \<sigma> v0"
+  assumes "v0 \<in> V" "strategy p \<sigma>" "strategy p** \<sigma>'"
+  obtains P where
+    "\<not>lnull P" "P $ 0 = v0" "valid_path P" "maximal_path P"
+    "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'"
+proof
+  def [simp]: P \<equiv> "greedy_conforming_path p \<sigma> \<sigma>' v0"
 
-  show "\<not>lnull P" by simp
-
-  show "P $ 0 = v0" by (metis P_def `\<not>lnull P` greedy_path_lhd lnth_0 not_lnull_conv)
+  show "\<not>lnull P" "P $ 0 = v0" by (simp_all add: lnth_0_conv_lhd)
 
   {
     fix v0 assume "v0 \<in> V"
-    let ?P = "greedy_conforming_path p \<sigma> v0"
+    let ?P = "greedy_conforming_path p \<sigma> \<sigma>' v0"
     assume asm: "\<not>(\<exists>v. ?P = LCons v LNil)"
     obtain P' where P': "?P = LCons v0 P'" by (metis greedy_path_LNil greedy_path_lhd neq_LNil_conv)
     hence "\<not>deadend v0" using asm greedy_path_deadend_v0 `v0 \<in> V` by blast
     from P' have 1: "\<not>lnull P'" using asm llist.collapse(1) `v0 \<in> V` greedy_path_deadend_v0 by blast
-    moreover have 2: "v0\<rightarrow>lhd P'" proof (cases)
-      assume "v0 \<in> VV p"
-      with `\<not>deadend v0` assms(2) have "v0\<rightarrow>\<sigma> v0" unfolding strategy_def by blast
-      with `\<not>deadend v0` `v0 \<in> VV p` P' show "v0\<rightarrow>lhd P'" using greedy_conforming_path.code by auto
-    next
-      assume "v0 \<notin> VV p"
-      with `\<not>deadend v0` P' have "lhd P' = (SOME w. v0\<rightarrow>w)" using greedy_conforming_path.code by auto
-      with `\<not>deadend v0` show "v0\<rightarrow>lhd P'" using someI_ex[of "\<lambda>w. v0\<rightarrow>w"] by auto
-    qed
+    moreover from P' `\<not>deadend v0` assms(2) assms(3) `v0 \<in> V`
+      have 2: "v0\<rightarrow>lhd P'"
+      unfolding strategy_def using greedy_path_ltl_VVp greedy_path_ltl_VVpstar by (cases "v0 \<in> VV p") auto
     moreover hence "lhd P' \<in> V" using edges_are_in_V by auto
-    moreover have "\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V"
+    moreover have "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
       by (metis P' calculation(1) calculation(3) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
     (* The conjunction of all the above *)
     ultimately
-      have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V)"
+      have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V)"
       using P' by blast
   } note coinduction_helper = this
 
   show "valid_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
     case (valid_path v0)
-    from `v0 \<in> V` assms(2) edges_are_in_V show ?case using coinduction_helper[of v0] greedy_path_lhd by metis
+    from `v0 \<in> V` assms(2) assms(3) edges_are_in_V
+      show ?case using coinduction_helper[of v0] greedy_path_lhd by metis
   qed
 
   show "maximal_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
     case (maximal_path v0)
-    from `v0 \<in> V` assms(2) edges_are_in_V show ?case using coinduction_helper[of v0] greedy_path_lhd greedy_path_deadend_v' by blast
+    from `v0 \<in> V` assms(2) assms(3) edges_are_in_V
+      show ?case using coinduction_helper[of v0] greedy_path_deadend_v' by blast
   qed
 
-  show "path_conforms_with_strategy p P \<sigma>" using assms unfolding P_def proof (coinduction arbitrary: v0)
-    case (path_conforms_with_strategy v0)
-    show ?case proof (cases "v0 \<in> VV p")
-      case True
-      { assume "\<not>(\<exists>v. greedy_conforming_path p \<sigma> v0 = LCons v LNil)"
-        with `v0 \<in> V` obtain P' where P': "greedy_conforming_path p \<sigma> v0 = LCons v0 P'" "\<not>lnull P'" "v0\<rightarrow>lhd P'" "lhd P' \<in> V" "\<exists>v. P' = greedy_conforming_path p \<sigma> v \<and> v \<in> V"
-          using coinduction_helper by blast
-        with `v0 \<in> VV p` have "\<sigma> v0 = lhd P'" using greedy_path_ltl_VVp by fastforce
-        with `v0 \<in> VV p` P'(1) P'(2) P'(5) have ?thesis by (metis lhd_LCons not_lnull_conv path_conforms_with_strategy(2))
-      }
-      thus ?thesis by fastforce
-    next
-      case False thus ?thesis using coinduction_helper path_conforms_with_strategy by fastforce
+  {
+    fix p'' \<sigma>'' assume p'': "(p'' = p \<and> \<sigma>'' = \<sigma>) \<or> (p'' = p** \<and> \<sigma>'' = \<sigma>')"
+    moreover with assms have "strategy p'' \<sigma>''" by blast
+    hence "path_conforms_with_strategy p'' P \<sigma>''" using `v0 \<in> V` unfolding P_def proof (coinduction arbitrary: v0)
+      case (path_conforms_with_strategy v0)
+      show ?case proof (cases "v0 \<in> VV p''")
+        case True
+        { assume "\<not>(\<exists>v. greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil)"
+          with `v0 \<in> V` obtain P' where
+            P': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P'" "\<not>lnull P'" "v0\<rightarrow>lhd P'" "lhd P' \<in> V" "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
+            using coinduction_helper by blast
+          with `v0 \<in> VV p''` p'' have "\<sigma>'' v0 = lhd P'"
+            using greedy_path_ltl_VVp greedy_path_ltl_VVpstar by blast
+          with `v0 \<in> VV p''` P'(1) P'(2) P'(5) have ?path_conforms_VVp
+            using greedy_conforming_path.code path_conforms_with_strategy(1) by fastforce
+        }
+        thus ?thesis by auto
+      next
+        case False thus ?thesis using coinduction_helper[of v0] path_conforms_with_strategy by auto
+      qed
     qed
-  qed
+  }
+  thus "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'" by blast+
 qed
+
+corollary strategy_conforming_path_exists_single:
+  assumes "v0 \<in> V" "strategy p \<sigma>"
+  obtains P where
+    "\<not>lnull P" "P $ 0 = v0" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
+  using assms strategy_conforming_path_exists[of v0 p \<sigma> \<sigma>_arbitrary] valid_arbitrary_strategy by metis
 
 lemma attractor_strategy_on_extends: "\<lbrakk> strategy_attracts_via p \<sigma> v0 A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A' W"
   unfolding strategy_attracts_via_def by blast
