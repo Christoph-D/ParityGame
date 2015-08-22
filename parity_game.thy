@@ -163,9 +163,6 @@ coinductive maximal_path where
 | "deadend v \<Longrightarrow> maximal_path (LCons v LNil)"
 | "\<not>lnull Ps \<Longrightarrow> maximal_path Ps \<Longrightarrow> maximal_path (LCons v Ps)"
 
-(* definition maximal_path :: "'a Path \<Rightarrow> bool" where
-  [simp]: "maximal_path P \<equiv> \<forall>i. P $ i \<noteq> None \<and> \<not>deadend (the (P $ i)) \<longrightarrow> P $ Suc i \<noteq> None"
-*)
 lemma maximal_no_deadend: "maximal_path (LCons v Ps) \<Longrightarrow> \<not>deadend v \<Longrightarrow> \<not>lnull Ps" by (metis lhd_LCons llist.distinct(1) ltl_simps(2) maximal_path.simps)
 lemma maximal_tail: "maximal_path P \<Longrightarrow> maximal_path (ltl P)" by (metis ltl_simps(1) ltl_simps(2) maximal_path.simps)
 lemma maximal_drop: "maximal_path P \<Longrightarrow> maximal_path (ldropn n P)" unfolding ldropn_def by (induct rule: fun_iter_induct; simp add: maximal_tail)
