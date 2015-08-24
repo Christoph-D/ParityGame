@@ -205,6 +205,47 @@ proof-
   thus ?thesis by (metis P'' P'_def `enat n < llength P` assms(3) ldropn_Suc_conv_ldropn llist.inject)
 qed
 
+lemma path_conforms_with_strategy_lappend:
+  assumes
+    P: "lfinite P" "\<not>lnull P" "path_conforms_with_strategy p P \<sigma>"
+    and P': "\<not>lnull P'" "path_conforms_with_strategy p P' \<sigma>"
+    and conforms: "llast P \<in> VV p" "\<sigma> (llast P) = lhd P'"
+  shows "path_conforms_with_strategy p (lappend P P') \<sigma>"
+using assms proof (induct P rule: lfinite_induct, simp)
+  case (LCons P)
+  show ?case proof (cases)
+    assume "lnull (ltl P)"
+    then obtain v0 where v0: "P = LCons v0 LNil" by (metis LCons.prems(1) lhd_LCons_ltl llist.collapse(1))
+    have "path_conforms_with_strategy p (LCons (lhd P) P') \<sigma>" proof (cases)
+      assume "lhd P \<in> VV p"
+      moreover with v0 have "lhd P' = \<sigma> (lhd P)"
+        using LCons.prems(6) by auto
+      ultimately show ?thesis
+        using path_conforms_VVp[of "lhd P" p "lhd P'" \<sigma>] by (metis (no_types) LCons.prems(4) `\<not>lnull P'` lhd_LCons_ltl)
+    next
+      assume "lhd P \<notin> VV p"
+      thus ?thesis using path_conforms_VVpstar using LCons.prems(5) v0 by auto
+    qed
+    thus ?thesis by (simp add: v0)
+  next
+    assume "\<not>lnull (ltl P)"
+    hence *: "path_conforms_with_strategy p (lappend (ltl P) P') \<sigma>"
+      by (metis LCons.hyps(3) LCons.prems(1) LCons.prems(2) LCons.prems(5) LCons.prems(6) assms(4) assms(5) lhd_LCons_ltl llast_LCons2 path_conforms_with_strategy_ltl)
+    have "path_conforms_with_strategy p (LCons (lhd P) (lappend (ltl P) P')) \<sigma>" proof (cases)
+      assume "lhd P \<in> VV p"
+      moreover hence "lhd (ltl P) = \<sigma> (lhd P)"
+        by (metis LCons.prems(1) LCons.prems(2) `\<not>lnull (ltl P)` lhd_LCons_ltl path_conforms_with_strategy_start)
+      ultimately show ?thesis
+        using path_conforms_VVp[of "lhd P" p "lhd (ltl P)" \<sigma>] * `\<not>lnull (ltl P)` by (metis lappend_code(2) lhd_LCons_ltl)
+    next
+      assume "lhd P \<notin> VV p"
+      thus ?thesis by (simp add: "*" path_conforms_VVpstar)
+    qed
+    with `\<not>lnull P` show "path_conforms_with_strategy p (lappend P P') \<sigma>"
+      by (metis lappend_code(2) lhd_LCons_ltl)
+  qed
+qed
+
 (* strategy_attracts_from_to *)
 
 lemma strategy_attracts_irrelevant:
