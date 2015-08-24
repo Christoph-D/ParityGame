@@ -557,10 +557,10 @@ lemma strategy_attracts_irrelevant:
 
       have "lset (ltake (enat m) P) \<subseteq> A" proof-
         from `m \<le> n` prefix have "ltake (enat m) P' = ltake (enat m) P" by (meson enat_ord_simps(1) le_imp_less_Suc less_imp_le_nat ltake_eq_ltake_antimono)
-        hence "lset (ltake (enat m) P') = lset (ltake (enat m) P)" by simp
         with m(3) show ?thesis by simp
       qed
-      moreover from `m \<le> n` P'(6) have "enat m < llength P" using dual_order.strict_trans by fastforce
+      moreover from `m \<le> n` P'(6) have "enat m < llength P"
+        using dual_order.strict_trans by fastforce
       moreover have "P $ m \<in> W" proof-
         from `m \<le> n` have "enat m < enat (Suc n)" by simp
         with prefix have "P' $ m = P $ m" using ltake_lnth by blast
@@ -569,12 +569,11 @@ lemma strategy_attracts_irrelevant:
       ultimately show ?thesis using m(3) by blast
     next
       assume "\<not>(v \<in> lset P \<and> v \<in> VV p \<and> \<not>deadend v \<and> ?\<sigma> v \<noteq> \<sigma> v)"
-      moreover {
-        assume "v \<notin> lset P \<or> v \<notin> VV p \<or> deadend v"
-        with P(2) P(4) have "path_conforms_with_strategy p P \<sigma>"
+      moreover from P(2) P(4)
+        have "v \<notin> lset P \<or> v \<notin> VV p \<or> deadend v \<Longrightarrow> path_conforms_with_strategy p P \<sigma>"
           using path_conforms_with_strategy_irrelevant' path_conforms_with_strategy_irrelevant_deadend' by blast
-      }
-      moreover from P(4) have "?\<sigma> v = \<sigma> v \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by simp
+      moreover from P(4)
+        have "?\<sigma> v = \<sigma> v \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by simp
       ultimately have "path_conforms_with_strategy p P \<sigma>" by blast
       thus ?thesis
         using P(1) P(2) P(3) P(5) assms(1) strategy_attracts_def strategy_attracts_via_def by auto
