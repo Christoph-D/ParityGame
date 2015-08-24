@@ -271,6 +271,21 @@ proof-
   thus ?thesis using maximal_path_equiv by blast
 qed
 
+lemma maximal_ends_on_deadend:
+  assumes "maximal_path P" "lfinite P" "\<not>lnull P"
+  shows "deadend (llast P)"
+proof (rule ccontr)
+  assume *: "\<not>deadend (llast P)"
+  from `lfinite P` `\<not>lnull P` obtain i where i: "llength P = enat (Suc i)"
+    by (metis enat_ord_simps(2) gr0_implies_Suc lfinite_llength_enat lnull_0_llength)
+  hence "llength P = eSuc (enat i)" by (simp add: eSuc_enat)
+  hence "llast P = P $ i" using llast_conv_lnth by blast
+  with * have "\<not>deadend (P $ i)" by simp
+  from i have "enat i < llength P" by simp
+  with assms(1) `\<not>deadend (P $ i)` have "enat (Suc i) < llength P" using maximal_path_impl1 by blast
+  with i show False by simp
+qed
+
 end -- "locale Digraph"
 
 datatype Player = Even | Odd
