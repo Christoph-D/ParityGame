@@ -284,12 +284,16 @@ lemma greedy_path_ltl_VVpstar:
   shows "\<sigma>' v0 = lhd P"
   using assms greedy_conforming_path.code by auto
 
-theorem strategy_conforming_path_exists:
+theorem greedy_conforming_path_properties [simp]:
   assumes "v0 \<in> V" "strategy p \<sigma>" "strategy p** \<sigma>'"
-  obtains P where
-    "\<not>lnull P" "P $ 0 = v0" "valid_path P" "maximal_path P"
-    "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'"
-proof
+  shows
+    "\<not>lnull (greedy_conforming_path p \<sigma> \<sigma>' v0)"
+    "greedy_conforming_path p \<sigma> \<sigma>' v0 $ 0 = v0"
+    "valid_path (greedy_conforming_path p \<sigma> \<sigma>' v0)"
+    "maximal_path (greedy_conforming_path p \<sigma> \<sigma>' v0)"
+    "path_conforms_with_strategy p (greedy_conforming_path p \<sigma> \<sigma>' v0) \<sigma>"
+    "path_conforms_with_strategy p** (greedy_conforming_path p \<sigma> \<sigma>' v0) \<sigma>'"
+proof-
   def [simp]: P \<equiv> "greedy_conforming_path p \<sigma> \<sigma>' v0"
 
   show "\<not>lnull P" "P $ 0 = v0" by (simp_all add: lnth_0_conv_lhd)
@@ -349,6 +353,13 @@ proof
   }
   thus "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'" by blast+
 qed
+
+corollary strategy_conforming_path_exists:
+  assumes "v0 \<in> V" "strategy p \<sigma>" "strategy p** \<sigma>'"
+  obtains P where
+    "\<not>lnull P" "P $ 0 = v0" "valid_path P" "maximal_path P"
+    "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'"
+  using assms greedy_conforming_path_properties by metis
 
 corollary strategy_conforming_path_exists_single:
   assumes "v0 \<in> V" "strategy p \<sigma>"
