@@ -283,24 +283,6 @@ qed
 
 (* strategy_attracts_from_to *)
 
-lemma strategy_attracts_irrelevant:
-  assumes "strategy_attracts p \<sigma> A W" "v \<notin> A" "strategy p \<sigma>"
-  shows "strategy_attracts p (\<sigma>(v := w)) A W" proof-
-  { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P (\<sigma>(v := w))" "P $ 0 \<in> A"
-    have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" proof (cases)
-      assume "v \<in> lset P"
-      then obtain n where n: "enat n < llength P" "P $ n = v" by (meson in_lset_conv_lnth)
-      (* obtain the minimal n, etc. *)
-      show ?thesis sorry
-    next
-      assume "v \<notin> lset P"
-      with P(4) have "path_conforms_with_strategy p P \<sigma>" using path_conforms_with_strategy_irrelevant' by blast
-      with P(1) P(2) P(3) P(5) assms(1) show ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
-    qed
-  }
-  thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
-qed
-
 lemma strategy_attracts_from_to_trivial [simp]: "strategy_attracts p \<sigma> W W"
   unfolding strategy_attracts_def strategy_attracts_via_def using lnull_0_llength zero_enat_def by fastforce
 
@@ -592,6 +574,69 @@ proof-
   qed
 
   ultimately show ?thesis using n by blast
+qed
+
+
+lemma strategy_attracts_irrelevant:
+  assumes "strategy_attracts p \<sigma> A W" "v \<notin> A" "v\<rightarrow>w" "strategy p \<sigma>"
+  shows "strategy_attracts p (\<sigma>(v := w)) A W" proof-
+  let ?\<sigma> = "\<sigma>(v := w)"
+  { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P (\<sigma>(v := w))" "P $ 0 \<in> A"
+    have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" proof (cases)
+      assume v: "v \<in> lset P \<and> v \<in> VV p \<and> \<not>deadend v \<and> ?\<sigma> v \<noteq> \<sigma> v"
+
+      have "strategy p ?\<sigma>" by (simp add: assms(3) assms(4) valid_strategy_updates)
+      with v P assms(4) obtain P' n where P': "\<not>lnull P'"
+        "valid_path P'" "maximal_path P'" "path_conforms_with_strategy p P' \<sigma>"
+        "enat (Suc n) < llength P'"
+        "enat (Suc n) < llength P"
+        and prefix: "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P"
+        and n: "P $ n \<in> VV p" "\<not>deadend (P $ n)" "?\<sigma> (P $ n) \<noteq> \<sigma> (P $ n)"
+          using path_conforms_with_strategy_update_path[of p ?\<sigma> \<sigma> P v] by blast
+      hence "P' $ 0 = P $ 0" using ltake_lnth by fastforce
+      with P' obtain m where m: "enat m < llength P'" "P' $ m \<in> W" "lset (ltake (enat m) P') \<subseteq> A"
+        by (metis P(5) assms(1) strategy_attracts_def strategy_attracts_via_def)
+
+      have "m \<le> n" proof (rule ccontr)
+        assume "\<not>m \<le> n"
+        have "P $ n \<in> A" proof-
+          from `\<not>m \<le> n` have "path_prefix (ltake (enat (Suc n)) P') (ltake (enat m) P')" by simp
+          with m(3) have "lset (ltake (enat (Suc n)) P') \<subseteq> A" using lprefix_lsetD by blast
+          with prefix have *: "lset (ltake (enat (Suc n)) P) \<subseteq> A" by simp
+          moreover have "llength (ltake (enat (Suc n)) P) = min (enat (Suc n)) (llength P)" using llength_ltake by blast
+          ultimately have "ltake (enat (Suc n)) P $ n \<in> A" using P'(6) by (simp add: lset_lnth min.absorb1)
+          thus ?thesis by (simp add: lnth_ltake)
+        qed
+        moreover with n(3) have "P $ n = v" by (meson fun_upd_apply)
+        ultimately show False using `v \<notin> A` by blast
+      qed
+
+      have "lset (ltake (enat m) P) \<subseteq> A" proof-
+        from `m \<le> n` prefix have "ltake (enat m) P' = ltake (enat m) P" by (meson enat_ord_simps(1) le_imp_less_Suc less_imp_le_nat ltake_eq_ltake_antimono)
+        hence "lset (ltake (enat m) P') = lset (ltake (enat m) P)" by simp
+        with m(3) show ?thesis by simp
+      qed
+      moreover from `m \<le> n` P'(6) have "enat m < llength P" using dual_order.strict_trans by fastforce
+      moreover have "P $ m \<in> W" proof-
+        from `m \<le> n` have "enat m < enat (Suc n)" by simp
+        with prefix have "P' $ m = P $ m" using ltake_lnth by blast
+        with m(2) show ?thesis by simp
+      qed
+      ultimately show ?thesis using m(3) by blast
+    next
+      assume "\<not>(v \<in> lset P \<and> v \<in> VV p \<and> \<not>deadend v \<and> ?\<sigma> v \<noteq> \<sigma> v)"
+      moreover {
+        assume "v \<notin> lset P \<or> v \<notin> VV p \<or> deadend v"
+        with P(2) P(4) have "path_conforms_with_strategy p P \<sigma>"
+          using path_conforms_with_strategy_irrelevant' path_conforms_with_strategy_irrelevant_deadend' by blast
+      }
+      moreover from P(4) have "?\<sigma> v = \<sigma> v \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by simp
+      ultimately have "path_conforms_with_strategy p P \<sigma>" by blast
+      thus ?thesis
+        using P(1) P(2) P(3) P(5) assms(1) strategy_attracts_def strategy_attracts_via_def by auto
+    qed
+  }
+  thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
 qed
 
 end -- "context ParityGame"
