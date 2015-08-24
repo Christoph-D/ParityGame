@@ -177,10 +177,45 @@ lemma path_conforms_with_strategy_irrelevant:
   shows "path_conforms_with_strategy p P (\<sigma>(v := w))"
   using assms apply (coinduction arbitrary: P) by (drule path_conforms_with_strategy.cases) auto
 
+lemma path_conforms_with_strategy_irrelevant_deadend:
+  assumes "path_conforms_with_strategy p P \<sigma>" "deadend v \<or> v \<notin> VV p" "valid_path P"
+  shows "path_conforms_with_strategy p P (\<sigma>(v := w))"
+using assms proof (coinduction arbitrary: P)
+  let ?\<sigma> = "\<sigma>(v := w)"
+  case (path_conforms_with_strategy P)
+  thus ?case proof (cases rule: path_conforms_with_strategy.cases)
+    case path_conforms_LNil thus ?thesis by simp
+  next
+    case path_conforms_LCons_LNil thus ?thesis by auto
+  next
+    case (path_conforms_VVp v' w Ps)
+    have "w = ?\<sigma> v'" proof-
+      from `valid_path P` have "\<not>deadend v'" using local.path_conforms_VVp(1) valid_path_cons_simp by blast
+      with assms(2) have "v' \<noteq> v" using local.path_conforms_VVp(2) by blast
+      thus "w = ?\<sigma> v'" by (simp add: local.path_conforms_VVp(3))
+    qed
+    moreover have "\<exists>P. LCons w Ps = P \<and> path_conforms_with_strategy p P \<sigma> \<and> (deadend v \<or> v \<notin> VV p) \<and> valid_path P" proof-
+      have "valid_path (LCons w Ps)" using local.path_conforms_VVp(1) path_conforms_with_strategy(3) valid_path_ltl' by blast
+      thus ?thesis using local.path_conforms_VVp(4) path_conforms_with_strategy(2) by blast
+    qed
+    ultimately show ?thesis using local.path_conforms_VVp(1) local.path_conforms_VVp(2) by blast
+  next
+    case (path_conforms_VVpstar v' Ps)
+    have "\<exists>P. path_conforms_with_strategy p Ps \<sigma> \<and> (deadend v \<or> v \<notin> VV p) \<and> valid_path Ps"
+      using local.path_conforms_VVpstar(1) local.path_conforms_VVpstar(3) path_conforms_with_strategy(2) path_conforms_with_strategy(3) valid_path_ltl' by blast
+    thus ?thesis by (simp add: local.path_conforms_VVpstar(1) local.path_conforms_VVpstar(2))
+  qed
+qed
+
 lemma path_conforms_with_strategy_irrelevant':
   assumes "path_conforms_with_strategy p P (\<sigma>(v := w))" "v \<notin> lset P"
   shows "path_conforms_with_strategy p P \<sigma>"
   by (metis assms fun_upd_triv fun_upd_upd path_conforms_with_strategy_irrelevant)
+
+lemma path_conforms_with_strategy_irrelevant_deadend':
+  assumes "path_conforms_with_strategy p P (\<sigma>(v := w))" "deadend v \<or> v \<notin> VV p" "valid_path P"
+  shows "path_conforms_with_strategy p P \<sigma>"
+  by (metis assms fun_upd_triv fun_upd_upd path_conforms_with_strategy_irrelevant_deadend)
 
 lemma path_conforms_with_strategy_start:
   "path_conforms_with_strategy p (LCons v (LCons w P)) \<sigma> \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<sigma> v = w"
