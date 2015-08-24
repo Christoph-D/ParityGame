@@ -158,6 +158,40 @@ lemma valid_path_prefix: "valid_path P \<Longrightarrow> lprefix P' P \<Longrigh
   apply (intro conjI, blast dest: lprefix_lsetD)
   by (metis Suc_ile_eq less_le_trans lprefix_llength_le lprefix_lnthD order.strict_implies_order)
 
+lemma valid_path_lappend:
+  assumes P: "lfinite P" "valid_path P"
+    and P': "\<not>lnull P'" "valid_path P'"
+    and edge: "llast P\<rightarrow>lhd P'"
+  shows "valid_path (lappend P P')"
+proof-
+  let ?P = "lappend P P'"
+  have "lset ?P \<subseteq> V" by (simp add: P P'(2) valid_path_in_V)
+  moreover have "\<forall>i v w. enat (Suc i) < llength ?P \<and> ?P $ i = v \<and> ?P $ Suc i = w \<longrightarrow> v\<rightarrow>w" proof (clarify)
+    fix i assume "enat (Suc i) < llength ?P"
+    have "enat (Suc i) < llength P \<Longrightarrow> ?P $ i \<rightarrow> ?P $ Suc i"
+      by (metis P(2) dual_order.strict_trans enat_ord_simps(2) lessI lnth_lappend1 valid_path_edges)
+    moreover {
+      assume *: "enat (Suc i) = llength P"
+      from * have "?P $ i = llast P" by (metis eSuc_enat enat_ord_simps(2) lessI llast_conv_lnth lnth_lappend1)
+      moreover from * have "?P $ Suc i = P' $ 0" by (simp add: lnth_lappend2[of P "Suc i" "Suc i" P'] "*")
+      ultimately have "?P $ i \<rightarrow> ?P $ Suc i" using P'(1) edge lhd_conv_lnth by force
+    }
+    moreover {
+      assume *: "enat (Suc i) > llength P"
+      then obtain j where j: "llength P = enat j" using enat_iless by fastforce
+      with * have "j \<le> i" by (metis enat_ord_simps(2) leI not_less_eq)
+      hence **: "?P $ i = P' $ (i - j) \<and> ?P $ (Suc i) = P' $ (Suc i - j)" using j lnth_lappend2[of P "j" "i" P'] lnth_lappend2[of P "j" "Suc i" P'] by simp
+      have "enat (Suc i) < llength P + llength P'" using `enat (Suc i) < llength ?P` by auto
+      with j have "enat (Suc i - j) < llength P'" by (metis `j \<le> i` add.commute enat_ord_simps(2) infinite_small_llength le_Suc_eq less_diff_conv2 lfinite_llength_enat plus_enat_simps(1))
+      moreover hence "enat (i - j) < llength P'" using Suc_diff_le Suc_ile_eq `j \<le> i` by fastforce
+      ultimately have "P' $ (i - j) \<rightarrow> P' $ (Suc i - j)" by (simp add: Suc_diff_le `j \<le> i` P'(2) valid_path_edges)
+      with ** have "?P $ i \<rightarrow> ?P $ Suc i" by simp
+    }
+    ultimately show "?P $ i \<rightarrow> ?P $ Suc i" using linorder_cases by blast
+  qed
+  ultimately show ?thesis using valid_path_equiv by blast
+qed
+
 coinductive maximal_path where
   "maximal_path LNil"
 | "deadend v \<Longrightarrow> maximal_path (LCons v LNil)"
