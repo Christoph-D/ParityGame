@@ -57,62 +57,6 @@ proof (subst valid_path_equiv, intro conjI)
   qed
 qed
 
-(*
-lemma path_conforms_with_strategy_maximally_start:
-  assumes "path_conforms_with_strategy_maximally p P \<sigma>"
-    and "P $ 0 = v0" "v0 \<in> VV p" "\<sigma> v0 = Some w"
-    and "\<not>lnull P"
-  shows "enat (Suc 0) < llength P \<and> \<sigma> v0 = Some (P $ Suc 0)"
-proof-
-  have *: "P $ 0 \<in> VV p \<and> \<sigma> (P $ 0) = Some w" by (simp add: assms(2) assms(3) assms(4))
-  { assume "path_conforms_with_strategy p P \<sigma>"
-    moreover have "enat 0 < llength P" using `\<not>lnull P` zero_enat_def by auto
-    ultimately have "enat (Suc 0) < llength P \<and> P $ Suc 0 = w" using * path_conforms_with_strategy_def by blast
-    hence ?thesis using assms(4) by blast
-  }
-  moreover
-  { assume "\<exists>n v. path_conforms_with_strategy_up_to p P \<sigma> n \<and> enat (Suc n) = llength P \<and> P $ n = v \<and> v \<in> VV p \<and> \<sigma> v = None"
-    then obtain n v where n_def: "path_conforms_with_strategy_up_to p P \<sigma> n" "enat (Suc n) = llength P" "P $ n = v" "v \<in> VV p" "\<sigma> v = None" by blast
-    have ?thesis proof (cases)
-      assume "n = 0"
-      thus ?thesis using assms(2) assms(4) n_def(2) n_def(3) n_def(5) by auto
-    next
-      assume "n \<noteq> 0"
-      hence "path_conforms_with_strategy_up_to p P \<sigma> (Suc 0)" using n_def(1) by simp
-      hence "enat (Suc 0) < llength P \<and> P $ Suc 0 = w" unfolding path_conforms_with_strategy_up_to_def using * `\<not>lnull P` zero_enat_def by auto
-      thus ?thesis using assms(4) by blast
-    qed
-  }
-  ultimately show ?thesis using assms(1) path_conforms_with_strategy_maximally_def by blast
-qed
-
-lemma path_conforms_with_strategy_maximally_start_VVpstar:
-  assumes "path_conforms_with_strategy_maximally p P \<sigma>"
-    and P: "P $ 0 \<in> VV p**" "\<not>deadend (P $ 0)" "\<not>lnull P"
-  shows "enat (Suc 0) < llength P"
-proof-
-  have "P $ 0 \<notin> VV p \<and> enat 0 < llength P" using P(1) P(3) zero_enat_def by auto
-  thus ?thesis using path_conforms_with_strategy_maximally_def assms(1) P(2) by metis
-qed
-
-lemma maximal_path_conforms_maximally:
-  assumes P_conforms: "path_conforms_with_strategy p P \<sigma>"
-    and P_maximal: "maximal_path P"
-  shows "path_conforms_with_strategy_maximally p P \<sigma>"
-proof-
-  { fix i assume "enat i < llength P" "\<not>deadend (P $ i)"
-    with P_maximal have "enat (Suc i) < llength P" using maximal_path_impl1 by blast
-  }
-  with P_conforms show ?thesis unfolding path_conforms_with_strategy_maximally_def by blast
-qed *)
-
-(*
-lemma valid_strategy_none_on_VVpstar: "valid_strategy p \<sigma> \<Longrightarrow> v \<notin> VV p \<Longrightarrow> \<sigma> v = None" by (metis not_None_eq valid_strategy_def)
-lemma valid_strategy_none_on_VVpstar2: "valid_strategy p \<sigma> \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<sigma> v = None" by (metis DiffD2 Player.distinct(1) valid_strategy_none_on_VVpstar)
-lemma valid_strategy_none_on_deadends: "valid_strategy p \<sigma> \<Longrightarrow> deadend v \<Longrightarrow> \<sigma> v = None" by (meson edges_are_in_V not_Some_eq valid_strategy_def)
-lemma valid_empty_strategy: "valid_strategy p (\<lambda>_. None)" using valid_strategy_def by simp
-*)
-
 (* An arbitrary strategy.  Useful to define other strategies. *)
 definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
