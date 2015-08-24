@@ -15,21 +15,17 @@ proof -
   { fix p
     def A \<equiv> "attractor p (?deadends p**)"
     assume "?deadends p** \<noteq> {}"
-    then obtain \<sigma> where \<sigma>: "valid_strategy p \<sigma>" "strategy_only_on p \<sigma> (A - (?deadends p**))" "strategy_attracts_from_to p \<sigma> A (?deadends p**)"
-      using attractor_has_strategy_weak[of "?deadends p**" "p"] A_def deadends_in_V by blast
+    then obtain \<sigma> where \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> A (?deadends p**)"
+      using attractor_has_strategy[of "?deadends p**" "p"] A_def deadends_in_V by blast
 
     have "A \<subseteq> V" using A_def using attractor_is_bounded_by_V deadends_in_V by blast
     hence "A - ?deadends p** \<subseteq> V" by auto
-    moreover have "strategy_on p \<sigma> (A - ?deadends p**)" using \<sigma> by blast
-    ultimately obtain \<sigma>' where \<sigma>': "valid_strategy p \<sigma>'" "strategy_on p \<sigma>' V" "strategy_less_eq \<sigma> \<sigma>'"
-      using \<sigma>(1) strategy_less_eq_extensible[of "A - ?deadends p**" "V"] by blast
-    hence \<sigma>'_attracts: "strategy_attracts_from_to p \<sigma>' A (?deadends p**)" using \<sigma>(3) strategy_attracts_from_to_extends by blast
 
     assume v_in_attractor: "v0 \<in> attractor p (?deadends p**)"
-    have "winning_strategy p \<sigma>' v0" proof (unfold winning_strategy_def, clarify)
-      fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "v0 = P $ 0"
-      obtain i where i_def: "enat i < llength P \<and> P $ i \<in> ?deadends p**"
-        using \<sigma>'_attracts A_def v_in_attractor strategy_attracts_from_to_def P lset_intersect_lnth[of P "?deadends p**"] by blast
+    have "winning_strategy p \<sigma> v0" proof (unfold winning_strategy_def, clarify)
+      fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "v0 = P $ 0"
+      with \<sigma>(2) v_in_attractor obtain i where i_def: "enat i < llength P" "P $ i \<in> ?deadends p**" "lset (ltake (enat i) P) \<subseteq> A"
+        unfolding strategy_attracts_def strategy_attracts_via_def using A_def by blast
       have *: "enat (Suc i) = llength P" using P(2) i_def valid_path_ends_on_deadend by auto
       hence "lfinite P" using llength_eq_enat_lfiniteD by force
       moreover have "llast P \<in> VV p**" proof-
@@ -39,7 +35,7 @@ proof -
       qed
       ultimately show "winning_path p P" using winning_path_def P(1) by blast
     qed
-    hence "\<exists>p \<sigma>. valid_strategy p \<sigma> \<and> strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0" using \<sigma>' by blast
+    hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0" using \<sigma> by blast
   } note lemma_path_to_deadend = this
   def p \<equiv> "if even n then Even else Odd"
   {
@@ -47,35 +43,31 @@ proof -
     hence W_in_V: "W \<subseteq> V" by auto
     let ?A = "attractor p** W"
     assume v_not_in_attractor: "v0 \<in> V - ?A"
-    then obtain \<sigma> where \<sigma>_def: "valid_strategy p \<sigma>" "strategy_only_on p \<sigma> (V - ?A)" "strategy_avoids p \<sigma> (V - ?A) ?A"
+    then obtain \<sigma> where \<sigma>_def: "strategy p \<sigma>" "strategy_avoids p \<sigma> (V - ?A) ?A"
       using W_in_V attractor_has_outside_strategy[of p W] by blast
 
-    have "\<forall>P n. \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy_up_to p P \<sigma> n \<and> P $ 0 \<in> V - ?A
-      \<longrightarrow> (\<forall>i \<le> n. enat i < llength P \<longrightarrow> P $ i \<notin> ?A)" by (insert \<sigma>_def(3); unfold strategy_avoids_def)
-
-    have "\<And>P. \<lbrakk> \<not>lnull P; valid_path P; maximal_path P; path_conforms_with_strategy p P \<sigma>; P $ 0 \<in> V - ?A \<rbrakk> \<Longrightarrow> winning_path p P" proof-
+    {
       fix P
       assume "\<not>lnull P"
         and P_valid: "valid_path P"
         and P_maximal: "maximal_path P"
         and P_conforms: "path_conforms_with_strategy p P \<sigma>"
         and P_valid_start: "P $ 0 \<in> V - ?A"
-      show "winning_path p P" proof (cases)
+      hence "lset P \<inter> ?A = {}" using \<sigma>_def(2) strategy_avoids_def by auto
+      have "winning_path p P" proof (cases)
         assume P_finite: "lfinite P"
-        then obtain j where j_def: "enat j = llength P" by (metis lfinite_conv_llength_enat)
-        with `\<not>lnull P` have "j \<noteq> 0" by (metis llength_eq_0 zero_enat_def)
-        then obtain i where i_def: "enat (Suc i) = llength P" using j_def by (metis nat.exhaust)
-        have "P $ i \<in> VV p**" proof-
-          from i_def have deadend: "deadend (P $ i)" by (metis P_maximal enat_ord_simps(2) lessI less_not_refl maximal_path_impl1)
-          have "\<And>i. enat i < llength P \<Longrightarrow> P $ i \<notin> ?A" using strategy_avoids_strongly P_conforms P_valid P_valid_start \<sigma>_def(3) by presburger
-          hence no_bad_deadends: "\<And>i. enat i < llength P \<Longrightarrow> P $ i \<notin> ?deadends p" using W_def by (metis attractor_set_base subsetCE)
-          hence "P $ i \<notin> ?deadends p" using i_def(1) by (metis (no_types, lifting) enat_ord_simps(2) lessI)
-          hence "P $ i \<notin> VV p \<or> \<not>deadend (P $ i)" by blast
-          hence "P $ i \<notin> VV p" using deadend by simp
-          thus ?thesis using i_def(1) P_valid by (metis DiffI Player.distinct(1) enat_ord_simps(2) lessI valid_path_finite_in_V')
+        have "llast P \<notin> VV p" proof (rule ccontr)
+          assume "\<not>llast P \<notin> VV p"
+          hence "llast P \<in> VV p" by simp
+          have "llast P \<in> ?A" proof-
+            from `\<not>lnull P` P_maximal P_finite have "deadend (llast P)" using maximal_ends_on_deadend by blast
+            with `llast P \<in> VV p` have "llast P \<in> ?deadends p" by auto
+            thus ?thesis using W_def attractor_set_base by force
+          qed
+          moreover from P_finite have "llast P \<in> lset P" sorry
+          ultimately show False using `lset P \<inter> ?A = {}` by blast
         qed
-        moreover from i_def have "eSuc (enat i) = llength P" by (simp add: eSuc_enat)
-        ultimately have "llast P \<in> VV p**" using llast_conv_lnth[OF sym, of i P] by simp
+        moreover have "llast P \<in> VV p**" sorry
         thus ?thesis using winning_path_def P_finite `\<not>lnull P` by blast
       next
         assume infinite: "\<not>lfinite P"
