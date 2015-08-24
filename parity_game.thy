@@ -237,6 +237,40 @@ proof (coinduction arbitrary: P rule: maximal_path.coinduct)
 qed
 lemma maximal_path_equiv: "maximal_path P \<longleftrightarrow> (\<forall>n. enat n < llength P \<and> \<not>deadend (P $ n) \<longrightarrow> enat (Suc n) < llength P)"
   using maximal_path_impl1 maximal_path_impl2 by blast
+
+lemma maximal_path_lappend:
+  assumes "\<not>lnull P'" "maximal_path P'"
+  shows "maximal_path (lappend P P')"
+proof-
+  let ?P = "lappend P P'"
+  { fix n assume "enat n < llength ?P" "\<not>deadend (?P $ n)"
+    have len_sum: "llength ?P = llength P + llength P'" by simp
+    {
+      assume "enat (Suc n) \<le> llength P"
+      moreover from `\<not>lnull P'` have "llength P' \<noteq> 0" by simp
+      ultimately have "enat (Suc n) < llength ?P"
+        by (metis add.right_neutral dual_order.strict_iff_order enat_add1_eq enat_le_plus_same(1) len_sum less_le_trans)
+    }
+    moreover {
+      assume *: "enat (Suc n) > llength P"
+      then obtain j where j: "llength P = enat j" using enat_iless by fastforce
+      with *
+        have "j \<le> n" by (metis enat_ord_simps(2) leI not_less_eq)
+      with j len_sum `enat n < llength ?P`
+        have "enat (n - j) < llength P'" by (metis enat_add_mono le_add_diff_inverse plus_enat_simps(1))
+      moreover from j `j \<le> n`
+        have "?P $ n = P' $ (n - j)" using lnth_lappend2[of P "j" "n" P'] by fastforce
+      ultimately have "enat (Suc (n - j)) < llength P'"
+        using `\<not>deadend (?P $ n)` `maximal_path P'` by (simp add: maximal_path_impl1)
+      hence "enat (Suc n - j) < llength P'" by (simp add: Suc_diff_le `j \<le> n`)
+      with `j \<le> n` have "enat (Suc n) < enat j + llength P'" by (metis enat_less_enat_plusI2 le_SucI le_add_diff_inverse)
+      with len_sum j have "enat (Suc n) < llength ?P" by simp
+    }
+    ultimately have "enat (Suc n) < llength ?P" using not_le by blast
+  }
+  thus ?thesis using maximal_path_equiv by blast
+qed
+
 end -- "locale Digraph"
 
 datatype Player = Even | Odd
