@@ -427,8 +427,8 @@ lemma path_conforms_with_strategy_update_path:
     \<and> \<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)"
 proof-
   (* Determine the first index where P fails to follow \<sigma>'. *)
-  def fail \<equiv> "\<lambda>n. enat (Suc n) < llength P \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n) \<and> \<sigma>' (P $ n) \<noteq> P $ Suc n"
-  hence "\<exists>n. fail n" proof-
+  def fail \<equiv> "\<lambda>P n. enat (Suc n) < llength P \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n) \<and> \<sigma>' (P $ n) \<noteq> P $ Suc n"
+  hence "\<exists>n. fail P n" proof-
     from v(1) obtain n where n: "enat n < llength P" "P $ n = v" by (meson in_lset_conv_lnth)
     with v(3) `maximal_path P`
       have "enat (Suc n) < llength P" using maximal_path_impl1 by blast
@@ -438,12 +438,20 @@ proof-
       have "\<sigma>' (P $ n) \<noteq> P $ Suc n" using path_conforms_with_strategy_conforms by auto
     ultimately show ?thesis unfolding fail_def using n(2) v(3) by blast
   qed
-  then obtain n where "fail n" and n_min: "\<And>m. m < n \<Longrightarrow> \<not>fail m" using obtain_min[of fail] by blast
+  then obtain n where "fail P n" and n_min: "\<And>m. m < n \<Longrightarrow> \<not>fail P m" using obtain_min[of "\<lambda>n. fail P n"] by blast
   hence n: "enat (Suc n) < llength P" "P $ n \<in> VV p" "\<not>deadend (P $ n)" "\<sigma>' (P $ n) \<noteq> P $ Suc n" unfolding fail_def by blast+
   def P' \<equiv> "lappend (ltake (enat (Suc n)) P) (greedy_conforming_path p \<sigma>' \<sigma>_arbitrary (\<sigma>' (P $ n)))" (is "lappend ?A ?B")
 
   have "llength ?A = min (enat (Suc n)) (llength P)" using llength_ltake by blast
   with n(1) have "llength ?A = enat (Suc n)" by (simp add: min.strict_order_iff)
+
+  from n(2) n(3) \<sigma>' have "\<sigma>' (P $ n) \<in> V" using valid_strategy_in_V by blast
+
+  have "llast ?A = P $ n" proof-
+    have "llast ?A = ?A $ n" using `llength ?A = enat (Suc n)` unfolding llast_def by simp
+    moreover have "enat n < llength ?A" using `llength ?A = enat (Suc n)` by simp
+    ultimately show ?thesis using lnth_lappend1[of n ?A ?B] by (simp add: lnth_ltake)
+  qed
 
   from P(4) n(1) n(2) n(4) assms(4)
     have "\<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)" using path_conforms_with_strategy_conforms by auto
@@ -453,40 +461,99 @@ proof-
     by (metis P'_def `enat (Suc n) < llength P'` llength_ltake lprefix_lappendD lprefix_llength_eq_imp_eq ltake_is_lprefix min.strict_order_iff)
 
   moreover have "valid_path P'" proof-
-    have "lfinite ?A" by simp
+    have "lfinite ?A" "\<not>lnull ?B" by simp_all
     moreover have "valid_path ?A" using assms(4) path_prefix_valid by blast
-    moreover have "\<not>lnull ?B" by simp
-    moreover have "valid_path ?B" proof-
-      from n(2) n(3) \<sigma>' have "\<sigma>' (P $ n) \<in> V" using valid_strategy_in_V by blast
-      with \<sigma>' show ?thesis
+    moreover from \<sigma>' `\<sigma>' (P $ n) \<in> V`
+      have "valid_path ?B"
         using greedy_conforming_path_properties(3)[of "\<sigma>' (P $ n)" p \<sigma>' \<sigma>_arbitrary] valid_arbitrary_strategy by blast
-    qed
     moreover have "llast ?A \<rightarrow> lhd ?B" proof-
       have "lhd ?B = \<sigma>' (P $ n)" by simp
-      moreover have "llast ?A = P $ n" proof-
-        have "llast ?A = ?A $ n" using `llength ?A = enat (Suc n)` unfolding llast_def by simp
-        moreover have "enat n < llength ?A" using `llength ?A = enat (Suc n)` by simp
-        ultimately show ?thesis using lnth_lappend1[of n ?A ?B] by (simp add: lnth_ltake)
-      qed
       moreover from n(2) n(3) \<sigma>'
         have "P $ n \<rightarrow> \<sigma>' (P $ n)" using strategy_def by blast
-      ultimately show ?thesis by simp
+      ultimately show ?thesis using `llast ?A = P $ n` by simp
     qed
     ultimately show ?thesis unfolding P'_def using valid_path_lappend[of ?A ?B] by blast
   qed
 
   moreover have "maximal_path P'" proof-
     have "\<not>lnull ?B" by simp
-    moreover have "maximal_path ?B" proof-
-      from n(2) n(3) \<sigma>' have "\<sigma>' (P $ n) \<in> V" using valid_strategy_in_V by blast
-      with \<sigma>' show ?thesis
+    moreover from \<sigma>' `\<sigma>' (P $ n) \<in> V`
+      have "maximal_path ?B"
         using greedy_conforming_path_properties(4)[of "\<sigma>' (P $ n)" p \<sigma>' \<sigma>_arbitrary] valid_arbitrary_strategy by blast
-    qed
     ultimately show ?thesis unfolding P'_def using maximal_path_lappend by blast
   qed
 
   moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
-    show ?thesis sorry
+    have "lfinite ?A" "\<not>lnull ?B" by simp_all
+    moreover have "\<not>lnull ?A" using assms(3) enat_0_iff(2) by auto
+    moreover have "llast ?A \<in> VV p" by (simp add: `llast ?A = P $ n` n(2))
+    moreover have "\<sigma>' (llast ?A) = lhd ?B" using `llast ?A = P $ n` by simp
+    moreover have "path_conforms_with_strategy p ?A \<sigma>'" proof-
+      have "path_prefix ?A P" by simp
+      moreover from `valid_path P` `\<not>lnull P` `path_conforms_with_strategy p P \<sigma>` n n_min have "path_conforms_with_strategy p ?A \<sigma>'"
+      proof (induct n arbitrary: P)
+        case 0
+        have "ltake (enat (Suc 0)) P = LCons (lhd P) LNil" by (simp add: "0.prems"(2) lnth_0_conv_lhd lnull_0_llength ltake.ctr(1) ltake_Suc_conv_snoc_lnth zero_enat_def)
+        thus ?case by (simp add: path_conforms_LCons_LNil)
+      next
+        case (Suc n P)
+        from Suc.prems(1) have "valid_path (ltl P)" by (simp add: valid_path_ltl)
+        moreover from Suc.prems(4) have "\<not>lnull (ltl P)" using enat_Suc_ltl by force
+        moreover from Suc.prems(3) have "path_conforms_with_strategy p (ltl P) \<sigma>" by (simp add: path_conforms_with_strategy_ltl)
+        moreover from Suc.prems(4) have "enat (Suc n) < llength (ltl P)" using enat_Suc_ltl by blast
+        moreover from Suc.prems(5) have "ltl P $ n \<in> VV p" by (simp add: Suc.prems(2) lnth_ltl)
+        moreover from Suc.prems(6) have "\<not>deadend (ltl P $ n)" by (simp add: Suc.prems(2) lnth_ltl)
+        moreover have "\<sigma>' (ltl P $ n) \<noteq> ltl P $ Suc n" by (simp add: Suc.prems(2) Suc.prems(7) lnth_ltl)
+        moreover have "\<And>m. m < n \<Longrightarrow> \<not>fail (ltl P) m" proof-
+          fix m assume "m < n"
+          hence "\<not>fail P (Suc m)" by (simp add: Suc.prems(8))
+          hence *: "\<lbrakk> enat (Suc (Suc m)) < llength P;
+              P $ Suc m \<in> VV p;
+              \<not>deadend (P $ Suc m) \<rbrakk> \<Longrightarrow>
+              \<sigma>' (P $ Suc m) = P $ Suc (Suc m)" unfolding fail_def by blast
+          {
+            assume **: "enat (Suc m) < llength (ltl P)"
+              "ltl P $ m \<in> VV p"
+              "\<not>deadend (ltl P $ m)"
+            have A: "ltl P $ m = P $ Suc m" by (simp add: Suc.prems(2) lnth_ltl)
+            from **(1) have "enat (Suc (Suc m)) < llength P" using enat_ltl_Suc by blast
+            moreover from **(2) have "P $ Suc m \<in> VV p" by (simp add: A)
+            moreover from **(3) have "\<not>deadend (P $ Suc m)" by (simp add: A)
+            ultimately have "\<sigma>' (P $ Suc m) = P $ Suc (Suc m)" using * by blast
+            hence "\<sigma>' (ltl P $ m) = ltl P $ Suc m" by (simp add: A Suc.prems(2) lnth_ltl)
+          }
+          thus "\<not>fail (ltl P) m" unfolding fail_def by blast
+        qed
+        ultimately have *: "path_conforms_with_strategy p (ltake (enat (Suc n)) (ltl P)) \<sigma>'" using Suc.hyps[of "ltl P"] by blast
+        have "path_conforms_with_strategy p (LCons (lhd P) (ltake (enat (Suc n)) (ltl P))) \<sigma>'" proof (cases)
+          assume "lhd P \<in> VV p"
+          hence "lhd (ltl P) = \<sigma> (lhd P)" by (metis Suc.prems(2) Suc.prems(3) `\<not>lnull (ltl P)` lhd_LCons_ltl path_conforms_with_strategy_start)
+          have "\<not>deadend (lhd P)" by (metis Suc.prems(1) Suc.prems(2) `\<not>lnull (ltl P)` eq_LConsD lnull_def valid_path.cases)
+          moreover have "enat (Suc 0) < llength P" using `\<not>lnull (ltl P)` enat_ltl_Suc lnull_0_llength by blast
+          moreover have "\<not>fail P 0" by (simp add: Suc.prems(8))
+          ultimately have "\<sigma>' (P $ 0) = P $ Suc 0" unfolding fail_def by (metis Suc.prems(2) `lhd P \<in> VV p` lhd_LCons_ltl lnth_0)
+          with `lhd (ltl P) = \<sigma> (lhd P)`
+            have "\<sigma>' (P $ 0) = \<sigma> (P $ 0)" by (metis Suc.prems(2) `\<not>lnull (ltl P)` lnth_0_conv_lhd lnth_ltl)
+          with `lhd (ltl P) = \<sigma> (lhd P)`
+            have 1: "lhd (ltl P) = \<sigma>' (lhd P)" by (simp add: Suc.prems(2) lhd_conv_lnth)
+          obtain w Ps where w: "ltake (enat (Suc n)) (ltl P) = LCons w Ps"
+            by (metis `\<not>lnull (ltl P)` enat_ord_simps(2) lessI less_irrefl lhd_LCons_ltl lnull_ltake min_enat_simps(2) min_less_iff_conj)
+          moreover from w have "path_conforms_with_strategy p (LCons w Ps) \<sigma>'" using * by simp
+          moreover from w 1 have "w = \<sigma>' (lhd P)" by (metis `\<not>lnull (ltl P)` enat_ord_simps(2) lnth_0 lnth_0_conv_lhd lnth_ltake zero_less_Suc)
+          ultimately show ?thesis using path_conforms_VVp[of "lhd P" p w \<sigma>' Ps] `lhd P \<in> VV p` by force
+        next
+          assume "lhd P \<notin> VV p"
+          thus ?thesis by (simp add: `path_conforms_with_strategy p (ltake (enat (Suc n)) (ltl P)) \<sigma>'` path_conforms_VVpstar)
+        qed
+        moreover have "LCons (lhd P) (ltake (enat (Suc n)) (ltl P)) = ltake (eSuc (enat (Suc n))) P" by (metis Suc.prems(2) lhd_LCons_ltl ltake_eSuc_LCons)
+        ultimately show "path_conforms_with_strategy p (ltake (enat (Suc (Suc n))) P) \<sigma>'" by (simp add: eSuc_enat)
+      qed
+      ultimately show ?thesis using path_conforms_with_strategy_prefix by blast
+    qed
+    moreover from \<sigma>' `\<sigma>' (P $ n) \<in> V`
+      have "path_conforms_with_strategy p ?B \<sigma>'"
+        using greedy_conforming_path_properties(5)[of "\<sigma>' (P $ n)" p \<sigma>' \<sigma>_arbitrary] valid_arbitrary_strategy by blast
+    ultimately show ?thesis unfolding P'_def using path_conforms_with_strategy_lappend by blast
   qed
 
   ultimately show ?thesis using n by blast
