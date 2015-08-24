@@ -412,11 +412,38 @@ proof-
     by (metis P'_def `enat (Suc n) < llength P'` llength_ltake lprefix_lappendD lprefix_llength_eq_imp_eq ltake_is_lprefix min.strict_order_iff)
 
   moreover have "valid_path P'" proof-
-    show ?thesis sorry
+    have "lfinite ?A" by simp
+    moreover have "valid_path ?A" using assms(4) path_prefix_valid by blast
+    moreover have "\<not>lnull ?B" by simp
+    moreover have "valid_path ?B" proof-
+      from n(2) n(3) \<sigma>' have "\<sigma>' (P $ n) \<in> V" using valid_strategy_in_V by blast
+      with \<sigma>' show ?thesis
+        using greedy_conforming_path_properties(3)[of "\<sigma>' (P $ n)" p \<sigma>' \<sigma>_arbitrary] valid_arbitrary_strategy by blast
+    qed
+    moreover have "llast ?A \<rightarrow> lhd ?B" proof-
+      have "lhd ?B = \<sigma>' (P $ n)" by simp
+      moreover have "llast ?A = P $ n" proof-
+        have "llast ?A = ?A $ n" using `llength ?A = enat (Suc n)` unfolding llast_def by simp
+        moreover have "enat n < llength ?A" using `llength ?A = enat (Suc n)` by simp
+        ultimately show ?thesis using lnth_lappend1[of n ?A ?B] by (simp add: lnth_ltake)
+      qed
+      moreover from n(2) n(3) \<sigma>'
+        have "P $ n \<rightarrow> \<sigma>' (P $ n)" using strategy_def by blast
+      ultimately show ?thesis by simp
+    qed
+    ultimately show ?thesis unfolding P'_def using valid_path_lappend[of ?A ?B] by blast
   qed
+
   moreover have "maximal_path P'" proof-
-    show ?thesis sorry
+    have "\<not>lnull ?B" by simp
+    moreover have "maximal_path ?B" proof-
+      from n(2) n(3) \<sigma>' have "\<sigma>' (P $ n) \<in> V" using valid_strategy_in_V by blast
+      with \<sigma>' show ?thesis
+        using greedy_conforming_path_properties(4)[of "\<sigma>' (P $ n)" p \<sigma>' \<sigma>_arbitrary] valid_arbitrary_strategy by blast
+    qed
+    ultimately show ?thesis unfolding P'_def using maximal_path_lappend by blast
   qed
+
   moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
     show ?thesis sorry
   qed
