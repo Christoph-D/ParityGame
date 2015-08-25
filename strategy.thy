@@ -611,6 +611,38 @@ lemma strategy_attracts_irrelevant:
   thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
 qed
 
+lemma strategy_attracts_via_successor:
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and v0: "v0 \<in> A - W"
+    and w0: "v0\<rightarrow>w0" "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
+  shows "strategy_attracts_via p \<sigma> w0 A W"
+proof-
+  {
+    fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = w0"
+    then obtain Ps where Ps: "P = LCons w0 Ps" by (metis lnth_0 not_lnull_conv)
+    def [simp]: P' \<equiv> "LCons v0 P"
+    have "\<not>lnull P'" "P' $ 0 = v0" by simp_all
+    moreover have "valid_path P'" unfolding P'_def using P(1) P(2) `v0\<rightarrow>w0` Ps valid_path_cons' by auto
+    moreover have "maximal_path P'" unfolding P'_def by (simp add: P(1) P(3) maximal_path.intros(3))
+    moreover have "path_conforms_with_strategy p P' \<sigma>"
+      unfolding P'_def using w0(2) P(4) Ps path_conforms_VVp path_conforms_VVpstar by blast
+    ultimately obtain n where n: "enat n < llength P'" "P' $ n \<in> W" "lset (ltake (enat n) P') \<subseteq> A"
+      using \<sigma>(2) unfolding strategy_attracts_via_def by blast
+    have "n \<noteq> 0" by (metis DiffD2 `P' $ 0 = v0` n(2) v0(1))
+    then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
+    have "enat n' < llength P" using n(1) n' unfolding P'_def by (metis ldropn_Suc_LCons ldropn_Suc_conv_ldropn ldropn_eq_LConsD)
+    moreover have "P $ n' \<in> W" using n(2) n' unfolding P'_def by auto
+    moreover have "lset (ltake (enat n') P) \<subseteq> A" proof-
+      have "ltake (eSuc (enat n')) P' = LCons v0 (ltake (enat n') P)" using n(3) unfolding P'_def by simp
+      hence "ltake (enat n) P' = LCons v0 (ltake (enat n') P)" using n' by (simp add: eSuc_enat)
+      hence "lset (ltake (enat n') P) \<subseteq> lset (ltake (enat n) P')" by (simp add: subsetI)
+      thus ?thesis using n(3) by blast
+    qed
+    ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" by blast
+  }
+  thus ?thesis unfolding strategy_attracts_via_def by blast
+qed
+
 end -- "context ParityGame"
 
 end
