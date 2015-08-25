@@ -87,6 +87,10 @@ lemma path_conforms_with_strategy_ltl [intro]:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ltl P) \<sigma>"
   by (drule path_conforms_with_strategy.cases) (simp_all add: path_conforms_with_strategy.intros(1))
 
+lemma path_conforms_with_strategy_drop:
+  "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ldropn n P) \<sigma>"
+  by (simp add: path_conforms_with_strategy_ltl ltl_ldrop[of "\<lambda>P. path_conforms_with_strategy p P \<sigma>"])
+
 lemma path_conforms_with_strategy_prefix:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_prefix P' P \<Longrightarrow> path_conforms_with_strategy p P' \<sigma>"
 proof (coinduction arbitrary: P P')
@@ -165,9 +169,6 @@ lemma path_conforms_with_strategy_start:
   "path_conforms_with_strategy p (LCons v (LCons w P)) \<sigma> \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<sigma> v = w"
   by (drule path_conforms_with_strategy.cases) simp_all
 
-lemma path_conforms_with_strategy_drop: "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ldropn n P) \<sigma>"
-  unfolding ldropn_def by (induct rule: fun_iter_induct; simp add: path_conforms_with_strategy_ltl)
-
 lemma path_conforms_with_strategy_conforms:
   assumes "valid_path P" "path_conforms_with_strategy p P \<sigma>" "enat (Suc n) < llength P" "P $ n \<in> VV p"
   shows "\<sigma> (P $ n) = P $ Suc n"
@@ -223,6 +224,15 @@ using assms proof (induct P rule: lfinite_induct, simp)
     with `\<not>lnull P` show "path_conforms_with_strategy p (lappend P P') \<sigma>"
       by (metis lappend_code(2) lhd_LCons_ltl)
   qed
+qed
+
+lemma path_conforms_with_strategy_VVpstar:
+  assumes "lset P \<subseteq> VV p**"
+  shows "path_conforms_with_strategy p P \<sigma>"
+using assms proof (coinduction arbitrary: P)
+  case (path_conforms_with_strategy P)
+  moreover have "\<And>v Ps. P = LCons v Ps \<Longrightarrow> ?case" using path_conforms_with_strategy by auto
+  ultimately show ?case by (cases "P = LNil", simp) (metis lnull_def not_lnull_conv)
 qed
 
 (* strategy_attracts_from_to *)

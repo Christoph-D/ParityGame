@@ -58,6 +58,8 @@ lemma lfinite_lset: "lfinite xs \<Longrightarrow> \<not>lnull xs \<Longrightarro
     thus ?thesis by (metis False LCons.prems lhd_LCons_ltl llast_LCons2)
   qed
 qed
+lemma ltl_ldrop: "(\<And>xs. P xs \<Longrightarrow> P (ltl xs)) \<Longrightarrow> P xs \<Longrightarrow> P (ldropn n xs)"
+  unfolding ldropn_def by (rule fun_iter_induct)
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
@@ -106,7 +108,7 @@ inductive_simps valid_path_cons_simp: "valid_path (LCons x xs)"
 lemma valid_path_cons': "\<lbrakk> v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)" using edges_are_in_V valid_path_cons by auto
 lemma valid_path_ltl': "valid_path (LCons v Ps) \<Longrightarrow> valid_path Ps" using valid_path.simps by blast
 lemma valid_path_ltl: "valid_path P \<Longrightarrow> valid_path (ltl P)" by (metis llist.exhaust_sel ltl_simps(1) valid_path_ltl')
-lemma valid_path_drop: "valid_path P \<Longrightarrow> valid_path (ldropn n P)"  unfolding ldropn_def by (induct rule: fun_iter_induct; simp add: valid_path_ltl)
+lemma valid_path_drop: "valid_path P \<Longrightarrow> valid_path (ldropn n P)" by (simp add: valid_path_ltl ltl_ldrop)
 
 lemma valid_path_in_V: assumes "valid_path P" shows "lset P \<subseteq> V" proof
   fix x assume "x \<in> lset P" thus "x \<in> V" using assms by (induct rule: llist.set_induct) (auto intro: valid_path.cases edges_are_in_V)
@@ -210,8 +212,8 @@ coinductive maximal_path where
 | "\<not>lnull Ps \<Longrightarrow> maximal_path Ps \<Longrightarrow> maximal_path (LCons v Ps)"
 
 lemma maximal_no_deadend: "maximal_path (LCons v Ps) \<Longrightarrow> \<not>deadend v \<Longrightarrow> \<not>lnull Ps" by (metis lhd_LCons llist.distinct(1) ltl_simps(2) maximal_path.simps)
-lemma maximal_tail: "maximal_path P \<Longrightarrow> maximal_path (ltl P)" by (metis ltl_simps(1) ltl_simps(2) maximal_path.simps)
-lemma maximal_drop: "maximal_path P \<Longrightarrow> maximal_path (ldropn n P)" unfolding ldropn_def by (induct rule: fun_iter_induct; simp add: maximal_tail)
+lemma maximal_ltl: "maximal_path P \<Longrightarrow> maximal_path (ltl P)" by (metis ltl_simps(1) ltl_simps(2) maximal_path.simps)
+lemma maximal_drop: "maximal_path P \<Longrightarrow> maximal_path (ldropn n P)" by (simp add: maximal_ltl ltl_ldrop)
 lemma maximal_path_impl1:
   assumes "maximal_path P" "enat n < llength P" "\<not>deadend (P $ n)"
   shows "enat (Suc n) < llength P"
