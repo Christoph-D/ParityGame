@@ -268,14 +268,31 @@ proof-
   show ?thesis sorry
 qed
 
+lemma strategy_attracts_not_outside:
+  assumes "v0 \<in> V - S - W" "strategy p \<sigma>"
+  shows "\<not>strategy_attracts_via p \<sigma> v0 S W"
+proof-
+  {
+    obtain P where P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v0"
+      using assms strategy_conforming_path_exists_single by blast
+    {
+      fix n assume n: "enat n < llength P" "P $ n \<in> W"
+      hence "n \<noteq> 0" using assms(1) DiffD2 P(5) by force
+      moreover have "lhd P \<notin> S" using assms(1) P(5) by (simp add: P(1) lhd_conv_lnth)
+      ultimately have "lhd (ltake (enat n) P) \<notin> S" "\<not>lnull (ltake (enat n) P)" by (simp_all add: P(1) enat_0_iff(1))
+      hence "\<not>lset (ltake (enat n) P) \<subseteq> S" using llist.set_sel(1) by blast
+    }
+    with P have "\<exists>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0 \<and> (\<forall>n. enat n < llength P \<and> P $ n \<in> W \<longrightarrow> \<not>lset (ltake (enat n) P) \<subseteq> S)" by blast
+  }
+  thus ?thesis unfolding strategy_attracts_via_def by blast
+qed
+
 lemma strategy_attracts_VVpstar:
   assumes "W \<subseteq> V" "S \<subseteq> V"
     and \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
     and v: "v0 \<in> S - W" "v0 \<notin> VV p" and w: "w0 \<in> V - S - W"
   shows "\<not>v0 \<rightarrow> w0"
-proof-
-  show ?thesis sorry
-qed
+  by (metis assms(3) assms(4) strategy_attracts_not_outside strategy_attracts_via_successor v(1) v(2) w)
 
 (* attractor_strategy_on *)
 
