@@ -155,6 +155,25 @@ using assms proof (coinduction arbitrary: P)
   qed
 qed
 
+lemma path_conforms_with_strategy_irrelevant_updates:
+  assumes "path_conforms_with_strategy p P \<sigma>" "\<And>v. v \<in> lset P \<Longrightarrow> \<sigma> v = \<sigma>' v"
+  shows "path_conforms_with_strategy p P \<sigma>'"
+using assms proof (coinduction arbitrary: P)
+  case (path_conforms_with_strategy P)
+  thus ?case proof (cases rule: path_conforms_with_strategy.cases)
+    case path_conforms_LNil thus ?thesis by simp
+  next
+    case path_conforms_LCons_LNil thus ?thesis by auto
+  next
+    case (path_conforms_VVp v' w Ps)
+    have "w = \<sigma>' v'" using local.path_conforms_VVp(1) local.path_conforms_VVp(3) path_conforms_with_strategy(2) by auto
+    thus ?thesis using local.path_conforms_VVp(1) local.path_conforms_VVp(4) path_conforms_with_strategy(2) by auto
+  next
+    case (path_conforms_VVpstar v' Ps)
+    thus ?thesis by (simp add: path_conforms_with_strategy(2))
+  qed
+qed
+
 lemma path_conforms_with_strategy_irrelevant':
   assumes "path_conforms_with_strategy p P (\<sigma>(v := w))" "v \<notin> lset P"
   shows "path_conforms_with_strategy p P \<sigma>"
