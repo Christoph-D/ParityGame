@@ -60,6 +60,31 @@ lemma lfinite_lset: "lfinite xs \<Longrightarrow> \<not>lnull xs \<Longrightarro
 qed
 lemma ltl_ldrop: "(\<And>xs. P xs \<Longrightarrow> P (ltl xs)) \<Longrightarrow> P xs \<Longrightarrow> P (ldropn n xs)"
   unfolding ldropn_def by (rule fun_iter_induct)
+lemma lset_subset: "\<not>(lset xs \<subseteq> A) \<Longrightarrow> \<exists>n. enat n < llength xs \<and> lnth xs n \<notin> A"
+  by (metis in_lset_conv_lnth subsetI)
+
+lemma lset_ltake: "(\<And>i. i < n \<Longrightarrow> lnth xs i \<in> A) \<Longrightarrow> lset (ltake (enat n) xs) \<subseteq> A"
+proof (induct n arbitrary: xs)
+  case 0
+  have "ltake (enat 0) xs = LNil" by (simp add: zero_enat_def)
+  thus ?case by simp
+next
+  case (Suc n)
+  show ?case proof (cases "xs = LNil", simp)
+    assume "xs \<noteq> LNil"
+    then obtain x xs' where xs: "xs = LCons x xs'" by (meson neq_LNil_conv)
+    have "\<And>i. i < n \<Longrightarrow> lnth xs' i \<in> A" proof-
+      fix i assume "i < n"
+      hence "Suc i < Suc n" by simp
+      hence "lnth xs (Suc i) \<in> A" using Suc.prems by presburger
+      thus "lnth xs' i \<in> A" using xs by simp
+    qed
+    hence "lset (ltake (enat n) xs') \<subseteq> A" using Suc.hyps by blast
+    moreover have "ltake (enat (Suc n)) xs = LCons x (ltake (enat n) xs')" using xs ltake_eSuc_LCons[of _ x xs'] by (metis (no_types) eSuc_enat)
+    moreover have "x \<in> A" using Suc.prems xs by force
+    ultimately show ?thesis by simp
+  qed
+qed
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"

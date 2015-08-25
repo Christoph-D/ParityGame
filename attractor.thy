@@ -259,6 +259,24 @@ qed
 lemma attractor_contains_no_deadends: "\<lbrakk> W \<subseteq> V; v \<in> attractor p W \<rbrakk> \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
   using attractor_inductive_contains_no_deadends attractor_inductive_is_attractor by auto
 
+lemma strategy_attracts_VVp:
+  assumes "W \<subseteq> V" "S \<subseteq> V"
+    and \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
+    and v: "v0 \<in> S - W" "v0 \<in> VV p"
+  shows "\<sigma> v0 \<in> S \<union> W"
+proof-
+  show ?thesis sorry
+qed
+
+lemma strategy_attracts_VVpstar:
+  assumes "W \<subseteq> V" "S \<subseteq> V"
+    and \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
+    and v: "v0 \<in> S - W" "v0 \<notin> VV p" and w: "w0 \<in> V - S - W"
+  shows "\<not>v0 \<rightarrow> w0"
+proof-
+  show ?thesis sorry
+qed
+
 (* attractor_strategy_on *)
 
 lemma merge_attractor_strategies:
@@ -324,8 +342,50 @@ proof-
     have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S" proof (rule ccontr)
       assume "\<not>?thesis"
       hence contra: "\<And>n. enat n < llength P \<Longrightarrow> P $ n \<in> W \<Longrightarrow> \<not>lset (ltake (enat n) P) \<subseteq> S" by blast
-      have "lset P \<subseteq> S - W" sorry
-      have "\<not>lfinite P" sorry
+      have "lset P \<subseteq> S - W" proof (rule ccontr)
+        assume "\<not>lset P \<subseteq> S - W"
+        hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> S - W" by (meson lset_subset)
+        then obtain n where n: "enat n < llength P" "P $ n \<notin> S - W" "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> S - W)"
+          using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S - W"] by metis
+        from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W" using dual_order.strict_trans enat_ord_simps(2) by blast
+        hence "lset (ltake (enat n) P) \<subseteq> S - W" using lset_ltake by blast
+        hence "P $ n \<notin> W" using contra n(1) by blast
+        moreover have "P $ n \<notin> V - S - W" proof (rule ccontr, subst (asm) not_not)
+          assume "P $ n \<in> V - S - W"
+          hence "n \<noteq> 0" using P_valid_start `v0 \<in> S` n(2) by force
+          then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
+          hence "P $ n' \<in> S - W" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W` by blast
+          def [simp]: P' \<equiv> "ldropn n' P"
+          def [simp]: \<sigma>' \<equiv> "choose (P $ n')"
+          hence \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' (P $ n') S W"
+            using `P $ n' \<in> S - W` choose_works unfolding choose'_def by blast+
+          have "enat n' < llength P" using n(1) n' using dual_order.strict_trans enat_ord_simps(2) by blast
+          show False proof (cases)
+            assume "P $ n' \<in> VV p"
+            hence "\<sigma> (P $ n') \<in> S \<union> W" using \<sigma>'(1) \<sigma>'(2) \<sigma>_def `P $ n' \<in> S - W` assms(1) assms(2) strategy_attracts_VVp by auto
+            moreover have "\<sigma> (P $ n') = P $ n" proof-
+              have "enat (Suc n') < llength P" using n' n(1) by simp
+              hence "\<sigma> (P $ n') = P $ Suc n'" using P_conforms P_valid `P $ n' \<in> VV p` path_conforms_with_strategy_conforms by blast
+              thus ?thesis using n' by simp
+            qed
+            ultimately show False using `P $ n \<in> V - S - W` by auto
+          next
+            assume "P $ n' \<notin> VV p"
+            hence "\<not>(P $ n')\<rightarrow>(P $ n)" using strategy_attracts_VVpstar \<sigma>'(1) \<sigma>'(2) `P $ n \<in> V - S - W` `P $ n' \<in> S - W` assms(1) assms(2) by blast
+            hence "\<not>(P $ n')\<rightarrow>(P $ Suc n')" using n' by simp
+            moreover have "enat (Suc n') < llength P" using n' n(1) by simp
+            ultimately show False using P_valid `enat n' < llength P` valid_path_impl1 by blast
+          qed
+        qed
+        moreover have "P $ n \<in> V" using n(1) P_valid valid_path_finite_in_V' by blast
+        ultimately show False using n(2) by blast
+      qed
+      have "\<not>lfinite P" proof (rule ccontr, subst (asm) not_not)
+        assume "lfinite P"
+        hence "deadend (llast P)" using P_maximal `\<not>lnull P` maximal_ends_on_deadend by blast
+        moreover have "llast P \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lnull P` `lfinite P` lfinite_lset by blast
+        ultimately show False using S_W_no_deadends by blast
+      qed
       show False proof (cases "\<exists>n. lset (ldropn n P) \<subseteq> VV p**")
         case True
         then obtain n where n: "lset (ldropn n P) \<subseteq> VV p**" by blast
@@ -342,27 +402,102 @@ proof-
         thus False by (meson Diff_iff `lset P' \<subseteq> S - W` lset_lnth)
       next
         case False
-        hence "\<And>n. \<exists>m. n \<le> m \<and> P $ m \<in> VV p" sorry
-        def [simp]: \<sigma>_map \<equiv> "\<lambda>n. choose (P $ (THE m. n \<le> m \<and> P $ m \<in> VV p))"
-        have \<sigma>_map_monotone: "\<And>n m. n < m \<Longrightarrow> (\<sigma>_map m, \<sigma>_map n) \<in> r" sorry
+        have always_again_in_VVp: "\<And>n. \<exists>m. n \<le> m \<and> P $ m \<in> VV p" proof-
+          fix n
+          have "\<not>lset (ldropn n P) \<subseteq> VV p**" using False by blast
+          then obtain m where m: "ldropn n P $ m \<notin> VV p**" using lset_subset[of "ldropn n P" "VV p**"] by blast
+          hence "ldropn n P $ m \<in> VV p" using P_valid VV_cases `\<not>lfinite P` lfinite_ldropn valid_path_drop valid_path_in_V' by blast
+          hence "P $ m + n \<in> VV p" using lnth_ldropn `\<not>lfinite P` by (simp add: infinite_small_llength)
+          thus "\<exists>m. n \<le> m \<and> P $ m \<in> VV p" using le_add2 by blast
+        qed
+        def next_good_index \<equiv> "\<lambda>n m. n \<le> m \<and> P $ m \<in> VV p \<and> (\<forall>m'. n \<le> m' \<and> m' < m \<longrightarrow> P $ m' \<notin> VV p)"
+        def [simp]: \<sigma>_map \<equiv> "\<lambda>n. choose (P $ (THE m. next_good_index n m))"
+        have "\<forall>n. \<exists>!m. next_good_index n m" proof (intro allI)
+          fix n
+          have "\<exists>m. next_good_index n m" proof-
+            have "\<exists>m. n \<le> m \<and> P $ m \<in> VV p" using always_again_in_VVp by blast
+            then obtain m where "n \<le> m \<and> P $ m \<in> VV p" "\<And>m'. m' < m \<Longrightarrow> \<not>(n \<le> m' \<and> P $ m' \<in> VV p)"
+              using obtain_min[of "\<lambda>m. n \<le> m \<and> P $ m \<in> VV p"] by blast
+            thus ?thesis unfolding next_good_index_def by blast
+          qed
+          moreover {
+            fix m m' assume *: "next_good_index n m" "next_good_index n m'"
+            from * have "\<not>m' < m" unfolding next_good_index_def by blast
+            moreover from * have "\<not>m < m'" unfolding next_good_index_def by blast
+            ultimately have "m = m'" by simp
+          }
+          ultimately show "\<exists>!m. next_good_index n m" using ex_ex1I by blast
+        qed
+        have \<sigma>_map_in_G: "\<And>n. \<sigma>_map n \<in> G" proof-
+          fix n
+          let ?v = "P $ (THE m. next_good_index n m)"
+          have "?v \<in> S" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
+          hence "choose' ?v (\<sigma>_map n)" using choose_works[of ?v] unfolding \<sigma>_map_def by blast
+          hence "strategy p (\<sigma>_map n) \<and> strategy_attracts_via p (\<sigma>_map n) ?v S W" unfolding choose'_def by blast
+          thus "\<sigma>_map n \<in> G" unfolding G_def using `?v \<in> S` by blast
+        qed
+        have \<sigma>_map_monotone: "\<And>n m. n < m \<Longrightarrow> (\<sigma>_map m, \<sigma>_map n) \<in> r" proof-
+          {
+            fix n
+            have "(\<sigma>_map (Suc n), \<sigma>_map n) \<in> r" sorry
+          } note case_Suc' = this
+          {
+            fix n m assume "(\<sigma>_map m, \<sigma>_map n) \<in> r"
+            moreover have "(\<sigma>_map (Suc m), \<sigma>_map m) \<in> r" using case_Suc' by blast
+            moreover have "trans r" using r unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
+            ultimately have "(\<sigma>_map (Suc m), \<sigma>_map n) \<in> r" by (meson transE)
+          } note case_Suc = this
+
+          fix n m :: nat assume "n < m"
+          thus "(\<sigma>_map m, \<sigma>_map n) \<in> r" proof (induct "m - n" arbitrary: n m)
+            case 0 thus ?case by simp
+          next
+            case (Suc d)
+            show ?case proof (cases)
+              assume "d = 0"
+              thus ?thesis using case_Suc' by (metis Suc.hyps(2) Suc.prems Suc_diff_Suc Suc_inject Suc_leI diff_is_0_eq diffs0_imp_equal)
+            next
+              assume "d \<noteq> 0"
+              have "m \<noteq> 0" using Suc.hyps(2) by linarith
+              then obtain m' where m': "Suc m' = m" by (metis nat.exhaust)
+              hence "d = m' - n" using Suc.hyps(2) by linarith
+              hence "(\<sigma>_map m', \<sigma>_map n) \<in> r" using Suc.hyps(1) `d \<noteq> 0` zero_less_diff by blast
+              thus ?thesis using m' case_Suc by blast
+            qed
+          qed
+        qed
         def [simp]: \<sigma>_set \<equiv> "\<sigma>_map ` UNIV"
         have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" using \<sigma>_set_def by blast
         then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set" using wfE_min[of "r - Id" _ \<sigma>_set] wf by blast
         then obtain n where n: "\<sigma>_map n = \<sigma>'" by auto
-        have "\<forall>m. n < m \<longrightarrow> \<sigma>_map n = \<sigma>_map m" proof (rule ccontr)
-          assume "\<not>?thesis"
-          then obtain m where m: "n < m" "\<sigma>_map n \<noteq> \<sigma>_map m" by blast
-          from `n < m` \<sigma>_map_monotone have "(\<sigma>_map m, \<sigma>_map n) \<in> r" by blast
-          with m(2) have "(\<sigma>_map m, \<sigma>_map n) \<in> r - Id" by simp
-          with \<sigma>'(2) n have "\<sigma>_map m \<notin> \<sigma>_set" by blast
-          thus False unfolding \<sigma>_set_def by blast
+        have \<sigma>_map_constant: "\<And>m. n \<le> m \<Longrightarrow> \<sigma>_map n = \<sigma>_map m" proof-
+          fix m assume "n \<le> m"
+          show "\<sigma>_map n = \<sigma>_map m" proof (rule ccontr)
+            assume *: "\<sigma>_map n \<noteq> \<sigma>_map m"
+            with `n \<le> m` have "n < m" using le_imp_less_or_eq by blast
+            with \<sigma>_map_monotone have "(\<sigma>_map m, \<sigma>_map n) \<in> r" by blast
+            with * have "(\<sigma>_map m, \<sigma>_map n) \<in> r - Id" by simp
+            with \<sigma>'(2) n have "\<sigma>_map m \<notin> \<sigma>_set" by blast
+            thus False unfolding \<sigma>_set_def by blast
+          qed
         qed
         def [simp]: P' \<equiv> "ldropn n P"
         have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
         moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
         moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
-        moreover have "path_conforms_with_strategy p P' \<sigma>'" sorry
-        moreover have "strategy p \<sigma>'" sorry
+        moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
+          have "\<And>v. v \<in> lset P' \<Longrightarrow> \<sigma>' v = \<sigma> v" proof-
+            fix v assume "v \<in> lset P'"
+            hence "v \<in> S - W" using `lset P \<subseteq> S - W` sorry
+            def [simp]: k \<equiv> "THE m. next_good_index (n + m) m"
+            from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" sorry
+            hence "\<sigma> v = choose v v" unfolding \<sigma>_def using `v \<in> S - W` by auto
+            hence "\<sigma> v = \<sigma>_map k v" unfolding k_def \<sigma>_map_def sorry
+            moreover have "\<sigma>' = \<sigma>_map (n + m)" using n \<sigma>_map_constant[of "n + m"] by simp
+            ultimately show "\<sigma>' v = \<sigma> v" by simp
+          qed
+        qed
+        moreover have "strategy p \<sigma>'" unfolding \<sigma>_set_def using \<sigma>'(1) G_def \<sigma>_map_in_G by auto
         moreover have "strategy_attracts_via p \<sigma>' (P' $ 0) S W" sorry
         ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
           unfolding strategy_attracts_via_def using `\<not>lnull P'` by blast
