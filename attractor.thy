@@ -410,27 +410,10 @@ proof-
           hence "P $ m + n \<in> VV p" using lnth_ldropn `\<not>lfinite P` by (simp add: infinite_small_llength)
           thus "\<exists>m. n \<le> m \<and> P $ m \<in> VV p" using le_add2 by blast
         qed
-        def next_good_index \<equiv> "\<lambda>n m. n \<le> m \<and> P $ m \<in> VV p \<and> (\<forall>m'. n \<le> m' \<and> m' < m \<longrightarrow> P $ m' \<notin> VV p)"
-        def [simp]: \<sigma>_map \<equiv> "\<lambda>n. choose (P $ (THE m. next_good_index n m))"
-        have "\<forall>n. \<exists>!m. next_good_index n m" proof (intro allI)
-          fix n
-          have "\<exists>m. next_good_index n m" proof-
-            have "\<exists>m. n \<le> m \<and> P $ m \<in> VV p" using always_again_in_VVp by blast
-            then obtain m where "n \<le> m \<and> P $ m \<in> VV p" "\<And>m'. m' < m \<Longrightarrow> \<not>(n \<le> m' \<and> P $ m' \<in> VV p)"
-              using obtain_min[of "\<lambda>m. n \<le> m \<and> P $ m \<in> VV p"] by blast
-            thus ?thesis unfolding next_good_index_def by blast
-          qed
-          moreover {
-            fix m m' assume *: "next_good_index n m" "next_good_index n m'"
-            from * have "\<not>m' < m" unfolding next_good_index_def by blast
-            moreover from * have "\<not>m < m'" unfolding next_good_index_def by blast
-            ultimately have "m = m'" by simp
-          }
-          ultimately show "\<exists>!m. next_good_index n m" using ex_ex1I by blast
-        qed
+        def [simp]: \<sigma>_map \<equiv> "\<lambda>n. choose (P $ n)"
         have \<sigma>_map_in_G: "\<And>n. \<sigma>_map n \<in> G" proof-
           fix n
-          let ?v = "P $ (THE m. next_good_index n m)"
+          let ?v = "P $ n"
           have "?v \<in> S" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
           hence "choose' ?v (\<sigma>_map n)" using choose_works[of ?v] unfolding \<sigma>_map_def by blast
           hence "strategy p (\<sigma>_map n) \<and> strategy_attracts_via p (\<sigma>_map n) ?v S W" unfolding choose'_def by blast
@@ -486,19 +469,26 @@ proof-
         moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
         moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
         moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
-          have "\<And>v. v \<in> lset P' \<Longrightarrow> \<sigma>' v = \<sigma> v" proof-
+          have "\<And>v. v \<in> lset P' \<Longrightarrow> \<sigma> v = \<sigma>' v" proof-
             fix v assume "v \<in> lset P'"
-            hence "v \<in> S - W" using `lset P \<subseteq> S - W` sorry
-            def [simp]: k \<equiv> "THE m. next_good_index (n + m) m"
-            from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" sorry
-            hence "\<sigma> v = choose v v" unfolding \<sigma>_def using `v \<in> S - W` by auto
-            hence "\<sigma> v = \<sigma>_map k v" unfolding k_def \<sigma>_map_def sorry
-            moreover have "\<sigma>' = \<sigma>_map (n + m)" using n \<sigma>_map_constant[of "n + m"] by simp
-            ultimately show "\<sigma>' v = \<sigma> v" by simp
+            hence "v \<in> S - W" using `lset P \<subseteq> S - W` by (metis P'_def contra_subsetD in_lset_ldropnD)
+            from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" by (meson in_lset_conv_lnth)
+            hence "P $ m + n = P' $ m" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
+            moreover have "\<sigma> v = choose v v" unfolding \<sigma>_def using `v \<in> S - W` by auto
+            ultimately have "\<sigma> v = \<sigma>_map (m + n) v" unfolding \<sigma>_map_def using m(2) by auto
+            thus "\<sigma> v = \<sigma>' v" using n \<sigma>_map_constant[of "m + n"] by simp
           qed
+          moreover have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def by (simp add: P_conforms path_conforms_with_strategy_drop)
+          ultimately show ?thesis using path_conforms_with_strategy_irrelevant_updates by blast
         qed
         moreover have "strategy p \<sigma>'" unfolding \<sigma>_set_def using \<sigma>'(1) G_def \<sigma>_map_in_G by auto
-        moreover have "strategy_attracts_via p \<sigma>' (P' $ 0) S W" sorry
+        moreover have "strategy_attracts_via p \<sigma>' (P' $ 0) S W" proof-
+          have "P $ n \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
+          hence "choose' (P $ n) (choose (P $ n))" using choose_works by blast
+          hence "strategy_attracts_via p \<sigma>' (P $ n) S W" unfolding choose'_def using n \<sigma>_map_def by blast
+          moreover have "P $ n = P' $ 0" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
+          ultimately show ?thesis by simp
+        qed
         ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
           unfolding strategy_attracts_via_def using `\<not>lnull P'` by blast
         moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W" using lset_ldropn_subset by fastforce
