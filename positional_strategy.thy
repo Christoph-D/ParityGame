@@ -8,7 +8,7 @@ context ParityGame begin
 
 theorem positional_strategy_exist_for_single_prio_games:
   assumes "v0 \<in> V" and "\<forall>v \<in> V. \<omega>(v) = n"
-  shows "\<exists>p \<sigma>. valid_strategy_from p \<sigma> v0 \<and> strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0"
+  shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0"
 proof -
   let ?deadends = "\<lambda>p. {v \<in> VV p. deadend v}"
   have deadends_in_V: "\<And>p. ?deadends p \<subseteq> V" by auto
@@ -56,6 +56,7 @@ proof -
       hence "lset P \<inter> ?A = {}" using \<sigma>_def(2) strategy_avoids_def by auto
       have "winning_path p P" proof (cases)
         assume P_finite: "lfinite P"
+        with `\<not>lnull P` have "llast P \<in> lset P" using lfinite_lset by blast
         have "llast P \<notin> VV p" proof (rule ccontr)
           assume "\<not>llast P \<notin> VV p"
           hence "llast P \<in> VV p" by simp
@@ -64,10 +65,12 @@ proof -
             with `llast P \<in> VV p` have "llast P \<in> ?deadends p" by auto
             thus ?thesis using W_def attractor_set_base by force
           qed
-          moreover from P_finite have "llast P \<in> lset P" sorry
-          ultimately show False using `lset P \<inter> ?A = {}` by blast
+          with `llast P \<in> lset P` `lset P \<inter> ?A = {}` show False by blast
         qed
-        moreover have "llast P \<in> VV p**" sorry
+        moreover have "llast P \<in> VV p**" proof-
+          from `llast P \<in> lset P` P_valid have "llast P \<in> V" by (meson contra_subsetD valid_path_in_V)
+          with `llast P \<notin> VV p` show ?thesis by blast
+        qed
         thus ?thesis using winning_path_def P_finite `\<not>lnull P` by blast
       next
         assume infinite: "\<not>lfinite P"
@@ -83,17 +86,11 @@ proof -
         hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P" by (metis `\<not>lnull P` infinite le_antisym winning_path_def)
         thus ?thesis using * a_def by blast
       qed
-    qed
-    hence *: "winning_strategy p \<sigma> v0" using winning_strategy_def v_not_in_attractor by presburger
-    have "strategy_on p \<sigma> (V - ?A)" using \<sigma>_def by blast
-    then obtain \<sigma>' where \<sigma>'_def: "valid_strategy p \<sigma>'" "strategy_less_eq \<sigma> \<sigma>'" "strategy_on p \<sigma>' V"
-      by (meson \<sigma>_def(1) Diff_subset strategy_less_eq_extensible)
-    have "strategy_avoids p \<sigma> (V - ?A) (V - (V - ?A))" using \<sigma>_def(3) by (simp add: W_in_V attractor_is_bounded_by_V double_diff)
-    hence "valid_strategy_from p \<sigma> v0" using \<sigma>_def valid_strategy_is_valid_strategy_from[of p \<sigma> "V - ?A" v0] v_not_in_attractor by blast
-    hence "winning_strategy p \<sigma>' v0" using winning_strategy_preserved_under_extension \<sigma>_def(1) * \<sigma>'_def(2) by blast
-    hence "\<exists>p \<sigma>. valid_strategy p \<sigma> \<and> strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0" using \<sigma>'_def(1) \<sigma>'_def(3) * by blast
+    }
+    hence "winning_strategy p \<sigma> v0" using winning_strategy_def v_not_in_attractor by presburger
+    hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0" using \<sigma>_def(1) by blast
   } note lemma_no_path_to_deadend = this
-  hence "\<exists>p \<sigma>. valid_strategy p \<sigma> \<and> strategy_on p \<sigma> V \<and> winning_strategy p \<sigma> v0" proof (cases)
+  hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0" proof (cases)
     assume "v0 \<in> attractor p** (?deadends p)"
     hence "v0 \<in> attractor p** (?deadends p****)" by simp
     thus ?thesis using lemma_path_to_deadend[of "p**"] by (metis (no_types, lifting) attractor_set_empty equals0D)
@@ -102,7 +99,7 @@ proof -
     hence "v0 \<in> V - attractor p** (?deadends p)" using `v0 \<in> V` by blast
     thus ?thesis using lemma_no_path_to_deadend by blast
   qed
-  thus ?thesis using valid_strategy_is_valid_strategy_from_V using assms(1) by blast
+  thus ?thesis using assms(1) by blast
 qed
 
 (*
