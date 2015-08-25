@@ -266,18 +266,15 @@ lemma merge_attractor_strategies:
   assumes "W \<subseteq> V" "S \<subseteq> V"
     and "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> S W"
-  sorry
-(* proof-
-  let ?good = "\<lambda>v. {\<sigma>. attractor_strategy_on p \<sigma> v S W}"
-  def G \<equiv> "{ \<sigma>. \<exists>v \<in> S. attractor_strategy_on p \<sigma> v S W }"
+proof-
+  let ?good = "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W }"
+  def G \<equiv> "{ \<sigma>. \<exists>v \<in> S. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W }"
   obtain r where r: "well_order_on G r" using well_order_on by blast
   hence wf: "wf (r - Id)" using well_order_on_def by blast
 
   def [simp]: choose' \<equiv> "\<lambda>v \<sigma>. \<sigma> \<in> ?good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> ?good v)"
   def [simp]: choose \<equiv> "\<lambda>v. THE \<sigma>. choose' v \<sigma>"
-  def \<sigma> \<equiv> "\<lambda>v. if v \<in> (S - W) \<inter> VV p
-    then (choose v) v
-    else None"
+  def \<sigma> \<equiv> "override_on \<sigma>_arbitrary (\<lambda>v. choose v v) (S - W)"
 
   { fix v assume "v \<in> S"
     hence "\<exists>\<sigma>. \<sigma> \<in> ?good v" using assms(3) by blast
@@ -292,35 +289,49 @@ lemma merge_attractor_strategies:
     with \<sigma> have "\<exists>!\<sigma>. choose' v \<sigma>" by blast
     hence "choose' v (choose v)" using theI'[of "choose' v"] choose_def by fastforce
   } note choose_works = this
-  
-  have \<sigma>_valid: "valid_strategy p \<sigma>" proof (unfold valid_strategy_def, intro allI impI)
-    fix v w assume "\<sigma> v = Some w"
-    hence "v \<in> (S - W) \<inter> VV p" by (metis \<sigma>_def option.distinct(2))
-    hence "valid_strategy p (choose v)" using choose_works choose'_def attractor_strategy_on_def by blast
-    moreover have "(choose v) v = Some w" using \<sigma>_def `\<sigma> v = Some w` `v \<in> (S - W) \<inter> VV p` by auto
-    ultimately show "v \<in> VV p \<and> v \<rightarrow> w" using valid_strategy_def by blast
+
+  have \<sigma>_valid: "strategy p \<sigma>" proof-
+    {
+      fix v assume *: "v \<in> S" "v \<in> VV p" "\<not>deadend v"
+      from `v \<in> S` have "strategy p (choose v)" using choose_works choose'_def by blast
+      with * have "v\<rightarrow>(\<lambda>v. choose v v) v" using strategy_def by blast
+    }
+    thus ?thesis using valid_strategy_updates_set \<sigma>_def by force
   qed
 
   have S_W_no_deadends: "\<And>v. v \<in> S - W \<Longrightarrow> \<not>deadend v" proof (rule ccontr, subst (asm) not_not)
     fix v assume "v \<in> S - W" "deadend v"
     def [simp]: P \<equiv> "LCons v LNil"
-    obtain \<sigma>' where \<sigma>': "valid_strategy p \<sigma>'" "strategy_attracts_to p \<sigma>' v W" using `v \<in> S - W` assms attractor_strategy_on_def by (metis Diff_iff)
-    moreover have "valid_path P" using `v \<in> S - W` assms(2) valid_path_base' by auto
+    obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' v S W" using `v \<in> S - W` assms(3) by auto
     moreover have "\<not>lnull P \<and> P $ 0 = v" by simp
-    moreover have "path_conforms_with_strategy_maximally p P \<sigma>'" proof-
-      have "llength P = eSuc 0" by simp
-      hence *: "\<And>i. enat i < llength P \<Longrightarrow> i = 0" by (simp add: enat_0_iff(1))
-      moreover from \<sigma>'(1) `deadend v` have "v \<in> VV p \<Longrightarrow> \<sigma>' v = None"
-        using valid_strategy_none_on_deadends by blast
-      ultimately have "path_conforms_with_strategy p P \<sigma>'"
-        unfolding path_conforms_with_strategy_def by (metis `\<not>lnull P \<and> P $ 0 = v` option.distinct(1))
-      with * `\<not>lnull P \<and> P $ 0 = v` `deadend v` show ?thesis
-        unfolding path_conforms_with_strategy_maximally_def by blast
-    qed
-    ultimately have "lset P \<inter> W \<noteq> {}" unfolding strategy_attracts_to_def using strategy_less_eq_def by blast
+    moreover have "valid_path P" using `v \<in> S - W` assms(2) valid_path_base' by auto
+    moreover have "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
+    moreover have "path_conforms_with_strategy p P \<sigma>'" by (simp add: path_conforms_LCons_LNil)
+    ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S"
+      using \<sigma>'(2) unfolding strategy_attracts_via_def by blast
+    moreover have "llength P = eSuc 0" by simp
+    ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1))
     with `v \<in> S - W` show False by auto
   qed
 
+  moreover {
+    fix v0 assume "v0 \<in> S"
+    fix P assume "\<not>lnull P"
+      and P_valid: "valid_path P"
+      and P_maximal: "maximal_path P"
+      and P_conforms: "path_conforms_with_strategy p P \<sigma>"
+      and P_valid_start: "P $ 0 = v0"
+    have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S" proof (rule ccontr)
+      assume "\<not>?thesis"
+      hence contra: "\<And>n. enat n < llength P \<Longrightarrow> P $ n \<in> W \<Longrightarrow> \<not>lset (ltake (enat n) P) \<subseteq> S" by blast
+      have "lset P \<subseteq> S - W" sorry
+      
+    qed
+  }
+
+  ultimately show ?thesis using strategy_attracts_def strategy_attracts_via_def by metis
+
+  (*
   { fix v0 assume "v0 \<in> S"
     {
       { fix v assume v: "v \<in> (S - W) \<inter> VV p" "\<not>deadend v"
@@ -375,8 +386,8 @@ lemma merge_attractor_strategies:
       using \<sigma>_valid by blast
   }
   thus ?thesis by blast
+  *)
 qed
-*)
 
 lemma strategy_attracts_extends_VVp:
   assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> S W"
