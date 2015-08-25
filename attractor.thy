@@ -386,6 +386,8 @@ proof-
         moreover have "llast P \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lnull P` `lfinite P` lfinite_lset by blast
         ultimately show False using S_W_no_deadends by blast
       qed
+      have P_no_deadends: "\<And>n. \<not>deadend (P $ n)"
+        using `\<not>lfinite P` S_W_no_deadends `lset P \<subseteq> S - W` llist_nth_set by fastforce
       show False proof (cases "\<exists>n. lset (ldropn n P) \<subseteq> VV p**")
         case True
         then obtain n where n: "lset (ldropn n P) \<subseteq> VV p**" by blast
@@ -411,18 +413,46 @@ proof-
           thus "\<exists>m. n \<le> m \<and> P $ m \<in> VV p" using le_add2 by blast
         qed
         def [simp]: \<sigma>_map \<equiv> "\<lambda>n. choose (P $ n)"
-        have \<sigma>_map_in_G: "\<And>n. \<sigma>_map n \<in> G" proof-
+        have "\<And>n. P $ n \<in> S" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
+        {
           fix n
           let ?v = "P $ n"
-          have "?v \<in> S" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
-          hence "choose' ?v (\<sigma>_map n)" using choose_works[of ?v] unfolding \<sigma>_map_def by blast
+          have "choose' ?v (\<sigma>_map n)" using choose_works[of ?v] `\<And>n. P $ n \<in> S` unfolding \<sigma>_map_def by blast
           hence "strategy p (\<sigma>_map n) \<and> strategy_attracts_via p (\<sigma>_map n) ?v S W" unfolding choose'_def by blast
-          thus "\<sigma>_map n \<in> G" unfolding G_def using `?v \<in> S` by blast
-        qed
+        } note \<sigma>_map_choose' = this
+        hence \<sigma>_map_in_G: "\<And>n. \<sigma>_map n \<in> G" unfolding G_def using `\<And>n. P $ n \<in> S` by blast
         have \<sigma>_map_monotone: "\<And>n m. n < m \<Longrightarrow> (\<sigma>_map m, \<sigma>_map n) \<in> r" proof-
           {
             fix n
-            have "(\<sigma>_map (Suc n), \<sigma>_map n) \<in> r" sorry
+            have "(\<sigma>_map (Suc n), \<sigma>_map n) \<in> r" proof-
+              have "strategy p (\<sigma>_map n)" using \<sigma>_map_choose' by blast
+              moreover have *: "P $ n \<in> VV p \<Longrightarrow> \<sigma>_map n (P $ n) = P $ Suc n" proof-
+                assume "P $ n \<in> VV p"
+                hence "\<sigma> (P $ n) = P $ Suc n" using P_conforms P_valid path_conforms_with_strategy_conforms infinite_small_llength `\<not>lfinite P` by fastforce
+                moreover have "\<sigma> (P $ n) = \<sigma>_map n (P $ n)" proof-
+                  have "P $ n \<in> S - W" using `\<not>lfinite P` `lset P \<subseteq> S - W` llist_set_nth by blast
+                  thus ?thesis by (simp add: \<sigma>_def)
+                qed
+                ultimately show "\<sigma>_map n (P $ n) = P $ Suc n" by simp
+              qed
+              moreover have "P $ n \<in> S - W" using `\<not>lfinite P` `lset P \<subseteq> S - W` llist_set_nth by blast
+              moreover have "P $ n \<rightarrow> P $ Suc n" using P_valid `\<not>lfinite P` infinite_small_llength valid_path_edges by blast
+              moreover have "strategy_attracts_via p (\<sigma>_map n) (P $ n) S W" using \<sigma>_map_choose' by blast
+              ultimately have "strategy_attracts_via p (\<sigma>_map n) (P $ Suc n) S W" using strategy_attracts_via_successor[of p "\<sigma>_map n" "P $ n" S W "P $ Suc n"] \<sigma>_def `strategy p (\<sigma>_map n)` by force
+              hence "\<sigma>_map n \<in> ?good (P $ Suc n)" using `strategy p (\<sigma>_map n)` by blast
+              hence *: "(\<sigma>_map n, choose (P $ Suc n)) \<notin> r - Id" using `\<And>n. P $ n \<in> S` choose'_def choose_works by blast
+              have "(choose (P $ Suc n), \<sigma>_map n) \<in> r" proof (cases)
+                assume "\<sigma>_map n = choose (P $ Suc n)"
+                moreover have "refl_on G r" using r unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
+                ultimately show ?thesis using \<sigma>_map_in_G refl_onD by fastforce
+              next
+                assume "\<sigma>_map n \<noteq> choose (P $ Suc n)"
+                moreover with * have "(\<sigma>_map n, choose (P $ Suc n)) \<notin> r" by blast
+                moreover have "total_on G r" using r unfolding well_order_on_def linear_order_on_def by blast
+                ultimately show ?thesis by (metis \<sigma>_map_def \<sigma>_map_in_G total_on_def)
+              qed
+              thus ?thesis unfolding \<sigma>_map_def by blast
+            qed
           } note case_Suc' = this
           {
             fix n m assume "(\<sigma>_map m, \<sigma>_map n) \<in> r"
