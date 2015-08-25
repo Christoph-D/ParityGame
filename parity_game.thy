@@ -46,6 +46,18 @@ proof-
 qed
 lemma lnth_lprefix: "\<not>lnull xs \<Longrightarrow> lprefix xs ys \<Longrightarrow> lnth xs 0 = lnth ys 0"
   by (simp add: lnth_0_conv_lhd lprefix_lhdD lprefix_not_lnullD)
+lemma lfinite_lset: "lfinite xs \<Longrightarrow> \<not>lnull xs \<Longrightarrow> llast xs \<in> lset xs" proof (induct rule: lfinite_induct, simp)
+  case (LCons xs)
+  show ?case proof (cases "lnull (ltl xs)")
+    case True
+    thus ?thesis by (metis LCons.prems lhd_LCons_ltl llast_LCons llist.set_sel(1))
+  next
+    case False
+    hence "llast (ltl xs) \<in> lset (ltl xs)" using LCons.hyps(3) by blast
+    hence "llast (ltl xs) \<in> lset xs" by (simp add: in_lset_ltlD)
+    thus ?thesis by (metis False LCons.prems lhd_LCons_ltl llast_LCons2)
+  qed
+qed
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
