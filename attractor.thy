@@ -313,9 +313,7 @@ lemma strategy_attracts_VVpstar:
 (* attractor_strategy_on *)
 
 lemma merge_attractor_strategies:
-  fixes W p S
-  assumes "W \<subseteq> V" "S \<subseteq> V"
-    and "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W"
+  assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> S W"
 proof-
   let ?good = "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W }"
@@ -328,7 +326,7 @@ proof-
   def \<sigma> \<equiv> "override_on \<sigma>_arbitrary (\<lambda>v. choose v v) (S - W)"
 
   { fix v assume "v \<in> S"
-    hence "\<exists>\<sigma>. \<sigma> \<in> ?good v" using assms(3) by blast
+    hence "\<exists>\<sigma>. \<sigma> \<in> ?good v" using strategies_ex by blast
     then obtain \<sigma> where \<sigma>: "choose' v \<sigma>" unfolding choose'_def by (meson local.wf wf_eq_minimal)
     { fix \<sigma>' assume \<sigma>': "choose' v \<sigma>'"
       have "(\<sigma>, \<sigma>') \<notin> r - Id" using \<sigma> \<sigma>' by auto
@@ -353,9 +351,9 @@ proof-
   have S_W_no_deadends: "\<And>v. v \<in> S - W \<Longrightarrow> \<not>deadend v" proof (rule ccontr, subst (asm) not_not)
     fix v assume "v \<in> S - W" "deadend v"
     def [simp]: P \<equiv> "LCons v LNil"
-    obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' v S W" using `v \<in> S - W` assms(3) by auto
+    obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' v S W" using `v \<in> S - W` strategies_ex by auto
     moreover have "\<not>lnull P \<and> P $ 0 = v" by simp
-    moreover have "valid_path P" using `v \<in> S - W` assms(2) valid_path_base' by auto
+    moreover have "valid_path P" using `v \<in> S - W` `S \<subseteq> V` valid_path_base' by auto
     moreover have "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
     moreover have "path_conforms_with_strategy p P \<sigma>'" by (simp add: path_conforms_LCons_LNil)
     ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S"
@@ -428,7 +426,7 @@ proof-
         have "lset P' \<subseteq> S - W" using `lset P \<subseteq> S - W` P'_def lset_ldropn_subset by force
         moreover have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
         ultimately have "P' $ 0 \<in> S" by (metis Diff_subset P'_def `\<not>lfinite P` lfinite_ldropn llist_set_nth subset_trans)
-        then obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' (P' $ 0) S W" using assms(3) by blast
+        then obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' (P' $ 0) S W" using strategies_ex by blast
         moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
         moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
         moreover have "path_conforms_with_strategy p P' \<sigma>'" using n path_conforms_with_strategy_VVpstar by simp
