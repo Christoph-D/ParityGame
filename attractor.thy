@@ -260,39 +260,55 @@ lemma attractor_contains_no_deadends: "\<lbrakk> W \<subseteq> V; v \<in> attrac
   using attractor_inductive_contains_no_deadends attractor_inductive_is_attractor by auto
 
 lemma strategy_attracts_VVp:
-  assumes "W \<subseteq> V" "S \<subseteq> V"
-    and \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
-    and v: "v0 \<in> S - W" "v0 \<in> VV p"
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
+    and v: "v0 \<in> S - W" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 \<in> S \<union> W"
 proof-
-  show ?thesis sorry
+  obtain P where P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v0"
+    using assms strategy_conforming_path_exists_single by blast
+  have "enat (Suc 0) < llength P" using v(3) P(1) P(3) P(5) lnull_0_llength maximal_path_impl1 by blast
+  hence "\<sigma> v0 = P $ Suc 0" using path_conforms_with_strategy_conforms[of P p \<sigma> 0] P(2) P(4) P(5) v(2) by fastforce
+  moreover have "P $ Suc 0 \<in> S \<union> W" proof-
+    obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> S" using P \<sigma>(2) unfolding strategy_attracts_via_def by blast
+    have "n \<noteq> 0" using DiffE P(5) n(2) v(1) by force
+    {
+      assume "P $ Suc 0 \<notin> W"
+      hence "Suc 0 < n" using `n \<noteq> 0` n(2) Suc_lessI by blast
+      hence "ltake (enat n) P $ Suc 0 = P $ Suc 0" by (simp add: lnth_ltake)
+      moreover have "ltake (enat n) P $ Suc 0 \<in> S" proof-
+        have "llength (ltake (enat n) P) = min (enat n) (llength P)" using llength_ltake by blast
+        with n(1) have "enat n = llength (ltake (enat n) P)" by (simp add: min.strict_order_iff)
+        with `Suc 0 < n` have "enat (Suc 0) < llength (ltake (enat n) P)" by auto
+        with n(3) show ?thesis using lset_lnth by blast
+      qed
+      ultimately have "P $ Suc 0 \<in> S" by simp
+    }
+    thus ?thesis by blast
+  qed
+  ultimately show ?thesis by simp
 qed
 
 lemma strategy_attracts_not_outside:
   assumes "v0 \<in> V - S - W" "strategy p \<sigma>"
   shows "\<not>strategy_attracts_via p \<sigma> v0 S W"
 proof-
+  obtain P where P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v0"
+    using assms strategy_conforming_path_exists_single by blast
   {
-    obtain P where P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v0"
-      using assms strategy_conforming_path_exists_single by blast
-    {
-      fix n assume n: "enat n < llength P" "P $ n \<in> W"
-      hence "n \<noteq> 0" using assms(1) DiffD2 P(5) by force
-      moreover have "lhd P \<notin> S" using assms(1) P(5) by (simp add: P(1) lhd_conv_lnth)
-      ultimately have "lhd (ltake (enat n) P) \<notin> S" "\<not>lnull (ltake (enat n) P)" by (simp_all add: P(1) enat_0_iff(1))
-      hence "\<not>lset (ltake (enat n) P) \<subseteq> S" using llist.set_sel(1) by blast
-    }
-    with P have "\<exists>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0 \<and> (\<forall>n. enat n < llength P \<and> P $ n \<in> W \<longrightarrow> \<not>lset (ltake (enat n) P) \<subseteq> S)" by blast
+    fix n assume n: "enat n < llength P" "P $ n \<in> W"
+    hence "n \<noteq> 0" using assms(1) DiffD2 P(5) by force
+    moreover have "lhd P \<notin> S" using assms(1) P(5) by (simp add: P(1) lhd_conv_lnth)
+    ultimately have "lhd (ltake (enat n) P) \<notin> S" "\<not>lnull (ltake (enat n) P)" by (simp_all add: P(1) enat_0_iff(1))
+    hence "\<not>lset (ltake (enat n) P) \<subseteq> S" using llist.set_sel(1) by blast
   }
-  thus ?thesis unfolding strategy_attracts_via_def by blast
+  with P show ?thesis unfolding strategy_attracts_via_def by blast
 qed
 
 lemma strategy_attracts_VVpstar:
-  assumes "W \<subseteq> V" "S \<subseteq> V"
-    and \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
-    and v: "v0 \<in> S - W" "v0 \<notin> VV p" and w: "w0 \<in> V - S - W"
+  assumes "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
+    and "v0 \<in> S - W" "v0 \<notin> VV p" "w0 \<in> V - S - W"
   shows "\<not>v0 \<rightarrow> w0"
-  by (metis assms(3) assms(4) strategy_attracts_not_outside strategy_attracts_via_successor v(1) v(2) w)
+  by (metis assms strategy_attracts_not_outside strategy_attracts_via_successor)
 
 (* attractor_strategy_on *)
 
@@ -379,7 +395,7 @@ proof-
           have "enat n' < llength P" using n(1) n' using dual_order.strict_trans enat_ord_simps(2) by blast
           show False proof (cases)
             assume "P $ n' \<in> VV p"
-            hence "\<sigma> (P $ n') \<in> S \<union> W" using \<sigma>'(1) \<sigma>'(2) \<sigma>_def `P $ n' \<in> S - W` assms(1) assms(2) strategy_attracts_VVp by auto
+            hence "\<sigma> (P $ n') \<in> S \<union> W" using \<sigma>'(1) \<sigma>'(2) \<sigma>_def `P $ n' \<in> S - W` assms(1) assms(2) strategy_attracts_VVp S_W_no_deadends by auto
             moreover have "\<sigma> (P $ n') = P $ n" proof-
               have "enat (Suc n') < llength P" using n' n(1) by simp
               hence "\<sigma> (P $ n') = P $ Suc n'" using P_conforms P_valid `P $ n' \<in> VV p` path_conforms_with_strategy_conforms by blast
