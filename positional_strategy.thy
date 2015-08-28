@@ -118,30 +118,99 @@ proof-
     def K \<equiv> "U \<inter> (\<omega> -` {k})"
     def V' \<equiv> "U - attractor p K"
 
-    have "V' \<subseteq> V" using U_def V'_def by blast
     def G' \<equiv> "G\<lparr> verts := V', arcs := E \<inter> (V' \<times> V'), priority := \<omega>, player0 := V0 \<inter> V' \<rparr>"
+
+    have "V' \<subseteq> V" unfolding U_def V'_def by blast
+    hence "V\<^bsub>G'\<^esub> \<subseteq> V" unfolding G'_def by simp
+
+    have "E\<^bsub>G'\<^esub> \<subseteq> E" "\<omega>\<^bsub>G'\<^esub> = \<omega>" unfolding G'_def by simp_all
+
+    have VVp_subset: "\<And>p. ParityGame.VV G' p = V' \<inter> VV p" proof-
+      fix p
+      have "ParityGame.VV G' Even = V' \<inter> VV Even" unfolding G'_def by auto
+      moreover have "ParityGame.VV G' Odd = V' \<inter> VV Odd" proof-
+        have "V' - (V0 \<inter> V') = V' \<inter> (V - V0)" using `V' \<subseteq> V` by blast
+        thus ?thesis unfolding G'_def by simp
+      qed
+      ultimately show "ParityGame.VV G' p = V' \<inter> VV p" by simp
+    qed
+
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
-      have "\<exists>p \<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof (cases)
-        assume "V' = {}"
-        with `v \<in> V\<^bsub>G'\<^esub>` show ?thesis unfolding G'_def by simp
-      next
-        assume "V' \<noteq> {}"
-        hence "ParityGame G'" proof (unfold_locales)
-          have "finite (\<omega> ` V')" using `V' \<subseteq> V` priorities_finite by (meson finite_subset image_mono)
-          thus "finite (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>)" by (simp add: G'_def)
-        qed (simp_all add: G'_def)
-        moreover have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
+      hence "V' \<noteq> {}" unfolding G'_def by auto
+
+      have "ParityGame G'" proof (unfold_locales)
+        have "finite (\<omega> ` V')" using `V' \<subseteq> V` priorities_finite by (meson finite_subset image_mono)
+        thus "finite (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>)" by (simp add: G'_def)
+      qed (simp_all add: G'_def `V' \<noteq> {}`)
+
+      (* Apply the induction hypothesis to get the winning regions of G'. *)
+      have G'_winning_regions: "\<exists>p \<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof-
+        have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
           have "k \<notin> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>" sorry
           moreover have "k \<in> \<omega> ` V" unfolding k_def by (simp add: non_empty_vertex_set priorities_finite)
           moreover have "\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub> \<subseteq> \<omega> ` V" unfolding G'_def using `V' \<subseteq> V` by auto
           ultimately show ?thesis by (metis priorities_finite psubsetI psubset_card_mono)
         qed
-        ultimately show ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` by blast
+        with `ParityGame G'` show ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` by blast
+      qed
+
+      (* It turns out the winning region of player p** is empty. *)
+      have "\<exists>\<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof (rule ccontr)
+        assume "\<not>?thesis"
+        moreover obtain p' \<sigma> where p': "ParityGame.strategy G' p' \<sigma>" "ParityGame.winning_strategy G' p' \<sigma> v" using G'_winning_regions by blast
+        ultimately have "p' \<noteq> p" by blast
+        hence "p' = p**" using Player.exhaust by auto
+        with p' have \<sigma>: "ParityGame.strategy G' p** \<sigma>" "ParityGame.winning_strategy G' p** \<sigma> v" by simp_all
+
+        have "\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v" proof (rule exI, rule conjI)
+          def \<sigma>' \<equiv> "override_on \<sigma>_arbitrary \<sigma> V'"
+          show "strategy p** \<sigma>'" proof-
+            {
+              fix v assume v: "v \<in> VV p**" "\<not>deadend v"
+              have "v \<rightarrow> \<sigma>' v" proof (cases)
+                assume "v \<in> V'"
+                hence "v \<in> ParityGame.VV G' p**" using VVp_subset[of "p**"] `v \<in> VV p**` by blast
+                moreover have "\<not>Digraph.deadend G' v" sorry
+                ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1) ParityGame.strategy_def[of G' "p**" \<sigma>] `ParityGame G'` by blast
+                moreover have "\<sigma> v = \<sigma>' v" unfolding \<sigma>'_def using `v \<in> V'` by simp
+                ultimately show ?thesis using `E\<^bsub>G'\<^esub> \<subseteq> E` by auto
+              next
+                assume "v \<notin> V'"
+                thus ?thesis unfolding \<sigma>'_def using v valid_arbitrary_strategy unfolding strategy_def by simp
+              qed
+            }
+            thus ?thesis unfolding strategy_def by blast
+          qed
+          show "winning_strategy p** \<sigma>' v" proof-
+            {
+              fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p** P \<sigma>'" "P $ 0 = v"
+              have "Digraph.valid_path G' P" proof-
+                show ?thesis sorry
+              qed
+              moreover have "Digraph.maximal_path G' P" proof-
+                show ?thesis sorry
+              qed
+              moreover have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>" proof-
+                show ?thesis sorry
+              qed
+              ultimately have "ParityGame.winning_path G' p** P"
+                using `\<not>lnull P` `P $ 0 = v` \<sigma>(2) `ParityGame G'` ParityGame.winning_strategy_def[of G' "p**" \<sigma>] by blast
+              moreover have "ParityGame G" by unfold_locales
+              moreover have "ParityGame.VV G' p**** \<subseteq> ParityGame.VV G p****" using VVp_subset by blast
+              ultimately have "winning_path p** P"
+                using ParityGame.winning_path_supergame[of G' "p**" P G] `ParityGame G'` `\<omega>\<^bsub>G'\<^esub> = \<omega>` by blast
+            }
+            thus ?thesis unfolding winning_strategy_def by blast
+          qed
+        qed
+        moreover have "v \<in> V" using `V\<^bsub>G'\<^esub> \<subseteq> V` `v \<in> V\<^bsub>G'\<^esub>` by blast
+        ultimately have "v \<in> W1" unfolding W1_def by blast
+        thus False using `v \<in> V\<^bsub>G'\<^esub>` unfolding G'_def V'_def U_def by simp
       qed
     } note recursion = this
 
-
+    print_statement recursion
 
     have "\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" sorry
   }
