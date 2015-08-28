@@ -112,8 +112,8 @@ proof-
   {
     def k \<equiv> "Min (\<omega> ` V)"
     fix p assume p: "winning_priority p k"
-    def W0 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v}"
-    def W1 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v}"
+    def W0 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
+    def W1 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v }"
     def U \<equiv> "V - W1"
     def K \<equiv> "U \<inter> (\<omega> -` {k})"
     def V' \<equiv> "U - attractor p K"
@@ -201,7 +201,16 @@ proof-
       qed
     } note recursion = this
 
-    print_statement recursion
+    assume "V\<^bsub>G'\<^esub> \<noteq> {}"
+    hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
+    hence "ParityGame G'" using subgame_ParityGame by simp
+
+    (* obtain \<sigma>1 where \<sigma>1: "strategy p** \<sigma>1" "\<And>v. v \<in> W1 \<Longrightarrow> winning_strategy p** \<sigma>1 v" using merge_winning_strategies[of W1 "p**"] W1_def by blast *)
+    obtain \<sigma>1 where \<sigma>1: "strategy p \<sigma>1" "strategy_attracts p \<sigma>1 (attractor p K) K" using attractor_has_strategy[of K p] K_def U_def by auto
+    obtain \<sigma>2 where \<sigma>2: "ParityGame.strategy G' p \<sigma>2" "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> ParityGame.winning_strategy G' p \<sigma>2 v" using ParityGame.merge_winning_strategies[of G' "V\<^bsub>G'\<^esub>"] recursion `ParityGame G'` by blast
+
+    def choose \<equiv> "\<lambda>v. SOME w. v\<rightarrow>w \<and> w \<notin> W1"
+    def \<sigma> \<equiv> "override_on (override_on choose \<sigma>2 V') \<sigma>1 (attractor p K - K)"
 
     have "\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" sorry
   }
