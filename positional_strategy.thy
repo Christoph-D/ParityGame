@@ -118,38 +118,24 @@ proof-
     def K \<equiv> "U \<inter> (\<omega> -` {k})"
     def V' \<equiv> "U - attractor p K"
 
-    def G' \<equiv> "G\<lparr> verts := V', arcs := E \<inter> (V' \<times> V'), priority := \<omega>, player0 := V0 \<inter> V' \<rparr>"
+    def [simp]: G' \<equiv> "subgame V'"
 
     have "V' \<subseteq> V" unfolding U_def V'_def by blast
-    hence "V\<^bsub>G'\<^esub> \<subseteq> V" unfolding G'_def by simp
+    hence [simp]: "V\<^bsub>G'\<^esub> = V'" unfolding G'_def by simp
 
-    have "E\<^bsub>G'\<^esub> \<subseteq> E" "\<omega>\<^bsub>G'\<^esub> = \<omega>" unfolding G'_def by simp_all
-
-    have VVp_subset: "\<And>p. ParityGame.VV G' p = V' \<inter> VV p" proof-
-      fix p
-      have "ParityGame.VV G' Even = V' \<inter> VV Even" unfolding G'_def by auto
-      moreover have "ParityGame.VV G' Odd = V' \<inter> VV Odd" proof-
-        have "V' - (V0 \<inter> V') = V' \<inter> (V - V0)" using `V' \<subseteq> V` by blast
-        thus ?thesis unfolding G'_def by simp
-      qed
-      ultimately show "ParityGame.VV G' p = V' \<inter> VV p" by simp
-    qed
+    have "V\<^bsub>G'\<^esub> \<subseteq> V" "E\<^bsub>G'\<^esub> \<subseteq> E" "\<omega>\<^bsub>G'\<^esub> = \<omega>" unfolding G'_def by (simp_all add: subgame_\<omega>)
 
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
-      hence "V' \<noteq> {}" unfolding G'_def by auto
-
-      have "ParityGame G'" proof (unfold_locales)
-        have "finite (\<omega> ` V')" using `V' \<subseteq> V` priorities_finite by (meson finite_subset image_mono)
-        thus "finite (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>)" by (simp add: G'_def)
-      qed (simp_all add: G'_def `V' \<noteq> {}`)
+      hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
+      hence "ParityGame G'" using subgame_ParityGame by simp
 
       (* Apply the induction hypothesis to get the winning regions of G'. *)
       have G'_winning_regions: "\<exists>p \<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof-
         have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
           have "k \<notin> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>" sorry
           moreover have "k \<in> \<omega> ` V" unfolding k_def by (simp add: non_empty_vertex_set priorities_finite)
-          moreover have "\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub> \<subseteq> \<omega> ` V" unfolding G'_def using `V' \<subseteq> V` by auto
+          moreover have "\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub> \<subseteq> \<omega> ` V" unfolding G'_def by simp
           ultimately show ?thesis by (metis priorities_finite psubsetI psubset_card_mono)
         qed
         with `ParityGame G'` show ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` by blast
@@ -206,7 +192,7 @@ proof-
         qed
         moreover have "v \<in> V" using `V\<^bsub>G'\<^esub> \<subseteq> V` `v \<in> V\<^bsub>G'\<^esub>` by blast
         ultimately have "v \<in> W1" unfolding W1_def by blast
-        thus False using `v \<in> V\<^bsub>G'\<^esub>` unfolding G'_def V'_def U_def by simp
+        thus False using `v \<in> V\<^bsub>G'\<^esub>` using U_def V'_def `V\<^bsub>G'\<^esub> = V'` `v \<in> V\<^bsub>G'\<^esub>` by blast
       qed
     } note recursion = this
 

@@ -383,6 +383,43 @@ lemma VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in
 
 lemma \<omega>_upperbound: "\<exists>n. \<forall>v \<in> V. \<omega>(v) \<le> n" using finite_nat_set_iff_bounded_le priorities_finite by auto
 
+definition subgame where
+  "subgame V' \<equiv> G\<lparr> verts := V' \<inter> V, arcs := E \<inter> (V' \<times> V'), priority := \<omega>, player0 := V0 \<inter> V' \<rparr>"
+
+lemma subgame_V [simp]: "V\<^bsub>subgame V'\<^esub> \<subseteq> V"
+  and subgame_E [simp]: "E\<^bsub>subgame V'\<^esub> \<subseteq> E"
+  and subgame_\<omega>: "\<omega>\<^bsub>subgame V'\<^esub> = \<omega>"
+  unfolding subgame_def by simp_all
+
+lemma subgame_V' [simp]: "V' \<subseteq> V \<Longrightarrow> V\<^bsub>subgame V'\<^esub> = V'" unfolding subgame_def by auto
+
+lemma subgame_VV [simp]: "ParityGame.VV (subgame V') p = V' \<inter> VV p" proof-
+  have "ParityGame.VV (subgame V') Even = V' \<inter> VV Even" unfolding subgame_def by auto
+  moreover have "ParityGame.VV (subgame V') Odd = V' \<inter> VV Odd" proof-
+    have "V' \<inter> V - (V0 \<inter> V') = V' \<inter> V \<inter> (V - V0)" by blast
+    thus ?thesis unfolding subgame_def by auto
+  qed
+  ultimately show ?thesis by simp
+qed
+corollary subgame_VV_subset [simp]: "ParityGame.VV (subgame V') p \<subseteq> VV p" by simp
+
+lemma subgame_finite [simp]: "finite (\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub>)" proof-
+  have "finite (\<omega> ` V\<^bsub>subgame V'\<^esub>)" using subgame_V priorities_finite by (meson finite_subset image_mono)
+  thus ?thesis by (simp add: subgame_def)
+qed
+
+lemma subgame_\<omega>_subset [simp]: "\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub> \<subseteq> \<omega> ` V" by (simp add: image_mono subgame_\<omega>)
+
+lemma subgame_ParityGame:
+  assumes "V' \<inter> V \<noteq> {}"
+  shows "ParityGame (subgame V')"
+proof (unfold_locales)
+  show "V\<^bsub>subgame V'\<^esub> \<noteq> {}" unfolding subgame_def using assms by simp
+  show "E\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using valid_edge_set by auto
+  show "V0\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using valid_player0_set by auto
+  show "finite (\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub>)" by simp
+qed
+
 definition path_priorities :: "'a Path \<Rightarrow> nat \<Rightarrow> nat" where
   "path_priorities P i \<equiv> \<omega> (P $ i)"
 (* The set of priorities that occur infinitely often on a given path. *)

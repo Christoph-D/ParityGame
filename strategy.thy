@@ -35,6 +35,7 @@ definition strategy_attracts :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 
   "strategy_attracts p \<sigma> A W \<equiv> \<forall>v0 \<in> A. strategy_attracts_via p \<sigma> v0 A W"
 
 (* All \<sigma>-paths starting from A never visit W. *)
+(* "\<exists>\<sigma>. strategy_avoids p \<sigma> A (V - A)" = A is a p-trap. *)
 definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_avoids p \<sigma> A W \<equiv> (\<forall>P.
       \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> A
