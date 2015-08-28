@@ -103,9 +103,10 @@ proof -
 qed
 
 lemma positional_strategy_induction_step:
-  assumes "\<And>G. card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) \<le> r \<Longrightarrow> v \<in> V\<^bsub>G\<^esub> \<Longrightarrow> ParityGame G \<Longrightarrow> \<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v"
-    "Suc r = card (\<omega> ` V)"
-    "v \<in> V"
+  assumes "v \<in> V"
+    and IH: "\<And>(G :: ('a, 'b) ParityGame_scheme) v.
+      \<lbrakk> card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) < card (\<omega> ` V); v \<in> V\<^bsub>G\<^esub>; ParityGame G \<rbrakk>
+        \<Longrightarrow> \<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
 proof-
   {
@@ -119,45 +120,45 @@ proof-
 
     have "V' \<subseteq> V" using U_def V'_def by blast
     def G' \<equiv> "G\<lparr> verts := V', arcs := E \<inter> (V' \<times> V'), priority := \<omega>, player0 := V0 \<inter> V' \<rparr>"
-    have ?thesis proof (cases)
-      assume "V' = {}"
-      show ?thesis sorry
-    next
-      assume "V' \<noteq> {}"
-      have "ParityGame G'" proof (unfold_locales)
-        have "finite (\<omega> ` V')" using `V' \<subseteq> V` priorities_finite by (meson finite_subset image_mono)
-        thus "finite (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>)" by (simp add: G'_def)
-      qed (simp_all add: G'_def `V' \<noteq> {}`)
-      have "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) < Suc r" proof-
-        have "k \<notin> \<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>" sorry
-        moreover have "k \<in> \<omega> ` V" unfolding k_def by (simp add: non_empty_vertex_set priorities_finite)
-        ultimately show ?thesis using `Suc r = card (\<omega> \` V)` by blast
+    {
+      fix v assume "v \<in> V\<^bsub>G'\<^esub>"
+      have "\<exists>p \<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof (cases)
+        assume "V' = {}"
+        with `v \<in> V\<^bsub>G'\<^esub>` show ?thesis unfolding G'_def by simp
+      next
+        assume "V' \<noteq> {}"
+        hence "ParityGame G'" proof (unfold_locales)
+          have "finite (\<omega> ` V')" using `V' \<subseteq> V` priorities_finite by (meson finite_subset image_mono)
+          thus "finite (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>)" by (simp add: G'_def)
+        qed (simp_all add: G'_def)
+        moreover have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
+          have "k \<notin> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>" sorry
+          moreover have "k \<in> \<omega> ` V" unfolding k_def by (simp add: non_empty_vertex_set priorities_finite)
+          moreover have "\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub> \<subseteq> \<omega> ` V" unfolding G'_def using `V' \<subseteq> V` by auto
+          ultimately show ?thesis by (metis priorities_finite psubsetI psubset_card_mono)
+        qed
+        ultimately show ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` by blast
       qed
-      show ?thesis sorry
-    qed
+    } note recursion = this
+
+
+
+    have "\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" sorry
   }
   moreover have "\<exists>p. winning_priority p (Min (\<omega> ` V))" by auto
   ultimately show ?thesis by blast
 qed
 
-end -- "context ParityGame"
-
 theorem positional_strategy_exists:
-  assumes "v \<in> V\<^bsub>G\<^esub>" "ParityGame (G :: ('a, 'b) ParityGame_scheme)"
-  shows "\<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v"
-using assms proof (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
-  fix v and G :: "('a, 'b) ParityGame_scheme"
-  assume G: "\<forall>m<card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>). \<forall>x. m = card (\<omega>\<^bsub>x\<^esub> ` V\<^bsub>x\<^esub>) \<longrightarrow> (\<forall>xa. xa \<in> V\<^bsub>x\<^esub> \<longrightarrow> ParityGame x \<longrightarrow> (\<exists>p \<sigma>. ParityGame.strategy x p \<sigma> \<and> ParityGame.winning_strategy x p \<sigma> xa))"
-    "v \<in> V\<^bsub>G\<^esub>" "ParityGame G"
-  show "\<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v" proof (cases)
-    assume *: "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) = 0"
-    have "\<omega>\<^bsub>G\<^esub> v \<in> \<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>" using `v \<in> V\<^bsub>G\<^esub>` by simp
-    hence "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) \<noteq> 0" using G(3) ParityGame.priorities_finite[of G] card_0_eq[of "\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>"] by blast
-    thus ?thesis using * by simp
-  next
-    assume *: "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) \<noteq> 0"
-    thus ?thesis using ParityGame.positional_strategy_induction_step[of G r v] by blast
-  qed
+  assumes "v \<in> V"
+  shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
+proof-
+  have "ParityGame G" by unfold_locales
+  with `v \<in> V` show ?thesis
+    by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
+       (rule ParityGame.positional_strategy_induction_step, simp_all)
 qed
+
+end -- "context ParityGame"
 
 end
