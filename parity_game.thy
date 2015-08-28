@@ -156,8 +156,10 @@ proof-
   ultimately show ?thesis using valid_path_edges' by blast
 qed
 
-lemma valid_path_impl1: "valid_path P \<Longrightarrow> lset P \<subseteq> V \<and> (\<forall>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v\<rightarrow>w)" using valid_path_edges valid_path_in_V by blast
-lemma valid_path_impl2: "\<lbrakk> lset P \<subseteq> V; \<And>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v\<rightarrow>w \<rbrakk> \<Longrightarrow> valid_path P" proof (coinduction arbitrary: P rule: valid_path.coinduct)
+lemma valid_path_impl1: "valid_path P \<Longrightarrow> lset P \<subseteq> V \<and> (\<forall>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v\<rightarrow>w)"
+  using valid_path_edges valid_path_in_V by blast
+lemma valid_path_impl2: "\<lbrakk> lset P \<subseteq> V; \<And>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v\<rightarrow>w \<rbrakk> \<Longrightarrow> valid_path P"
+proof (coinduction arbitrary: P rule: valid_path.coinduct)
   case (valid_path P)
   { assume "\<not>P = LNil" "\<not>(\<exists>v. P = LCons v LNil \<and> v \<in> V)"
     hence "\<not>(\<exists>v. P = LCons v LNil)" using valid_path(1) by auto
@@ -229,6 +231,33 @@ proof-
     ultimately show "?P $ i \<rightarrow> ?P $ Suc i" using linorder_cases by blast
   qed
   ultimately show ?thesis using valid_path_equiv by blast
+qed
+
+lemma valid_path_supergame:
+  assumes "valid_path P" and G': "Digraph G'" "V \<subseteq> V\<^bsub>G'\<^esub>" "E \<subseteq> E\<^bsub>G'\<^esub>"
+  shows "Digraph.valid_path G' P"
+using assms(1) assms(3) proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`])
+  fix P assume "valid_path P" "V \<subseteq> V\<^bsub>G'\<^esub>"
+  show "P = LNil
+    \<or> (\<exists>v. P = LCons v LNil \<and> v \<in> V\<^bsub>G'\<^esub>)
+    \<or> (\<exists>v w Ps. P = LCons v Ps \<and> v \<in> V\<^bsub>G'\<^esub> \<and> w \<in> V\<^bsub>G'\<^esub> \<and> v \<rightarrow>\<^bsub>G'\<^esub> w \<and> ((\<exists>P. Ps = P \<and> valid_path P \<and> V \<subseteq> V\<^bsub>G'\<^esub>) \<or> Digraph.valid_path G' Ps) \<and> \<not> lnull Ps \<and> lhd Ps = w)"
+  proof (cases)
+    assume "P = LNil" thus ?thesis by simp
+  next
+    assume "P \<noteq> LNil"
+    then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
+    show ?thesis proof (cases)
+      assume "P' = LNil"
+      thus ?thesis using `valid_path P` valid_path_cons_simp `V \<subseteq> V\<^bsub>G'\<^esub>` P' by blast
+    next
+      assume "P' \<noteq> LNil"
+      then obtain w Ps where *: "P = LCons v (LCons w Ps)" using P' llist.exhaust by auto
+      hence "v \<in> V\<^bsub>G'\<^esub>" using `valid_path P` valid_path_cons_simp `V \<subseteq> V\<^bsub>G'\<^esub>` by blast
+      moreover have "w \<in> V\<^bsub>G'\<^esub>" using `valid_path P` valid_path_ltl valid_path_cons_simp `V \<subseteq> V\<^bsub>G'\<^esub>` by (metis "*" subsetCE valid_path_ltl')
+      moreover have "v \<rightarrow>\<^bsub>G'\<^esub> w" using `valid_path P` `E \<subseteq> E\<^bsub>G'\<^esub>` * valid_path_edges' by blast
+      ultimately show ?thesis using * `valid_path P` assms(3) valid_path_cons_simp by auto
+    qed
+  qed
 qed
 
 coinductive maximal_path where
