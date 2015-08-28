@@ -1,7 +1,7 @@
 theory positional_strategy
 imports
   Main
-  parity_game strategy attractor
+  parity_game strategy attractor merge_strategies attractor_strategy
 begin
 
 context ParityGame begin
@@ -125,6 +125,11 @@ proof-
 
     have "V\<^bsub>G'\<^esub> \<subseteq> V" "E\<^bsub>G'\<^esub> \<subseteq> E" "\<omega>\<^bsub>G'\<^esub> = \<omega>" unfolding G'_def by (simp_all add: subgame_\<omega>)
 
+    have no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>Digraph.deadend G' v" proof-
+      fix v assume "v \<in> V\<^bsub>G'\<^esub>"
+      show "\<not>Digraph.deadend G' v" sorry
+    qed
+
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
       hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
@@ -156,11 +161,11 @@ proof-
               fix v assume v: "v \<in> VV p**" "\<not>deadend v"
               have "v \<rightarrow> \<sigma>' v" proof (cases)
                 assume "v \<in> V'"
-                hence "v \<in> ParityGame.VV G' p**" using VVp_subset[of "p**"] `v \<in> VV p**` by blast
-                moreover have "\<not>Digraph.deadend G' v" sorry
+                hence "v \<in> ParityGame.VV G' p**" using subgame_VV[of "p**"] `v \<in> VV p**` G'_def by fastforce
+                moreover have "\<not>Digraph.deadend G' v" using no_deadends `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast
                 ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1) ParityGame.strategy_def[of G' "p**" \<sigma>] `ParityGame G'` by blast
                 moreover have "\<sigma> v = \<sigma>' v" unfolding \<sigma>'_def using `v \<in> V'` by simp
-                ultimately show ?thesis using `E\<^bsub>G'\<^esub> \<subseteq> E` by auto
+                ultimately show ?thesis using `E\<^bsub>G'\<^esub> \<subseteq> E` G'_def by fastforce
               next
                 assume "v \<notin> V'"
                 thus ?thesis unfolding \<sigma>'_def using v valid_arbitrary_strategy unfolding strategy_def by simp
@@ -183,7 +188,7 @@ proof-
               ultimately have "ParityGame.winning_path G' p** P"
                 using `\<not>lnull P` `P $ 0 = v` \<sigma>(2) `ParityGame G'` ParityGame.winning_strategy_def[of G' "p**" \<sigma>] by blast
               moreover have "ParityGame G" by unfold_locales
-              moreover have "ParityGame.VV G' p**** \<subseteq> ParityGame.VV G p****" using VVp_subset by blast
+              moreover have "ParityGame.VV G' p**** \<subseteq> ParityGame.VV G p****" using subgame_VV_subset G'_def by blast
               ultimately have "winning_path p** P"
                 using ParityGame.winning_path_supergame[of G' "p**" P G] `ParityGame G'` `\<omega>\<^bsub>G'\<^esub> = \<omega>` by blast
             }
