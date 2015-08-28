@@ -451,6 +451,30 @@ definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" whe
     \<or> (\<not>lnull P \<and> lfinite P \<and> llast P \<in> VV p**)
     \<or> (lnull P \<and> p = Even)"
 
+lemma winning_path_supergame:
+  assumes "winning_path p P"
+  and G': "ParityGame G'" "VV p** \<subseteq> ParityGame.VV G' p**" "\<omega> = \<omega>\<^bsub>G'\<^esub>"
+  shows "ParityGame.winning_path G' p P"
+proof-
+  { assume "\<not>lfinite P"
+    moreover hence "\<not>lnull P" by auto
+    ultimately have "\<exists>a. a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a"
+      using assms(1) unfolding winning_path_def by blast
+    moreover have "path_inf_priorities P = ParityGame.path_inf_priorities G' P"
+      unfolding path_inf_priorities_def using ParityGame.path_inf_priorities_def[of G' P] G'(1) G'(3) by auto
+    ultimately have "\<exists>a. a \<in> ParityGame.path_inf_priorities G' P \<and> (\<forall>b \<in> ParityGame.path_inf_priorities G' P. a \<le> b) \<and> winning_priority p a" by blast
+  }
+  moreover {
+    assume "lfinite P" "\<not>lnull P"
+    hence "llast P \<in> VV p**" using assms(1) unfolding winning_path_def by blast
+    hence "llast P \<in> ParityGame.VV G' p**" using G'(2) by blast
+  }
+  moreover {
+    assume "lnull P" hence "p = Even" using assms(1) unfolding winning_path_def by simp
+  }
+  ultimately show ?thesis using ParityGame.winning_path_def[of G' p P] G'(1) by blast
+qed
+
 lemma paths_are_winning_for_exactly_one_player:
   assumes "\<not>lnull P" "valid_path P"
   shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
