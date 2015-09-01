@@ -124,11 +124,20 @@ proof-
     hence [simp]: "V\<^bsub>G'\<^esub> = V'" unfolding G'_def by simp
 
     have "V\<^bsub>G'\<^esub> \<subseteq> V" "E\<^bsub>G'\<^esub> \<subseteq> E" "\<omega>\<^bsub>G'\<^esub> = \<omega>" unfolding G'_def by (simp_all add: subgame_\<omega>)
+    have "ParityGame.VV G' p = V' \<inter> VV p" unfolding G'_def using subgame_VV by simp
 
     have no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>Digraph.deadend G' v" proof-
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
       show "\<not>Digraph.deadend G' v" sorry
     qed
+
+    have "V = attractor p K \<union> V' \<union> W1" proof-
+      have "V - W1 \<subseteq> attractor p K \<union> V'" unfolding V'_def U_def by auto
+      hence "V \<subseteq> attractor p K \<union> V' \<union> W1" by blast
+      moreover have "attractor p K \<subseteq> V" by (metis Diff_subset K_def U_def attractor_is_bounded_by_V inf_le1 subset_trans)
+      ultimately show ?thesis unfolding W1_def using `V' \<subseteq> V` by blast
+    qed
+    hence "V = (attractor p K - K) \<union> V' \<union> K \<union> W1" using attractor_set_base by blast
 
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
@@ -201,18 +210,56 @@ proof-
       qed
     } note recursion = this
 
-    assume "V\<^bsub>G'\<^esub> \<noteq> {}"
-    hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
-    hence "ParityGame G'" using subgame_ParityGame by simp
+    {
+      assume "V\<^bsub>G'\<^esub> \<noteq> {}"
+      hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
+      hence "ParityGame G'" using subgame_ParityGame by simp
+    } note G'_ParityGame = this
 
-    (* obtain \<sigma>1 where \<sigma>1: "strategy p** \<sigma>1" "\<And>v. v \<in> W1 \<Longrightarrow> winning_strategy p** \<sigma>1 v" using merge_winning_strategies[of W1 "p**"] W1_def by blast *)
     obtain \<sigma>1 where \<sigma>1: "strategy p \<sigma>1" "strategy_attracts p \<sigma>1 (attractor p K) K" using attractor_has_strategy[of K p] K_def U_def by auto
-    obtain \<sigma>2 where \<sigma>2: "ParityGame.strategy G' p \<sigma>2" "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> ParityGame.winning_strategy G' p \<sigma>2 v" using ParityGame.merge_winning_strategies[of G' "V\<^bsub>G'\<^esub>"] recursion `ParityGame G'` by blast
+    obtain \<sigma>2 where \<sigma>2: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> ParityGame.strategy G' p \<sigma>2" "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> ParityGame.winning_strategy G' p \<sigma>2 v"
+      using ParityGame.merge_winning_strategies[of G' "V\<^bsub>G'\<^esub>"] recursion G'_ParityGame by blast
 
-    def choose \<equiv> "\<lambda>v. SOME w. v\<rightarrow>w \<and> w \<notin> W1"
+    def choose \<equiv> "\<lambda>v. SOME w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1)"
     def \<sigma> \<equiv> "override_on (override_on choose \<sigma>2 V') \<sigma>1 (attractor p K - K)"
 
-    have "\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" sorry
+    have \<sigma>_\<sigma>1 [simp]: "\<And>v. v \<in> attractor p K - K \<Longrightarrow> \<sigma> v = \<sigma>1 v" unfolding \<sigma>_def by simp
+    have \<sigma>_\<sigma>2 [simp]: "\<And>v. v \<in> V' \<Longrightarrow> \<sigma> v = \<sigma>2 v" unfolding \<sigma>_def V'_def by auto
+    have \<sigma>_K [simp]: "\<And>v. v \<in> K \<union> W1 \<Longrightarrow> \<sigma> v = choose v" proof-
+      fix v assume "v \<in> K \<union> W1"
+      moreover hence "v \<notin> V'" unfolding V'_def U_def using attractor_set_base by auto
+      moreover have "attractor p K \<inter> W1 = {}" sorry
+      ultimately show "\<sigma> v = choose v" unfolding \<sigma>_def U_def by (metis (mono_tags, lifting) Diff_iff IntI UnE override_on_def override_on_emptyset)
+    qed
+
+    have "strategy p \<sigma>" proof-
+      { fix v assume v: "v \<in> VV p" "\<not>deadend v"
+        have "v \<in> attractor p K - K \<Longrightarrow> v\<rightarrow>\<sigma> v" using \<sigma>_\<sigma>1 \<sigma>1(1) v unfolding strategy_def by auto
+        moreover have "v \<in> V' \<Longrightarrow> v\<rightarrow>\<sigma> v" proof-
+          assume "v \<in> V'"
+          moreover have "v \<in> V\<^bsub>G'\<^esub>" using `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast
+          moreover hence "ParityGame G'" using G'_ParityGame by blast
+          moreover have "v \<in> ParityGame.VV G' p" using `ParityGame.VV G' p = V' \<inter> VV p` `v \<in> V'` `v \<in> VV p` by blast
+          moreover have "\<not>Digraph.deadend G' v" using no_deadends `v \<in> V\<^bsub>G'\<^esub>` by blast
+          ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma>2 v" using \<sigma>2(1) ParityGame.strategy_def[of G' p \<sigma>2] by blast
+          with `v \<in> V'` show "v\<rightarrow>\<sigma> v" using `E\<^bsub>G'\<^esub> \<subseteq> E` \<sigma>_\<sigma>2 by (metis subsetCE)
+        qed
+        moreover have "v \<in> K \<union> W1 \<Longrightarrow> v\<rightarrow>\<sigma> v" sorry
+        moreover have "v \<in> V" using `v \<in> VV p` by blast
+        ultimately have "v\<rightarrow>\<sigma> v" using `V = (attractor p K - K) \<union> V' \<union> K \<union> W1` by blast
+      }
+      thus ?thesis unfolding strategy_def by blast
+    qed
+    moreover have "\<forall>v \<in> V - W1. winning_strategy p \<sigma> v" proof-
+      {
+        fix v P assume "v \<in> V - W1"
+          and P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v"
+        have "winning_path p P" sorry
+      }
+      thus ?thesis unfolding winning_strategy_def by blast
+    qed
+    ultimately have "\<forall>v \<in> V. \<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" using W1_def by blast
+    hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" using `v \<in> V` by simp
   }
   moreover have "\<exists>p. winning_priority p (Min (\<omega> ` V))" by auto
   ultimately show ?thesis by blast
