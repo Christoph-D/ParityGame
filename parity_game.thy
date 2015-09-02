@@ -482,12 +482,57 @@ lemma path_inf_priorities_has_minimum:
     thus ?thesis by (metis leI that)
   qed
 
+lemma in_set_ldropn: "x \<in> lset (ldropn (Suc n) xs) \<Longrightarrow> x \<in> lset (ldropn n xs)"
+  by (simp add: in_lset_ltlD ldrop_eSuc_ltl ltl_ldropn)
+
+lemma path_inf_priorities_LCons: "path_inf_priorities P = path_inf_priorities (LCons v P)" (is "?A = ?B")
+proof
+  show "?A \<subseteq> ?B" proof
+    fix a assume "a \<in> ?A"
+    hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> (LCons v P)))" using path_inf_priorities_def in_set_ldropn[of a _ "lmap \<omega> (LCons v P)"] by auto
+    thus "a \<in> ?B" using path_inf_priorities_def by blast
+  qed
+next
+  show "?B \<subseteq> ?A" proof
+    fix a assume "a \<in> ?B"
+    hence "\<forall>n. a \<in> lset (ldropn (Suc n) (lmap \<omega> (LCons v P)))" using path_inf_priorities_def by blast
+    hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> P))" by auto
+    thus "a \<in> ?A" using path_inf_priorities_def by blast
+  qed
+qed
+corollary path_inf_priorities_ltl: "path_inf_priorities P = path_inf_priorities (ltl P)"
+  by (metis llist.exhaust ltl_simps(1) ltl_simps(2) path_inf_priorities_LCons)
+
 (* True iff the path is winning for the given player. *)
 definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" where
   "winning_path p P \<equiv>
     (\<not>lfinite P \<and> (\<exists>a \<in> path_inf_priorities P. (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
     \<or> (\<not>lnull P \<and> lfinite P \<and> llast P \<in> VV p**)
     \<or> (lnull P \<and> p = Even)"
+
+lemma winning_path_ltl:
+  assumes P: "winning_path p P" "\<not>lnull P" "\<not>lnull (ltl P)"
+  shows "winning_path p (ltl P)"
+proof (cases)
+  assume "lfinite P"
+  moreover have "llast P = llast (ltl P)" using P(2) P(3) by (metis llast_LCons2 ltl_simps(2) not_lnull_conv)
+  ultimately show ?thesis using P by (simp add: winning_path_def)
+next
+  assume "\<not>lfinite P"
+  thus ?thesis using winning_path_def path_inf_priorities_ltl using P(1) P(2) by auto
+qed
+
+lemma winning_path_LCons:
+  assumes P: "winning_path p P" "\<not>lnull P"
+  shows "winning_path p (LCons v P)"
+proof (cases)
+  assume "lfinite P"
+  moreover have "llast P = llast (LCons v P)" using P(2) by (metis llast_LCons2 not_lnull_conv)
+  ultimately show ?thesis using P by (simp add: winning_path_def)
+next
+  assume "\<not>lfinite P"
+  thus ?thesis using winning_path_def path_inf_priorities_LCons using P(1) P(2) by auto
+qed
 
 lemma winning_path_supergame:
   assumes "winning_path p P"
