@@ -104,8 +104,9 @@ qed
 
 lemma positional_strategy_induction_step:
   assumes "v \<in> V"
+    and no_deadends: "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
     and IH: "\<And>(G :: ('a, 'b) ParityGame_scheme) v.
-      \<lbrakk> card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) < card (\<omega> ` V); v \<in> V\<^bsub>G\<^esub>; ParityGame G \<rbrakk>
+      \<lbrakk> card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) < card (\<omega> ` V); v \<in> V\<^bsub>G\<^esub>; ParityGame G; \<And>v. v \<in> V\<^bsub>G\<^esub> \<Longrightarrow> \<not>Digraph.deadend G v  \<rbrakk>
         \<Longrightarrow> \<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
 proof-
@@ -126,18 +127,55 @@ proof-
     have "V\<^bsub>G'\<^esub> \<subseteq> V" "E\<^bsub>G'\<^esub> \<subseteq> E" "\<omega>\<^bsub>G'\<^esub> = \<omega>" unfolding G'_def by (simp_all add: subgame_\<omega>)
     have "ParityGame.VV G' p = V' \<inter> VV p" unfolding G'_def using subgame_VV by simp
 
-    have no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>Digraph.deadend G' v" proof-
-      fix v assume "v \<in> V\<^bsub>G'\<^esub>"
-      show "\<not>Digraph.deadend G' v" sorry
-    qed
-
-    have "V = attractor p K \<union> V' \<union> W1" proof-
+    have V_decomp: "V = attractor p K \<union> V' \<union> W1" proof-
       have "V - W1 \<subseteq> attractor p K \<union> V'" unfolding V'_def U_def by auto
       hence "V \<subseteq> attractor p K \<union> V' \<union> W1" by blast
       moreover have "attractor p K \<subseteq> V" by (metis Diff_subset K_def U_def attractor_is_bounded_by_V inf_le1 subset_trans)
       ultimately show ?thesis unfolding W1_def using `V' \<subseteq> V` by blast
     qed
     hence "V = (attractor p K - K) \<union> V' \<union> K \<union> W1" using attractor_set_base by blast
+
+    have G'_no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>Digraph.deadend G' v" proof-
+      fix v assume v: "v \<in> V\<^bsub>G'\<^esub>"
+      {
+        assume "Digraph.deadend G' v"
+        hence not_in_V': "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<notin> V'" proof-
+          fix w assume "v\<rightarrow>w"
+          { assume "w \<in> V'"
+            hence "w \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` by blast
+            moreover hence "v \<rightarrow>\<^bsub>G'\<^esub> w" unfolding G'_def using `V' \<subseteq> V` `v \<in> V\<^bsub>G'\<^esub>` `v\<rightarrow>w` by simp
+            ultimately have False using `Digraph.deadend G' v` by blast
+          }
+          thus "w \<notin> V'" by blast
+        qed
+        have "\<not>deadend v" using no_deadends v `V\<^bsub>G'\<^esub> \<subseteq> V` by blast
+        moreover {
+          assume "v \<in> VV p"
+          {
+            fix w assume "v\<rightarrow>w"
+            have "w \<notin> attractor p K" sorry
+            hence "w \<in> W1" using not_in_V' V_decomp `v\<rightarrow>w` edges_are_in_V by blast
+          }
+          (* All successors of v point to W1, so v \<in> W1 *)
+          hence False sorry
+        }
+        moreover {
+          assume "v \<notin> VV p"
+          hence "v \<in> VV p**" using `\<not>deadend v` edges_are_in_V by auto
+          {
+            fix w assume "v\<rightarrow>w"
+            have "w \<notin> W1" sorry
+            hence "w \<in> attractor p K" using not_in_V' V_decomp `v\<rightarrow>w` edges_are_in_V by blast
+          }
+          (* All successors of v point to attractor p K, so v \<in> attractor p K *)
+          hence "v \<in> attractor p K" using `v \<in> VV p**` attractor_set_VVpstar `\<not>deadend v` by blast
+          moreover have "v \<in> V'" using `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> = V'` by blast
+          ultimately have False unfolding V'_def by blast
+        }
+        ultimately have False by blast
+      }
+      thus "\<not>Digraph.deadend G' v" by blast
+    qed
 
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
@@ -152,7 +190,7 @@ proof-
           moreover have "\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub> \<subseteq> \<omega> ` V" unfolding G'_def by simp
           ultimately show ?thesis by (metis priorities_finite psubsetI psubset_card_mono)
         qed
-        with `ParityGame G'` show ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` by blast
+        with `ParityGame G'` show ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` G'_no_deadends by blast
       qed
 
       (* It turns out the winning region of player p** is empty. *)
@@ -171,7 +209,7 @@ proof-
               have "v \<rightarrow> \<sigma>' v" proof (cases)
                 assume "v \<in> V'"
                 hence "v \<in> ParityGame.VV G' p**" using subgame_VV[of "p**"] `v \<in> VV p**` G'_def by fastforce
-                moreover have "\<not>Digraph.deadend G' v" using no_deadends `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast
+                moreover have "\<not>Digraph.deadend G' v" using G'_no_deadends `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast
                 ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1) ParityGame.strategy_def[of G' "p**" \<sigma>] `ParityGame G'` by blast
                 moreover have "\<sigma> v = \<sigma>' v" unfolding \<sigma>'_def using `v \<in> V'` by simp
                 ultimately show ?thesis using `E\<^bsub>G'\<^esub> \<subseteq> E` G'_def by fastforce
@@ -240,7 +278,7 @@ proof-
           moreover have "v \<in> V\<^bsub>G'\<^esub>" using `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast
           moreover hence "ParityGame G'" using G'_ParityGame by blast
           moreover have "v \<in> ParityGame.VV G' p" using `ParityGame.VV G' p = V' \<inter> VV p` `v \<in> V'` `v \<in> VV p` by blast
-          moreover have "\<not>Digraph.deadend G' v" using no_deadends `v \<in> V\<^bsub>G'\<^esub>` by blast
+          moreover have "\<not>Digraph.deadend G' v" using G'_no_deadends `v \<in> V\<^bsub>G'\<^esub>` by blast
           ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma>2 v" using \<sigma>2(1) ParityGame.strategy_def[of G' p \<sigma>2] by blast
           with `v \<in> V'` show "v\<rightarrow>\<sigma> v" using `E\<^bsub>G'\<^esub> \<subseteq> E` \<sigma>_\<sigma>2 by (metis subsetCE)
         qed
@@ -266,11 +304,11 @@ proof-
 qed
 
 theorem positional_strategy_exists:
-  assumes "v \<in> V"
+  assumes "v \<in> V" "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
 proof-
   have "ParityGame G" by unfold_locales
-  with `v \<in> V` show ?thesis
+  with assms show ?thesis
     by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
        (rule ParityGame.positional_strategy_induction_step, simp_all)
 qed

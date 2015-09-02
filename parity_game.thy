@@ -392,6 +392,7 @@ lemma subgame_V [simp]: "V\<^bsub>subgame V'\<^esub> \<subseteq> V"
   unfolding subgame_def by simp_all
 
 lemma subgame_V' [simp]: "V' \<subseteq> V \<Longrightarrow> V\<^bsub>subgame V'\<^esub> = V'" unfolding subgame_def by auto
+lemma subgame_E' [simp]: "V' \<subseteq> V \<Longrightarrow> E\<^bsub>subgame V'\<^esub> = E \<inter> (V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>)" unfolding subgame_def by auto
 
 lemma subgame_VV [simp]: "ParityGame.VV (subgame V') p = V' \<inter> VV p" proof-
   have "ParityGame.VV (subgame V') Even = V' \<inter> VV Even" unfolding subgame_def by auto
