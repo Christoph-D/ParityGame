@@ -236,26 +236,23 @@ qed
 lemma valid_path_supergame:
   assumes "valid_path P" and G': "Digraph G'" "V \<subseteq> V\<^bsub>G'\<^esub>" "E \<subseteq> E\<^bsub>G'\<^esub>"
   shows "Digraph.valid_path G' P"
-using assms(1) assms(3) proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`])
-  fix P assume "valid_path P" "V \<subseteq> V\<^bsub>G'\<^esub>"
-  show "P = LNil
-    \<or> (\<exists>v. P = LCons v LNil \<and> v \<in> V\<^bsub>G'\<^esub>)
-    \<or> (\<exists>v w Ps. P = LCons v Ps \<and> v \<in> V\<^bsub>G'\<^esub> \<and> w \<in> V\<^bsub>G'\<^esub> \<and> v \<rightarrow>\<^bsub>G'\<^esub> w \<and> ((\<exists>P. Ps = P \<and> valid_path P \<and> V \<subseteq> V\<^bsub>G'\<^esub>) \<or> Digraph.valid_path G' Ps) \<and> \<not> lnull Ps \<and> lhd Ps = w)"
-  proof (cases)
+using assms(1) assms(3) proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`, case_names IH])
+  case (IH P)
+  show ?case proof (cases)
     assume "P = LNil" thus ?thesis by simp
   next
     assume "P \<noteq> LNil"
     then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
     show ?thesis proof (cases)
       assume "P' = LNil"
-      thus ?thesis using `valid_path P` valid_path_cons_simp `V \<subseteq> V\<^bsub>G'\<^esub>` P' by blast
+      thus ?thesis using IH valid_path_cons_simp P' by blast
     next
       assume "P' \<noteq> LNil"
       then obtain w Ps where *: "P = LCons v (LCons w Ps)" using P' llist.exhaust by auto
-      hence "v \<in> V\<^bsub>G'\<^esub>" using `valid_path P` valid_path_cons_simp `V \<subseteq> V\<^bsub>G'\<^esub>` by blast
-      moreover have "w \<in> V\<^bsub>G'\<^esub>" using `valid_path P` valid_path_ltl valid_path_cons_simp `V \<subseteq> V\<^bsub>G'\<^esub>` by (metis "*" subsetCE valid_path_ltl')
-      moreover have "v \<rightarrow>\<^bsub>G'\<^esub> w" using `valid_path P` `E \<subseteq> E\<^bsub>G'\<^esub>` * valid_path_edges' by blast
-      ultimately show ?thesis using * `valid_path P` assms(3) valid_path_cons_simp by auto
+      hence "v \<in> V\<^bsub>G'\<^esub>" using IH valid_path_cons_simp by blast
+      moreover have "w \<in> V\<^bsub>G'\<^esub>" using IH valid_path_ltl valid_path_cons_simp by (metis "*" subsetCE valid_path_ltl')
+      moreover have "v \<rightarrow>\<^bsub>G'\<^esub> w" using IH(1) `E \<subseteq> E\<^bsub>G'\<^esub>` * valid_path_edges' by blast
+      ultimately show ?thesis using * IH(1) assms(3) valid_path_cons_simp by auto
     qed
   qed
 qed
@@ -435,18 +432,14 @@ proof-
   have *: "Digraph (subgame V')" using assms(1) subgame_Digraph by blast
   have "lset P \<subseteq> V" using P(1) valid_path_in_V by blast
   hence "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) by auto
-  with P(1) show ?thesis proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF "*"])
-    fix P assume P: "valid_path P" "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>"
-    thus "P = LNil \<or>
-      (\<exists>v. P = LCons v LNil \<and> v \<in> V\<^bsub>subgame V'\<^esub>) \<or>
-      (\<exists>v w Ps. P = LCons v Ps \<and> v \<in> V\<^bsub>subgame V'\<^esub> \<and> w \<in> V\<^bsub>subgame V'\<^esub> \<and> v \<rightarrow>\<^bsub>subgame V'\<^esub> w
-        \<and> ((\<exists>P. Ps = P \<and> valid_path P \<and> lset P \<subseteq> V\<^bsub>subgame V'\<^esub>) \<or> Digraph.valid_path (subgame V') Ps) \<and> \<not> lnull Ps \<and> lhd Ps = w)"
-    proof (cases rule: valid_path.cases)
+  with P(1) show ?thesis proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF "*", case_names IH])
+    case IH
+    thus ?case proof (cases rule: valid_path.cases)
       case (valid_path_cons v w Ps)
-      moreover hence "v \<in> V\<^bsub>subgame V'\<^esub>" "w \<in> V\<^bsub>subgame V'\<^esub>" using P(2) by auto
+      moreover hence "v \<in> V\<^bsub>subgame V'\<^esub>" "w \<in> V\<^bsub>subgame V'\<^esub>" using IH(2) by auto
       moreover hence "v \<rightarrow>\<^bsub>subgame V'\<^esub> w" using local.valid_path_cons(4) subgame_def by auto
-      moreover have "valid_path Ps" using P(1) valid_path_ltl' local.valid_path_cons(1) by blast
-      ultimately show ?thesis using P(2) by auto
+      moreover have "valid_path Ps" using IH(1) valid_path_ltl' local.valid_path_cons(1) by blast
+      ultimately show ?thesis using IH(2) by auto
     qed auto
   qed
 qed
