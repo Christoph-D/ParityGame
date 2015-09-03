@@ -54,13 +54,70 @@ proof
   hence "P $ Suc 0 \<in> A" by (simp add: lnth_ltake)
   thus False using P(1) P(3) by auto
 qed
+
+lemma strategy_attracts_does_not_leave:
+  assumes \<sigma>: "strategy_attracts p \<sigma> A W" "strategy p \<sigma>"
+    and v: "v\<rightarrow>w" "v \<in> A" "w \<notin> A \<union> W"
+  shows "v \<in> VV p \<and> \<sigma> v \<noteq> w"
+proof (rule ccontr)
+  assume asm: "\<not>(v \<in> VV p \<and> \<sigma> v \<noteq> w)"
+  show False proof (cases)
+    assume "v \<in> VV p"
+    hence "\<sigma> v = w" using asm by blast
+    show False sorry
+  next
+    assume "v \<notin> VV p"
+    hence "v \<in> VV p**" using edges_are_in_V `v\<rightarrow>w` by auto
+    def \<sigma>' \<equiv> "\<sigma>_arbitrary(v := w)"
+    have "strategy p** \<sigma>'" unfolding \<sigma>'_def using `v\<rightarrow>w` by (simp add: valid_strategy_updates)
+    then obtain P where P:
+      "\<not>lnull P" "P $ 0 = v" "valid_path P" "maximal_path P" "path_conforms_with_strategy p** P \<sigma>'"
+      using strategy_conforming_path_exists_single[of v "p**" \<sigma>'] edges_are_in_V `v\<rightarrow>w` by metis
+    obtain P' where P': "P = LCons v P'" using P(1) P(2) by (metis lnth_0 not_lnull_conv)
+    have "P $ 0 \<in> VV p**" using `v \<in> VV p**` P(2) by blast
+    have "\<not>deadend v" using `v\<rightarrow>w` edges_are_in_V by blast
+    hence "\<not>lnull P'" using P(4) P' maximal_no_deadend by blast
+    then obtain Ps w' where Ps: "P' = LCons w' Ps" by (meson not_lnull_conv)
+    hence "\<sigma>' v = w'" using P(5) P' by (simp add: `v \<in> VV p**` path_conforms_with_strategy_start)
+    hence "w = w'" using \<sigma>'_def by simp
+    show False sorry
+  qed
+qed
+
 lemma strategy_attracts_irrelevant_override:
   assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
   shows "strategy_attracts p (override_on \<sigma>' \<sigma> (A - W)) A W"
 proof-
   let ?\<sigma> = "override_on \<sigma>' \<sigma> (A - W)"
-  { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P ?\<sigma>" "P $ 0 \<in> A"
-    have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" sorry
+  { fix P
+    assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P ?\<sigma>" "P $ 0 \<in> A"
+      and contra: "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
+    have "P $ 0 \<in> A - W" using contra by (meson DiffI P(1) P(5) lnull_0_llength not_less0 parity_game.lset_ltake)
+    have "\<not>lset P \<subseteq> A - W" proof
+      assume "lset P \<subseteq> A - W"
+      hence "\<And>v. v \<in> lset P \<Longrightarrow> override_on \<sigma>' \<sigma> (A - W) v = \<sigma> v" by auto
+      hence "path_conforms_with_strategy p P \<sigma>"
+        using path_conforms_with_strategy_irrelevant_updates[OF P(4), of \<sigma>] by blast
+      thus False
+        using contra P assms(1)[unfolded strategy_attracts_def strategy_attracts_via_def] by blast
+    qed
+    hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> A - W" by (meson lset_subset)
+    then obtain n where n: "enat n < llength P \<and> P $ n \<notin> A - W"
+      "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> A - W)"
+      using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> A - W"] by blast
+    hence n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> A - W"
+      using dual_order.strict_trans enat_ord_simps(2) by blast
+    have "n \<noteq> 0" using `P $ 0 \<in> A - W` n(1) by meson
+    then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
+    hence "P $ n' \<in> A - W" using n_min by blast
+    moreover have "P $ n' \<rightarrow> P $ Suc n'" using P(2) n(1) n' valid_path_edges by blast
+    moreover have "P $ Suc n' \<notin> A \<union> W" proof-
+      have "P $ n \<notin> W" using contra n(1) n_min by (meson Diff_subset parity_game.lset_ltake subsetCE)
+      thus ?thesis using n(1) n' by blast
+    qed
+    ultimately have "P $ n' \<in> VV p \<and> \<sigma> (P $ n') \<noteq> P $ Suc n'"
+      using strategy_attracts_does_not_leave[of p \<sigma> A W "P $ n'" "P $ Suc n'"] assms(1) assms(2) by blast
+    hence False using P(2) P(4) n(1) n' path_conforms_with_strategy_conforms `P $ n' \<in> A - W` by auto
   }
   thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
 qed
