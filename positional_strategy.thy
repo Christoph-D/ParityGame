@@ -424,14 +424,18 @@ proof-
           show "winning_strategy p** \<sigma>' v" proof-
             {
               fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p** P \<sigma>'" "P $ 0 = v"
-              have "Digraph.valid_path G' P" proof-
+              have "lset P \<subseteq> V'" proof-
                 show ?thesis sorry
               qed
-              moreover have "Digraph.maximal_path G' P" proof-
-                show ?thesis sorry
-              qed
+              have "Digraph.valid_path G' P" using `lset P \<subseteq> V'` G'_def subgame_valid_path P(2) `V' \<inter> V \<noteq> {}` by blast
+              moreover have "Digraph.maximal_path G' P" using `lset P \<subseteq> V'` G'_def subgame_maximal_path P(3) `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` by blast
               moreover have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>" proof-
-                show ?thesis sorry
+                have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>'"
+                  using subgame_path_conforms_with_strategy `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` `lset P \<subseteq> V'` P(4) by auto
+                moreover have "\<And>v. v \<in> lset P \<Longrightarrow> \<sigma>' v = \<sigma> v"
+                  using `lset P \<subseteq> V'` \<sigma>'_def by auto
+                ultimately show ?thesis
+                  using ParityGame.path_conforms_with_strategy_irrelevant_updates `ParityGame G'` by blast
               qed
               ultimately have "ParityGame.winning_path G' p** P"
                 using `\<not>lnull P` `P $ 0 = v` \<sigma>(2) `ParityGame G'` ParityGame.winning_strategy_def[of G' "p**" \<sigma>] by blast

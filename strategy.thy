@@ -238,6 +238,17 @@ using assms proof (coinduction arbitrary: P)
   ultimately show ?case by (cases "P = LNil", simp) (metis lnull_def not_lnull_conv)
 qed
 
+lemma subgame_path_conforms_with_strategy:
+  assumes V': "V' \<inter> V \<noteq> {}" "V' \<subseteq> V" and P: "path_conforms_with_strategy p P \<sigma>" "lset P \<subseteq> V'"
+  shows "ParityGame.path_conforms_with_strategy (subgame V') p P \<sigma>"
+proof-
+  have *: "ParityGame (subgame V')" using assms(1) subgame_ParityGame by blast
+  have "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) V'(2) by auto
+  with P(1) show ?thesis
+    by (coinduction arbitrary: P rule: ParityGame.path_conforms_with_strategy.coinduct[OF "*"])
+       (cases rule: path_conforms_with_strategy.cases, auto)
+qed
+
 primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a Path" where
   "greedy_conforming_path p \<sigma> \<sigma>' v0 =
     LCons v0 (if deadend v0
