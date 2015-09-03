@@ -538,7 +538,21 @@ proof-
     have \<sigma>_K [simp]: "\<And>v. v \<in> K \<union> W1 \<Longrightarrow> \<sigma> v = choose v" proof-
       fix v assume "v \<in> K \<union> W1"
       moreover hence "v \<notin> V'" unfolding V'_def U_def using attractor_set_base by auto
-      moreover have "attractor p K \<inter> W1 = {}" sorry
+      moreover have "attractor p K \<inter> W1 = {}" proof (rule ccontr)
+        assume "attractor p K \<inter> W1 \<noteq> {}"
+        then obtain v where v: "v \<in> attractor p K" "v \<in> W1" by blast
+        hence "v \<in> V" using W1_def by blast
+        obtain P where P: "\<not>lnull P" "P $ 0 = v" "valid_path P" "maximal_path P"
+          and P_conforms_\<sigma>1: "path_conforms_with_strategy p P \<sigma>1"
+          and P_conforms_\<sigma>W1: "path_conforms_with_strategy p** P \<sigma>W1"
+          using strategy_conforming_path_exists \<sigma>W1(1) \<sigma>1(1) `v \<in> V` by blast
+        have "strategy_attracts_via p \<sigma>1 v (attractor p K) K" using v(1) \<sigma>1(2) strategy_attracts_def by blast
+        hence "\<exists>n. enat n < llength P \<and> P $ n \<in> K" unfolding strategy_attracts_via_def using P P_conforms_\<sigma>1 by blast
+        moreover have "K \<inter> W1 = {}" using K_def U_def by blast
+        ultimately have "\<not>lset P \<subseteq> W1" by (meson disjoint_iff_not_equal lset_lnth)
+        thus False unfolding W1_def
+          using paths_stay_in_winning_region[of "p**" \<sigma>W1 v \<sigma>W1 P] \<sigma>W1 P P_conforms_\<sigma>W1 v(2) by blast
+      qed
       ultimately show "\<sigma> v = choose v" unfolding \<sigma>_def U_def by (metis (mono_tags, lifting) Diff_iff IntI UnE override_on_def override_on_emptyset)
     qed
 
