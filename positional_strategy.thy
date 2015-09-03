@@ -694,9 +694,38 @@ proof-
         qed
         have "winning_path p P" proof (cases)
           assume "\<exists>n. lset (ldropn n P) \<subseteq> V'"
-          show ?thesis sorry
+          (* P eventually stays in V'. *)
+          then obtain n where n: "lset (ldropn n P) \<subseteq> V'" by blast
+          def P' \<equiv> "ldropn n P"
+          have "\<not>lnull P'" using P'_def `\<not>lfinite P` infinite_no_deadend lfinite_ldropn by blast
+          moreover have "lset P' \<subseteq> V'" using P'_def n by simp
+          ultimately have "lhd P' \<in> V'" by auto
+          hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
+          have "Digraph.valid_path G' P'" proof-
+            have "valid_path P'" using P'_def P(3) valid_path_drop by blast
+            thus ?thesis using subgame_valid_path `lset P' \<subseteq> V'` `V' \<inter> V \<noteq> {}` G'_def by blast
+          qed
+          moreover have "Digraph.maximal_path G' P'" proof-
+            have "maximal_path P'" using P'_def P(4) maximal_drop by blast
+            thus ?thesis using subgame_maximal_path `lset P' \<subseteq> V'` `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` G'_def by blast
+          qed
+          moreover have "ParityGame.path_conforms_with_strategy G' p P' \<sigma>2" proof-
+            have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def using P(5) path_conforms_with_strategy_drop by blast
+            hence "path_conforms_with_strategy p P' \<sigma>2" using path_conforms_with_strategy_irrelevant_updates `lset P' \<subseteq> V'` \<sigma>_\<sigma>2 by blast
+            thus ?thesis using subgame_path_conforms_with_strategy `lset P' \<subseteq> V'` `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` G'_def by blast
+          qed
+          moreover have "P' $ 0 = lhd P'" using `\<not>lnull P'` lnth_0_conv_lhd by blast
+          moreover have "ParityGame.winning_strategy G' p \<sigma>2 (lhd P')"
+            using `lset P' \<subseteq> V'` `\<not>lnull P'` \<sigma>2(2)[of "lhd P'"] `V\<^bsub>G'\<^esub> = V'` llist.set_sel(1) by blast
+          moreover have "ParityGame G'" using `lhd P' \<in> V'` G'_ParityGame `V\<^bsub>G'\<^esub> = V'` by blast
+          ultimately have "ParityGame.winning_path G' p P'" using ParityGame.winning_strategy_def[OF `ParityGame G'`] `\<not>lnull P'` by blast
+          moreover have "ParityGame G" by unfold_locales
+          moreover have "ParityGame.VV G' p** \<subseteq> VV p**" unfolding G'_def using subgame_VV by simp
+          ultimately have "winning_path p P'" using ParityGame.winning_path_supergame[OF `ParityGame G'`, of p P' G] `\<omega>\<^bsub>G'\<^esub> = \<omega>` by blast
+          thus ?thesis using P'_def `\<not>lfinite P` winning_path_drop_add[of P p n] P(3) infinite_small_llength by blast
         next
           assume "\<not>(\<exists>n. lset (ldropn n P) \<subseteq> V')"
+          (* P visits K infinitely often. *)
           show ?thesis sorry
         qed
       }
