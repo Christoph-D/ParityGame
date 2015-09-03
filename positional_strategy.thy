@@ -376,7 +376,7 @@ proof-
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
       hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
-      hence "ParityGame G'" using subgame_ParityGame by simp
+      hence "Digraph G'" "ParityGame G'" using subgame_Digraph subgame_ParityGame by simp_all
 
       (* Apply the induction hypothesis to get the winning regions of G'. *)
       have G'_winning_regions: "\<exists>p \<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof-
@@ -403,7 +403,7 @@ proof-
         with p' have \<sigma>: "ParityGame.strategy G' p** \<sigma>" "ParityGame.winning_strategy G' p** \<sigma> v" by simp_all
 
         have "\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v" proof (rule exI, rule conjI)
-          def \<sigma>' \<equiv> "override_on \<sigma>_arbitrary \<sigma> V'"
+          def \<sigma>' \<equiv> "override_on (override_on \<sigma>_arbitrary \<sigma>W1 W1) \<sigma> V'"
           show "strategy p** \<sigma>'" proof-
             {
               fix v assume v: "v \<in> VV p**" "\<not>deadend v"
@@ -416,7 +416,7 @@ proof-
                 ultimately show ?thesis using `E\<^bsub>G'\<^esub> \<subseteq> E` G'_def by fastforce
               next
                 assume "v \<notin> V'"
-                thus ?thesis unfolding \<sigma>'_def using v valid_arbitrary_strategy unfolding strategy_def by simp
+                thus ?thesis unfolding \<sigma>'_def using v valid_arbitrary_strategy \<sigma>W1(1) unfolding strategy_def by (metis (no_types, lifting) override_on_def)
               qed
             }
             thus ?thesis unfolding strategy_def by blast
@@ -424,25 +424,81 @@ proof-
           show "winning_strategy p** \<sigma>' v" proof-
             {
               fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p** P \<sigma>'" "P $ 0 = v"
-              have "lset P \<subseteq> V'" proof-
-                show ?thesis sorry
-              qed
-              have "Digraph.valid_path G' P" using `lset P \<subseteq> V'` G'_def subgame_valid_path P(2) `V' \<inter> V \<noteq> {}` by blast
-              moreover have "Digraph.maximal_path G' P" using `lset P \<subseteq> V'` G'_def subgame_maximal_path P(3) `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` by blast
-              moreover have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>" proof-
-                have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>'"
-                  using subgame_path_conforms_with_strategy `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` `lset P \<subseteq> V'` P(4) by auto
-                moreover have "\<And>v. v \<in> lset P \<Longrightarrow> \<sigma>' v = \<sigma> v"
-                  using `lset P \<subseteq> V'` \<sigma>'_def by auto
-                ultimately show ?thesis
-                  using ParityGame.path_conforms_with_strategy_irrelevant_updates `ParityGame G'` by blast
-              qed
-              ultimately have "ParityGame.winning_path G' p** P"
-                using `\<not>lnull P` `P $ 0 = v` \<sigma>(2) `ParityGame G'` ParityGame.winning_strategy_def[of G' "p**" \<sigma>] by blast
-              moreover have "ParityGame G" by unfold_locales
-              moreover have "ParityGame.VV G' p**** \<subseteq> ParityGame.VV G p****" using subgame_VV_subset G'_def by blast
-              ultimately have "winning_path p** P"
-                using ParityGame.winning_path_supergame[of G' "p**" P G] `ParityGame G'` `\<omega>\<^bsub>G'\<^esub> = \<omega>` by blast
+              { assume "\<not>winning_path p** P"
+                have "lset P \<subseteq> V'" proof (rule ccontr)
+                  assume "\<not>lset P \<subseteq> V'"
+                  hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> V'" by (simp add: lset_subset)
+                  then obtain n where n: "enat n < llength P" "P $ n \<notin> V'" "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> V')" using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> V'"] by auto
+                  have n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> V'" using n(1) n(3) dual_order.strict_trans enat_ord_simps(2) by blast
+                  have "n \<noteq> 0" using n(2) P(5) `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> = V'` by metis
+                  then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
+                  hence "P $ n' \<in> V'" using n_min by blast
+                  have "lset P \<subseteq> V" using P(2) valid_path_in_V by blast
+                  show False proof (cases)
+                    assume "P $ n' \<in> VV p"
+                    show False proof (cases)
+                      assume "P $ n \<in> W1"
+                      def P' \<equiv> "ldropn n P"
+                      (* P' is winning in W1 because \<sigma>' is \<sigma>W1 on W1. *)
+                      have "\<not>lnull P'" using P'_def n(1) by auto
+                      moreover have "valid_path P'" using P'_def P(2) valid_path_drop by blast
+                      moreover have "maximal_path P'" using P'_def P(3) maximal_drop by blast
+                      moreover have "P' $ 0 = P $ n" unfolding P'_def by (simp add: n(1))
+                      moreover have "path_conforms_with_strategy p** P' \<sigma>W1" proof-
+                        have *: "path_conforms_with_strategy p** P' \<sigma>'" using P'_def P(4) path_conforms_with_strategy_drop by blast
+                        have "\<And>v. v \<in> V \<Longrightarrow> \<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v \<Longrightarrow> \<sigma>W1 v = \<sigma>' v" proof-
+                          fix v assume "v \<in> V" "\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v"
+                          hence "v \<in> W1" unfolding W1_def by blast
+                          thus "\<sigma>W1 v = \<sigma>' v" by (simp add: U_def V'_def \<sigma>'_def)
+                        qed
+                        hence "lset P' \<subseteq> W1"
+                          using W1_def paths_stay_in_winning_region[of "p**" \<sigma>W1 "P $ n" \<sigma>' P']
+                          \<sigma>W1 `P $ n \<in> W1` `\<not>lnull P'` `valid_path P'` `maximal_path P'` "*" `P' $ 0 = P $ n`
+                          by blast
+                        moreover have "\<And>v. v \<in> W1 \<Longrightarrow> \<sigma>' v = \<sigma>W1 v" by (simp add: U_def V'_def \<sigma>'_def)
+                        ultimately show ?thesis by (metis "*" path_conforms_with_strategy_irrelevant_updates subsetCE)
+                      qed
+                      ultimately have "winning_path p** P'" using \<sigma>W1(2)[unfolded winning_strategy_def, of "P $ n"] `P $ n \<in> W1` by blast
+                      thus False using P'_def winning_path_drop_add[OF P(2)] n(1) `\<not>winning_path p** P` by blast
+                    next
+                      assume "P $ n \<notin> W1"
+                      hence "P $ n \<in> attractor p K" using V_decomp n(2) P(2) n(1) valid_path_finite_in_V' by blast
+                      moreover have "P $ n' \<rightarrow> P $ n" using P(2) n' n(1) valid_path_impl1 by blast
+                      ultimately have "P $ n' \<in> attractor p K" using `P $ n' \<in> VV p` attractor_set_VVp by blast
+                      thus False using `P $ n' \<in> V'` V'_def by blast
+                    qed
+                  next
+                    assume "P $ n' \<notin> VV p"
+                    hence "P $ n' \<in> VV p**" using `P $ n' \<in> V'` `V' \<subseteq> V` by auto
+                    moreover have "enat (Suc n') < llength P" using n' n(1) by blast
+                    ultimately have "\<sigma>' (P $ n') = P $ Suc n'" using P(2) P(4) path_conforms_with_strategy_conforms[of P "p**" \<sigma>' n'] by blast
+                    hence *: "\<sigma> (P $ n') = P $ Suc n'" using \<sigma>'_def `P $ n' \<in> V'` by auto
+                    have "\<not>Digraph.deadend G' (P $ n')" using `P $ n' \<in> V'` G'_no_deadends `V\<^bsub>G'\<^esub> = V'` by blast
+                    moreover have "P $ n' \<in> ParityGame.VV G' p**" using `P $ n' \<in> VV p**` `P $ n' \<in> V'` subgame_VV[of "p**" V'] G'_def by fastforce
+                    ultimately have "P $ n' \<rightarrow>\<^bsub>G'\<^esub> \<sigma> (P $ n')" using \<sigma>(1)[unfolded ParityGame.strategy_def[OF `ParityGame G'`]] `P $ n' \<in> VV p**` by blast
+                    hence "P $ n' \<rightarrow>\<^bsub>G'\<^esub> P $ n" using * n' by simp
+                    hence "P $ n \<in> V'" using `V\<^bsub>G'\<^esub> = V'` Digraph.edges_are_in_V[OF `Digraph G'`] by blast
+                    thus False using n(2) by blast
+                  qed
+                qed
+                have "Digraph.valid_path G' P" using `lset P \<subseteq> V'` G'_def subgame_valid_path P(2) `V' \<inter> V \<noteq> {}` by blast
+                moreover have "Digraph.maximal_path G' P" using `lset P \<subseteq> V'` G'_def subgame_maximal_path P(3) `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` by blast
+                moreover have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>" proof-
+                  have "ParityGame.path_conforms_with_strategy G' p** P \<sigma>'"
+                    using subgame_path_conforms_with_strategy `V' \<inter> V \<noteq> {}` `V' \<subseteq> V` `lset P \<subseteq> V'` P(4) by auto
+                  moreover have "\<And>v. v \<in> lset P \<Longrightarrow> \<sigma>' v = \<sigma> v"
+                    using `lset P \<subseteq> V'` \<sigma>'_def by auto
+                  ultimately show ?thesis
+                    using ParityGame.path_conforms_with_strategy_irrelevant_updates `ParityGame G'` by blast
+                qed
+                ultimately have "ParityGame.winning_path G' p** P"
+                  using `\<not>lnull P` `P $ 0 = v` \<sigma>(2) `ParityGame G'` ParityGame.winning_strategy_def[of G' "p**" \<sigma>] by blast
+                moreover have "ParityGame G" by unfold_locales
+                moreover have "ParityGame.VV G' p**** \<subseteq> ParityGame.VV G p****" using subgame_VV_subset G'_def by blast
+                ultimately have False
+                  using ParityGame.winning_path_supergame[of G' "p**" P G] `ParityGame G'` `\<omega>\<^bsub>G'\<^esub> = \<omega>` `\<not>winning_path p** P` by blast
+              }
+              hence "winning_path p** P" by blast
             }
             thus ?thesis unfolding winning_strategy_def by blast
           qed
