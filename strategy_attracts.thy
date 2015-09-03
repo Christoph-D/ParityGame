@@ -32,6 +32,17 @@ lemma strategy_attracts_trivial [simp]: "strategy_attracts p \<sigma> W W"
 lemma strategy_attracts_empty [simp]: "strategy_attracts p \<sigma> {} W"
   unfolding strategy_attracts_def by simp
 
+lemma strategy_attracts_irrelevant_override:
+  assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
+  shows "strategy_attracts p (override_on \<sigma>' \<sigma> (A - W)) A W"
+proof-
+  let ?\<sigma> = "override_on \<sigma>' \<sigma> (A - W)"
+  { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P ?\<sigma>" "P $ 0 \<in> A"
+    have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" sorry
+  }
+  thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
+qed
+
 lemma strategy_attracts_irrelevant:
   assumes "strategy_attracts p \<sigma> A W" "v \<notin> A" "v\<rightarrow>w" "strategy p \<sigma>"
   shows "strategy_attracts p (\<sigma>(v := w)) A W" proof-
@@ -92,10 +103,6 @@ lemma strategy_attracts_irrelevant:
   }
   thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
 qed
-
-lemma strategy_attracts_irrelevant_override:
-  assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
-  shows "strategy_attracts p (override_on \<sigma>' \<sigma> (A - W)) A W" sorry
 
 (* strategy_avoids *)
 
