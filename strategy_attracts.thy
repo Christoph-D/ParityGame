@@ -32,6 +32,28 @@ lemma strategy_attracts_trivial [simp]: "strategy_attracts p \<sigma> W W"
 lemma strategy_attracts_empty [simp]: "strategy_attracts p \<sigma> {} W"
   unfolding strategy_attracts_def by simp
 
+lemma strategy_attracts_invalid_path:
+  assumes P: "P = LCons v (LCons w P')" "v \<in> A - W" "w \<notin> A \<union> W"
+  shows "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)" (is "\<not>?A")
+proof
+  assume ?A
+  then obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A" by blast
+  have "n \<noteq> 0" using `v \<in> A - W` n(2) P(1) DiffD2 by force
+  moreover have "n \<noteq> Suc 0" using `w \<notin> A \<union> W` n(2) P(1) by auto
+  ultimately have "Suc (Suc 0) \<le> n" by presburger
+  hence "lset (ltake (enat (Suc (Suc 0))) P) \<subseteq> A" using n(3)
+    by (meson contra_subsetD enat_ord_simps(1) lprefix_lset' lset_lnth lset_subset)
+  moreover have "enat (Suc 0) < llength (ltake (eSuc (eSuc 0)) P)" proof-
+    have *: "enat (Suc (Suc 0)) < llength P"
+      using `Suc (Suc 0) \<le> n` n(1) by (meson enat_ord_simps(2) le_less_linear less_le_trans neq_iff)
+    have "llength (ltake (enat (Suc (Suc 0))) P) = min (enat (Suc (Suc 0))) (llength P)" by simp
+    hence "llength (ltake (enat (Suc (Suc 0))) P) = enat (Suc (Suc 0))" using * by (simp add: min_absorb1)
+    thus ?thesis by (simp add: eSuc_enat zero_enat_def)
+  qed
+  ultimately have "ltake (enat (Suc (Suc 0))) P $ Suc 0 \<in> A" by (simp add: lset_lnth)
+  hence "P $ Suc 0 \<in> A" by (simp add: lnth_ltake)
+  thus False using P(1) P(3) by auto
+qed
 lemma strategy_attracts_irrelevant_override:
   assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
   shows "strategy_attracts p (override_on \<sigma>' \<sigma> (A - W)) A W"
