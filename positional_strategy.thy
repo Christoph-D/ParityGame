@@ -568,7 +568,24 @@ proof-
           ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma>2 v" using \<sigma>2(1) ParityGame.strategy_def[of G' p \<sigma>2] by blast
           with `v \<in> V'` show "v\<rightarrow>\<sigma> v" using `E\<^bsub>G'\<^esub> \<subseteq> E` \<sigma>_\<sigma>2 by (metis subsetCE)
         qed
-        moreover have "v \<in> K \<union> W1 \<Longrightarrow> v\<rightarrow>\<sigma> v" sorry
+        moreover have "v \<in> K \<union> W1 \<Longrightarrow> v\<rightarrow>\<sigma> v" proof-
+          assume "v \<in> K \<union> W1"
+          have "\<exists>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1)" proof (cases)
+            assume "v \<in> W1"
+            thus ?thesis using no_deadends v(2) by blast
+          next
+            assume "v \<notin> W1"
+            show ?thesis proof (rule ccontr)
+              assume "\<not>(\<exists>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1))"
+              hence "\<And>w. v\<rightarrow>w \<Longrightarrow> winning_strategy p** \<sigma>W1 w" using \<sigma>W1(2) by blast
+              hence "winning_strategy p** \<sigma>W1 v" using strategy_extends_backwards_VVp \<sigma>W1(1) `v \<in> VV p` by blast
+              hence "v \<in> W1" unfolding W1_def using \<sigma>W1(1) edges_are_in_V v(2) by blast
+              thus False using `v \<notin> W1` by blast
+            qed
+          qed
+          hence "v\<rightarrow>choose v" unfolding choose_def using someI_ex[of "\<lambda>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1)"] by blast
+          thus "v\<rightarrow>\<sigma> v" using `v \<in> K \<union> W1` by simp
+        qed
         moreover have "v \<in> V" using `v \<in> VV p` by blast
         ultimately have "v\<rightarrow>\<sigma> v" using `V = (attractor p K - K) \<union> V' \<union> K \<union> W1` by blast
       }
