@@ -93,6 +93,10 @@ lemma strategy_attracts_irrelevant:
   thus ?thesis unfolding strategy_attracts_def strategy_attracts_via_def by blast
 qed
 
+lemma strategy_attracts_irrelevant_override:
+  assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
+  shows "strategy_attracts p (override_on \<sigma>' \<sigma> (A - W)) A W" sorry
+
 (* strategy_avoids *)
 
 lemma strategy_avoids_trivial [simp]: "strategy_avoids p \<sigma> {} W"
