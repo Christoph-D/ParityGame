@@ -285,12 +285,12 @@ lemma positional_strategy_induction_step:
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
 proof-
   {
-    def k \<equiv> "Min (\<omega> ` V)"
-    fix p assume p: "winning_priority p k"
+    def min_prio \<equiv> "Min (\<omega> ` V)"
+    fix p assume p: "winning_priority p min_prio"
     def W0 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
     def W1 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v }"
     def U \<equiv> "V - W1"
-    def K \<equiv> "U \<inter> (\<omega> -` {k})"
+    def K \<equiv> "U \<inter> (\<omega> -` {min_prio})"
     def V' \<equiv> "U - attractor p K"
 
     def [simp]: G' \<equiv> "subgame V'"
@@ -382,13 +382,13 @@ proof-
       (* Apply the induction hypothesis to get the winning regions of G'. *)
       have G'_winning_regions: "\<exists>p \<sigma>. ParityGame.strategy G' p \<sigma> \<and> ParityGame.winning_strategy G' p \<sigma> v" proof-
         have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
-          { assume "k \<in> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>"
-            then obtain v where v: "v \<in> V\<^bsub>G'\<^esub>" "\<omega>\<^bsub>G'\<^esub> v = k" by blast
-            hence "v \<in> \<omega> -` {k}" using `\<omega>\<^bsub>G'\<^esub> = \<omega>` by simp
+          { assume "min_prio \<in> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>"
+            then obtain v where v: "v \<in> V\<^bsub>G'\<^esub>" "\<omega>\<^bsub>G'\<^esub> v = min_prio" by blast
+            hence "v \<in> \<omega> -` {min_prio}" using `\<omega>\<^bsub>G'\<^esub> = \<omega>` by simp
             hence False using V'_def K_def attractor_set_base `V\<^bsub>G'\<^esub> = V'` v(1) by (metis DiffD1 DiffD2 IntI contra_subsetD)
           }
-          hence "k \<notin> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>" by blast
-          moreover have "k \<in> \<omega> ` V" unfolding k_def by (simp add: non_empty_vertex_set priorities_finite)
+          hence "min_prio \<notin> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>" by blast
+          moreover have "min_prio \<in> \<omega> ` V" unfolding min_prio_def by (simp add: non_empty_vertex_set priorities_finite)
           moreover have "\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub> \<subseteq> \<omega> ` V" unfolding G'_def by simp
           ultimately show ?thesis by (metis priorities_finite psubsetI psubset_card_mono)
         qed
@@ -596,7 +596,15 @@ proof-
       }
       thus ?thesis unfolding strategy_def by blast
     qed
-    moreover have "\<forall>v \<in> V - W1. winning_strategy p \<sigma> v" proof-
+
+    have \<sigma>_attracts: "strategy_attracts p \<sigma> (attractor p K) K" proof-
+      have "strategy_attracts p (override_on \<sigma> \<sigma>1 (attractor p K - K)) (attractor p K) K"
+        using strategy_attracts_irrelevant_override \<sigma>1 `strategy p \<sigma>` by blast
+      moreover have "\<sigma> = override_on \<sigma> \<sigma>1 (attractor p K - K)" by (rule ext) (simp add: override_on_def)
+      ultimately show ?thesis by simp
+    qed
+
+    have "\<forall>v \<in> V - W1. winning_strategy p \<sigma> v" proof-
       {
         fix v P assume P: "v \<in> V - W1"
           "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v"
@@ -630,14 +638,8 @@ proof-
                 hence "\<sigma> v = w" using step.prems(5) P'_cons path_conforms_with_strategy_start by blast
                 { assume *: "v \<in> attractor p K - K"
                   hence "\<sigma>1 v = w" using `\<sigma> v = w` by simp
-                  have "strategy_attracts p \<sigma> (attractor p K) K" proof-
-                    have "strategy_attracts p (override_on \<sigma> \<sigma>1 (attractor p K - K)) (attractor p K) K"
-                      using strategy_attracts_irrelevant_override \<sigma>1 `strategy p \<sigma>` by blast
-                    moreover have "\<sigma> = override_on \<sigma> \<sigma>1 (attractor p K - K)" by (rule ext) (simp add: override_on_def)
-                    ultimately show ?thesis by simp
-                  qed
-                  hence "strategy_attracts_via p \<sigma> v (attractor p K) K" using * strategy_attracts_def by blast
-                  then have "\<exists>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
+                  have "strategy_attracts_via p \<sigma> v (attractor p K) K" using * strategy_attracts_def \<sigma>_attracts by blast
+                  hence "\<exists>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
                     using strategy_attracts_via_def step.prems by blast
                   then obtain n where n: "enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
                     "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P' \<and> P' $ i \<in> K \<and> lset (ltake (enat i) P') \<subseteq> attractor p K)"
@@ -692,6 +694,7 @@ proof-
             ultimately show "v' \<in> V - W1" using step.hyps(3) `lset (ltl P') \<subseteq> V` by blast
           qed
         qed
+        hence "lset P \<subseteq> attractor p K \<union> V'" using V_decomp by blast
         have "winning_path p P" proof (cases)
           assume "\<exists>n. lset (ldropn n P) \<subseteq> V'"
           (* P eventually stays in V'. *)
@@ -726,12 +729,60 @@ proof-
         next
           assume "\<not>(\<exists>n. lset (ldropn n P) \<subseteq> V')"
           (* P visits K infinitely often. *)
-          show ?thesis sorry
+          hence *: "\<And>n. \<not>lset (ldropn n P) \<subseteq> V'" by blast
+          have *: "\<And>n. \<exists>k \<ge> n. P $ k \<notin> V'" proof-
+            fix n
+            obtain k where k: "ldropn n P $ k \<notin> V'" using * by (metis path_set_at subsetI)
+            hence "P $ k + n \<notin> V'" using lnth_ldropn[of n k P] infinite_small_llength `\<not>lfinite P` by metis
+            thus "\<exists>k \<ge> n. P $ k \<notin> V'" using le_add2 by blast
+          qed
+          have "\<And>n. \<exists>k \<ge> n. P $ k \<in> attractor p K" proof-
+            fix n obtain k where "k \<ge> n" "P $ k \<notin> V'" using * by blast
+            thus "\<exists>k \<ge> n. P $ k \<in> attractor p K" using `\<not>lfinite P` `lset P \<subseteq> V - W1`
+              by (metis DiffI U_def V'_def llist_set_nth)
+          qed
+          moreover have "\<And>k. P $ k \<in> attractor p K \<Longrightarrow> \<exists>n \<ge> k. P $ n \<in> K" proof-
+            fix k assume *: "P $ k \<in> attractor p K"
+            def P' \<equiv> "ldropn k P"
+            hence "P' $ 0 \<in> attractor p K" using * by (simp add: `\<not>lfinite P` infinite_small_llength)
+            hence "strategy_attracts_via p \<sigma> (P' $ 0) (attractor p K) K" using strategy_attracts_def \<sigma>_attracts P'_def by blast
+            moreover have "\<not>lnull P'" unfolding P'_def using `\<not>lfinite P` infinite_no_deadend lfinite_ldropn by blast
+            moreover have "valid_path P'" unfolding P'_def using P(3) valid_path_drop by blast
+            moreover have "maximal_path P'" unfolding P'_def using P(4) maximal_drop by blast
+            moreover have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def using P(5) path_conforms_with_strategy_drop by blast
+            ultimately obtain n where n: "P' $ n \<in> K" using strategy_attracts_via_def by blast
+            hence "P $ n + k \<in> K" using P'_def lnth_ldropn[of k n P] infinite_small_llength `\<not>lfinite P` by metis
+            thus "\<exists>n \<ge> k. P $ n \<in> K" using le_add2 by blast
+          qed
+          ultimately have *: "\<And>n. \<exists>k \<ge> n. P $ k \<in> K" by (meson dual_order.trans)
+          hence *: "\<And>n. lset (ldropn n P) \<inter> K \<noteq> {}" proof-
+            fix n
+            obtain k where k: "k \<ge> n" "P $ k \<in> K" using * by blast
+            have "ldropn n P $ k - n = P $ (k - n) + n" using k(1) lnth_ldropn[of n "k - n" P] infinite_small_llength `\<not>lfinite P` by blast
+            hence "ldropn n P $ k - n \<in> K" using k by simp
+            thus "lset (ldropn n P) \<inter> K \<noteq> {}" by (meson `\<not>lfinite P` disjoint_iff_not_equal lfinite_ldropn llist_nth_set)
+          qed
+          have "\<And>n. min_prio \<in> lset (ldropn n (lmap \<omega> P))" proof-
+            fix n
+            obtain v where v: "v \<in> lset (ldropn n P)" "v \<in> K" using * by blast
+            have "\<omega> v = min_prio" using K_def v(2) by blast
+            thus "min_prio \<in> lset (ldropn n (lmap \<omega> P))" using v(1) by auto
+          qed
+          hence "min_prio \<in> path_inf_priorities P" unfolding path_inf_priorities_def by blast
+          moreover have "\<And>a. a \<in> path_inf_priorities P \<Longrightarrow> min_prio \<le> a" proof-
+            fix a assume "a \<in> path_inf_priorities P"
+            hence "a \<in> lset (ldropn 0 (lmap \<omega> P))" unfolding path_inf_priorities_def by blast
+            hence "a \<in> \<omega> ` lset P" by simp
+            then obtain v where "v \<in> lset P" "\<omega> v = a" by blast
+            thus "min_prio \<le> a" unfolding min_prio_def using `lset P \<subseteq> V` priorities_finite by auto
+          qed
+          ultimately show ?thesis unfolding winning_path_def
+            using `winning_priority p min_prio` `\<not>lfinite P` by blast
         qed
       }
       thus ?thesis unfolding winning_strategy_def by blast
     qed
-    ultimately have "\<forall>v \<in> V. \<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" using W1_def by blast
+    hence "\<forall>v \<in> V. \<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" using W1_def `strategy p \<sigma>` by blast
     hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v" using `v \<in> V` by simp
   }
   moreover have "\<exists>p. winning_priority p (Min (\<omega> ` V))" by auto
