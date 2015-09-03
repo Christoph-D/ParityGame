@@ -551,6 +551,34 @@ definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" whe
     \<or> (\<not>lnull P \<and> lfinite P \<and> llast P \<in> VV p**)
     \<or> (lnull P \<and> p = Even)"
 
+lemma paths_are_winning_for_exactly_one_player:
+  assumes "valid_path P"
+  shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
+proof (cases)
+  assume "lnull P" thus ?thesis using winning_path_def by auto
+next
+  assume "\<not>lnull P"
+  show ?thesis proof (cases)
+    assume finite: "lfinite P"
+    have 1: "winning_path p P \<longleftrightarrow> llast P \<in> VV p**" by (simp add: `\<not>lnull P` local.finite winning_path_def)
+    have 2: "winning_path p** P \<longleftrightarrow> llast P \<in> VV p" by (simp add: `\<not>lnull P` local.finite winning_path_def)
+    have "llast P \<in> V" proof-
+      obtain n where n: "llength P = enat (Suc n)" by (metis `\<not>lnull P` lfinite_llength_enat llength_eq_0 local.finite nat.exhaust zero_enat_def)
+      hence "P $ n = llast P \<and> enat n < llength P" by (simp add: eSuc_enat llast_conv_lnth)
+      thus ?thesis using assms valid_path_finite_in_V' by force
+    qed
+    thus ?thesis by (simp add: "1" "2")
+  next
+    assume infinite: "\<not>lfinite P"
+    then obtain a where "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)" using assms path_inf_priorities_has_minimum by blast
+    hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P" using infinite winning_path_def by (metis `\<not>lnull P` le_antisym)
+    thus ?thesis using winning_priority_for_one_player by blast
+  qed
+qed
+
+corollary paths_are_winning_for_one_player: "valid_path P \<Longrightarrow> \<exists>!p. winning_path p P"
+  by (metis (full_types) Player.exhaust assms paths_are_winning_for_exactly_one_player)
+
 lemma winning_path_ltl:
   assumes P: "winning_path p P" "\<not>lnull P" "\<not>lnull (ltl P)"
   shows "winning_path p (ltl P)"
@@ -562,6 +590,22 @@ next
   assume "\<not>lfinite P"
   thus ?thesis using winning_path_def path_inf_priorities_ltl using P(1) P(2) by auto
 qed
+
+corollary winning_path_drop:
+  assumes "winning_path p P" "enat n < llength P"
+  shows "winning_path p (ldropn n P)"
+using assms proof (induct n, simp)
+  case (Suc n)
+  hence "winning_path p (ldropn n P)" using dual_order.strict_trans enat_ord_simps(2) by blast
+  moreover have "ltl (ldropn n P) = ldropn (Suc n) P" by (simp add: ldrop_eSuc_ltl ltl_ldropn)
+  moreover hence "\<not>lnull (ldropn n P)" using Suc.prems(2) by (metis leD lnull_ldropn lnull_ltlI)
+  ultimately show ?case using winning_path_ltl[of p "ldropn n P"] Suc.prems(2) by auto
+qed
+
+corollary winning_path_drop_add:
+  assumes "valid_path P" "winning_path p (ldropn n P)" "enat n < llength P"
+  shows "winning_path p P"
+  using assms paths_are_winning_for_exactly_one_player valid_path_drop winning_path_drop by blast
 
 lemma winning_path_LCons:
   assumes P: "winning_path p P" "\<not>lnull P"
@@ -598,31 +642,6 @@ proof-
   }
   ultimately show ?thesis using ParityGame.winning_path_def[of G' p P] G'(1) by blast
 qed
-
-lemma paths_are_winning_for_exactly_one_player:
-  assumes "\<not>lnull P" "valid_path P"
-  shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
-proof (cases)
-  assume finite: "lfinite P"
-  have 1: "winning_path p P \<longleftrightarrow> llast P \<in> VV p**" by (simp add: assms(1) local.finite winning_path_def)
-  have 2: "winning_path p** P \<longleftrightarrow> llast P \<in> VV p" by (simp add: assms(1) local.finite winning_path_def)
-  have "llast P \<in> V" proof-
-    obtain n where n: "llength P = enat (Suc n)" by (metis assms(1) lfinite_llength_enat llength_eq_0 local.finite nat.exhaust zero_enat_def)
-    hence "P $ n = llast P \<and> enat n < llength P" by (simp add: eSuc_enat llast_conv_lnth)
-    thus ?thesis using assms(2) valid_path_finite_in_V' by force
-  qed
-  thus ?thesis by (simp add: "1" "2")
-next
-  assume infinite: "\<not>lfinite P"
-  then obtain a where "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)" using assms path_inf_priorities_has_minimum by blast
-  hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P" using infinite winning_path_def by (metis assms(1) le_antisym)
-  thus ?thesis using winning_priority_for_one_player by blast
-qed
-
-lemma paths_are_winning_for_one_player:
-  assumes "\<not>lnull P" "valid_path P"
-  shows "\<exists>!p. winning_path p P"
-  by (metis (full_types) Player.exhaust assms paths_are_winning_for_exactly_one_player)
 
 end -- "locale ParityGame"
 
