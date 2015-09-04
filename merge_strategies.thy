@@ -298,14 +298,12 @@ proof-
         moreover have "P $ n \<in> V" using n(1) P_valid valid_path_finite_in_V' by blast
         ultimately show False using n(2) by blast
       qed
-      have "\<not>lfinite P" proof (rule ccontr, subst (asm) not_not)
+      have "\<not>lfinite P" proof
         assume "lfinite P"
         hence "deadend (llast P)" using P_maximal `\<not>lnull P` maximal_ends_on_deadend by blast
         moreover have "llast P \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lnull P` `lfinite P` lfinite_lset by blast
         ultimately show False using S_W_no_deadends by blast
       qed
-      have P_no_deadends: "\<And>n. \<not>deadend (P $ n)"
-        using `\<not>lfinite P` S_W_no_deadends `lset P \<subseteq> S - W` llist_nth_set by fastforce
 
       obtain n where n: "path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
         using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S - W` P_valid P_conforms[unfolded \<sigma>_def]]
@@ -339,7 +337,74 @@ lemma merge_winning_strategies:
   assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> (\<forall>v \<in> S. winning_strategy p \<sigma> v)"
 proof-
-  show ?thesis sorry
+  def good \<equiv> "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
+  let ?G = "{\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
+  obtain r where r: "well_order_on ?G r" using well_order_on by blast
+
+  interpret WellOrderedStrategies G S p good r proof
+    show "S \<subseteq> V" using `S \<subseteq> V` .
+  next
+    show "well_order_on ?G r" using r .
+  next
+    show "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex by blast
+  next
+    show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
+  next
+    fix v w \<sigma> assume v: "v \<in> S" "w \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
+    hence \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v" unfolding good_def by simp_all
+    hence "winning_strategy p \<sigma> w" sorry
+    thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
+  qed
+
+  have no_VVp_deadends: "\<And>v. v \<in> S \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<not>deadend v" sorry
+
+  def [simp]: \<sigma> \<equiv> "well_ordered_strategy"
+  {
+    fix v0 assume "v0 \<in> S"
+    fix P assume "\<not>lnull P"
+      and P_valid: "valid_path P"
+      and P_maximal: "maximal_path P"
+      and P_conforms: "path_conforms_with_strategy p P \<sigma>"
+      and P_valid_start: "P $ 0 = v0"
+    have "winning_path p P" proof (rule ccontr)
+      assume contra: "\<not>winning_path p P"
+      hence "winning_path p** P" using paths_are_winning_for_exactly_one_player P_valid by blast
+      have "lset P \<subseteq> S" proof (rule ccontr)
+        assume "\<not>lset P \<subseteq> S"
+        show False sorry
+      qed
+      have "\<not>lfinite P" proof
+        assume "lfinite P"
+        hence "deadend (llast P)" using P_maximal `\<not>lnull P` maximal_ends_on_deadend by blast
+        moreover have "llast P \<in> S" using `lset P \<subseteq> S` `\<not>lnull P` `lfinite P` lfinite_lset by blast
+        moreover have "llast P \<in> VV p" using `winning_path p** P` `lfinite P` `\<not>lnull P` unfolding winning_path_def by simp
+        ultimately show False using no_VVp_deadends by blast
+      qed
+
+      obtain n where n: "path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
+        using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S` P_valid P_conforms[unfolded \<sigma>_def]]
+          by blast
+      def [simp]: \<sigma>' \<equiv> "\<sigma>_map P n"
+      def [simp]: P' \<equiv> "ldropn n P"
+      have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
+      moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
+      moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
+      moreover have "path_conforms_with_strategy p P' \<sigma>'" using n by simp
+      moreover have "strategy p \<sigma>'" unfolding \<sigma>'_def
+        using \<sigma>_map_strategy `lset P \<subseteq> S` `\<not>lfinite P` by blast
+      moreover have "winning_strategy p \<sigma>' (P' $ 0)" proof-
+        have "P $ n \<in> S" using `lset P \<subseteq> S` `\<not>lfinite P` llist_set_nth by blast
+        hence "\<sigma>' \<in> good (P $ n)" using \<sigma>_map_good by (simp add: \<sigma>_map_def choose_good)
+        hence "winning_strategy p \<sigma>' (P $ n)" unfolding good_def by blast
+        moreover have "P $ n = P' $ 0" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
+        ultimately show ?thesis by simp
+      qed
+      ultimately have "winning_path p P'"
+        unfolding winning_strategy_def using `\<not>lnull P'` by blast
+      thus False using contra P'_def winning_path_drop_add P_valid `\<not>lfinite P` by blast
+    qed
+  }
+  thus ?thesis unfolding winning_strategy_def using well_ordered_strategy_valid by auto
 qed
 
 end -- "context ParityGame"
