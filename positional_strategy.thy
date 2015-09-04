@@ -265,6 +265,7 @@ proof-
       ultimately show ?thesis unfolding W1_def using `V' \<subseteq> V` by blast
     qed
     hence V_decomp': "V = (attractor p K - K) \<union> V' \<union> K \<union> W1" using attractor_set_base by blast
+
     obtain \<sigma>W1 where \<sigma>W1: "strategy p** \<sigma>W1" "\<And>v. v \<in> W1 \<Longrightarrow> winning_strategy p** \<sigma>W1 v"
       using merge_winning_strategies[of W1 "p**"] W1_def by fastforce
 

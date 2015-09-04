@@ -279,7 +279,7 @@ proof-
         from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W" using dual_order.strict_trans enat_ord_simps(2) by blast
         hence "lset (ltake (enat n) P) \<subseteq> S - W" using lset_ltake by blast
         hence "P $ n \<notin> W" using contra n(1) by blast
-        moreover have "P $ n \<notin> V - S - W" proof (rule ccontr, subst (asm) not_not)
+        moreover have "P $ n \<notin> V - S - W" proof
           assume "P $ n \<in> V - S - W"
           hence "n \<noteq> 0" using P_valid_start `v0 \<in> S` n(2) by force
           then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
@@ -349,7 +349,7 @@ proof-
 qed
 
 lemma merge_winning_strategies:
-  assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
+  assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> V \<Longrightarrow> v \<in> S \<longleftrightarrow> (\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v)"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> (\<forall>v \<in> S. winning_strategy p \<sigma> v)"
 proof-
   def good \<equiv> "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
@@ -364,7 +364,7 @@ proof-
   next
     show "well_order_on ?G r" using r .
   next
-    show "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex by blast
+    show "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex `S \<subseteq> V` by blast
   next
     show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
   next
@@ -395,8 +395,33 @@ proof-
       assume contra: "\<not>winning_path p P"
       hence "winning_path p** P" using paths_are_winning_for_exactly_one_player P_valid by blast
       have "lset P \<subseteq> S" proof (rule ccontr)
+        (* This part needs work. *)
         assume "\<not>lset P \<subseteq> S"
-        show False sorry
+        hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> S" by (meson lset_subset)
+        then obtain n where n: "enat n < llength P" "P $ n \<notin> S" "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> S)"
+          using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S"] by metis
+        from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S" using dual_order.strict_trans enat_ord_simps(2) by blast
+        hence "lset (ltake (enat n) P) \<subseteq> S" using lset_ltake by blast
+        have "P $ n \<notin> V - S" proof
+          assume "P $ n \<in> V - S"
+          hence "n \<noteq> 0" using P_valid_start `v0 \<in> S` n(2) by metis
+          then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
+          hence "P $ n' \<in> S" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S` by blast
+          def [simp]: P' \<equiv> "ldropn n' P"
+          def [simp]: \<sigma>' \<equiv> "choose (P $ n')"
+          hence \<sigma>': "strategy p \<sigma>'" "winning_strategy p \<sigma>' (P $ n')"
+            using `P $ n' \<in> S` choose_good good_def \<sigma>'_def by blast+
+          have "enat n' < llength P" using n(1) n' using dual_order.strict_trans enat_ord_simps(2) by blast
+          show False proof (cases)
+            assume "P $ n' \<in> VV p"
+            show False sorry
+          next
+            assume "P $ n' \<notin> VV p"
+            show False sorry
+          qed
+        qed
+        moreover have "P $ n \<in> V" using n(1) P_valid valid_path_finite_in_V' by blast
+        ultimately show False using n(2) by blast
       qed
       have "\<not>lfinite P" proof
         assume "lfinite P"
