@@ -356,6 +356,9 @@ proof-
   let ?G = "{\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
   obtain r where r: "well_order_on ?G r" using well_order_on by blast
 
+  have no_VVp_deadends: "\<And>v. \<lbrakk> v \<in> S; v \<in> VV p \<rbrakk> \<Longrightarrow> \<not>deadend v"
+    using no_winning_strategy_on_deadends strategies_ex by blast
+
   interpret WellOrderedStrategies G S p good r proof
     show "S \<subseteq> V" using `S \<subseteq> V` .
   next
@@ -367,11 +370,18 @@ proof-
   next
     fix v w \<sigma> assume v: "v \<in> S" "w \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
     hence \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v" unfolding good_def by simp_all
-    hence "winning_strategy p \<sigma> w" sorry
+    hence "winning_strategy p \<sigma> w" proof (cases)
+      assume "v \<in> VV p"
+      moreover hence "\<sigma> v = w" using v(4) by blast
+      moreover have "\<not>deadend v" using no_VVp_deadends `v \<in> VV p` `v \<in> S` by blast
+      ultimately show ?thesis using strategy_extends_VVp \<sigma> by blast
+    next
+      assume "v \<notin> VV p"
+      hence "v \<in> VV p**" using edges_are_in_V v(3) by auto
+      thus ?thesis using strategy_extends_VVpstar \<sigma> `v\<rightarrow>w` by blast
+    qed
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
   qed
-
-  have no_VVp_deadends: "\<And>v. v \<in> S \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<not>deadend v" sorry
 
   def [simp]: \<sigma> \<equiv> "well_ordered_strategy"
   {
