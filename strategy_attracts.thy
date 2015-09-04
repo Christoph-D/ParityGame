@@ -55,33 +55,40 @@ proof
   thus False using P(1) P(3) by auto
 qed
 
+(* If A is an attractor set of W and an edge leaves A without going through W, then v belongs to
+   VV p and the attractor strategy \<sigma> avoids this edge.  All other cases give a contradiction. *)
 lemma strategy_attracts_does_not_leave:
   assumes \<sigma>: "strategy_attracts p \<sigma> A W" "strategy p \<sigma>"
-    and v: "v\<rightarrow>w" "v \<in> A" "w \<notin> A \<union> W"
+    and v: "v\<rightarrow>w" "v \<in> A - W" "w \<notin> A \<union> W"
   shows "v \<in> VV p \<and> \<sigma> v \<noteq> w"
 proof (rule ccontr)
-  assume asm: "\<not>(v \<in> VV p \<and> \<sigma> v \<noteq> w)"
-  show False proof (cases)
+  assume contra: "\<not>(v \<in> VV p \<and> \<sigma> v \<noteq> w)"
+  (* A strategy for p** which tries to take this edge. *)
+  def \<sigma>' \<equiv> "\<sigma>_arbitrary(v := w)"
+  hence "strategy p** \<sigma>'" using `v\<rightarrow>w` by (simp add: valid_strategy_updates)
+  moreover have "v \<in> V" using `v\<rightarrow>w` edges_are_in_V by blast
+  ultimately obtain P where P:
+    "\<not>lnull P" "P $ 0 = v" "valid_path P" "maximal_path P"
+    "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'"
+    using strategy_conforming_path_exists[of v p \<sigma> \<sigma>'] \<sigma>(2) by blast
+  obtain P' where P': "P = LCons v P'" using P(1) P(2) by (metis lnth_0 not_lnull_conv)
+  have "\<not>deadend v" using `v\<rightarrow>w` edges_are_in_V by blast
+  hence "\<not>lnull P'" using P(4) P' maximal_no_deadend by blast
+  then obtain Ps w' where Ps: "P' = LCons w' Ps" by (meson not_lnull_conv)
+  have "w = w'" proof (cases)
     assume "v \<in> VV p"
-    hence "\<sigma> v = w" using asm by blast
-    show False sorry
+    moreover hence "\<sigma> v = w'" using P(5) P' Ps by (simp add: path_conforms_with_strategy_start)
+    ultimately show "w = w'" using contra by simp
   next
     assume "v \<notin> VV p"
-    hence "v \<in> VV p**" using edges_are_in_V `v\<rightarrow>w` by auto
-    def \<sigma>' \<equiv> "\<sigma>_arbitrary(v := w)"
-    have "strategy p** \<sigma>'" unfolding \<sigma>'_def using `v\<rightarrow>w` by (simp add: valid_strategy_updates)
-    then obtain P where P:
-      "\<not>lnull P" "P $ 0 = v" "valid_path P" "maximal_path P" "path_conforms_with_strategy p** P \<sigma>'"
-      using strategy_conforming_path_exists_single[of v "p**" \<sigma>'] edges_are_in_V `v\<rightarrow>w` by metis
-    obtain P' where P': "P = LCons v P'" using P(1) P(2) by (metis lnth_0 not_lnull_conv)
-    have "P $ 0 \<in> VV p**" using `v \<in> VV p**` P(2) by blast
-    have "\<not>deadend v" using `v\<rightarrow>w` edges_are_in_V by blast
-    hence "\<not>lnull P'" using P(4) P' maximal_no_deadend by blast
-    then obtain Ps w' where Ps: "P' = LCons w' Ps" by (meson not_lnull_conv)
-    hence "\<sigma>' v = w'" using P(5) P' by (simp add: `v \<in> VV p**` path_conforms_with_strategy_start)
-    hence "w = w'" using \<sigma>'_def by simp
-    show False sorry
+    hence "v \<in> VV p**" using edges_are_in_V `v\<rightarrow>w` by blast
+    hence "\<sigma>' v = w'" using P(6) P' Ps by (simp add: path_conforms_with_strategy_start)
+    thus "w = w'" using \<sigma>'_def by simp
   qed
+  hence "P = LCons v (LCons w Ps)" using P' Ps by simp
+  hence "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
+    using strategy_attracts_invalid_path[of P v w Ps] v(2) v(3) by blast
+  thus False using \<sigma>(1)[unfolded strategy_attracts_def, unfolded strategy_attracts_via_def] P v(2) by force
 qed
 
 lemma strategy_attracts_irrelevant_override:
