@@ -102,49 +102,6 @@ proof -
   thus ?thesis using assms(1) by blast
 qed
 
-lemma strategy_extends_VVp:
-  assumes v0: "v0 \<in> VV p" "\<not>deadend v0"
-  and \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0" 
-  shows "winning_strategy p \<sigma> (\<sigma> v0)"
-proof (unfold winning_strategy_def, intro allI impI, elim conjE)
-  fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = \<sigma> v0"
-  def [simp]: P' \<equiv> "LCons v0 P"
-  have "winning_path p P'" proof-
-    have "v0 \<in> V" using v0(1) by blast
-    have "v0\<rightarrow>\<sigma> v0" using v0 \<sigma>(1) strategy_def by blast
-    hence "\<sigma> v0 \<in> V" using edges_are_in_V by blast
-    have "lhd P = \<sigma> v0" using `P $ 0 = \<sigma> v0` `\<not>lnull P` using lnth_0_conv_lhd[of P] by auto
-    obtain Ps w where w: "P = LCons w Ps" using P(1) by (metis lhd_LCons_ltl)
-    have "\<not>lnull P'" "P' $ 0 = v0" by simp_all
-    moreover have "valid_path P'" unfolding P'_def using valid_path_cons[of v0 "\<sigma> v0" P] P(1) P(2) `v0\<rightarrow>\<sigma> v0` edges_are_in_V `lhd P = \<sigma> v0` by blast
-    moreover have "maximal_path P'" unfolding P'_def using P(1) P(3) maximal_path.intros(3) by blast
-    moreover have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def
-      using path_conforms_VVp[of v0 p w \<sigma> Ps] `v0 \<in> VV p` P(4) VV_impl2 w `lhd P = \<sigma> v0` by (metis lhd_LCons)
-    ultimately show ?thesis using \<sigma>(2) unfolding winning_strategy_def by blast
-  qed
-  thus "winning_path p P" using P'_def `\<not>lnull P` winning_path_ltl[of p P'] by auto
-qed
-
-lemma strategy_extends_VVpstar:
-  assumes v0: "v0 \<in> VV p**" "v0\<rightarrow>w0"
-  and \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0" 
-  shows "winning_strategy p \<sigma> w0"
-proof (unfold winning_strategy_def, intro allI impI, elim conjE)
-  fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 = w0"
-  def [simp]: P' \<equiv> "LCons v0 P"
-  have "winning_path p P'" proof-
-    have "v0 \<in> V" using v0(1) by blast
-    have "w0 \<in> V" using v0(2) edges_are_in_V by blast
-    have "lhd P = w0" using `P $ 0 = w0` `\<not>lnull P` using lnth_0_conv_lhd[of P] by auto
-    have "\<not>lnull P'" "P' $ 0 = v0" by simp_all
-    moreover have "valid_path P'" unfolding P'_def using v0(2) valid_path_cons[of v0 w0 P] P(1) P(2) `v0 \<in> V` `w0 \<in> V` `lhd P = w0` by blast
-    moreover have "maximal_path P'" unfolding P'_def using P(1) P(3) maximal_path.intros(3) by blast
-    moreover have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def using path_conforms_VVpstar[of v0 p P \<sigma>] `v0 \<in> VV p**` P(4) VV_impl2 by blast
-    ultimately show ?thesis using \<sigma>(2) unfolding winning_strategy_def by blast
-  qed
-  thus "winning_path p P" using P'_def `\<not>lnull P` winning_path_ltl[of p P'] by auto
-qed
-
 lemma paths_stay_in_winning_region:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
     and \<sigma>': "\<And>v. v \<in> V \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v \<Longrightarrow> \<sigma> v = \<sigma>' v"

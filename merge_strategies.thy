@@ -5,58 +5,246 @@ imports
   parity_game strategy attractor
 begin
 
+locale WellOrderedStrategies = ParityGame +
+  fixes S :: "'a set"
+    and p :: Player
+    and good :: "'a \<Rightarrow> 'a Strategy set"
+    and r :: "('a Strategy \<times> 'a Strategy) set"
+  assumes S_V: "S \<subseteq> V"
+    and r_wo: "well_order_on {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v} r"
+    and good_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v"
+    and good_strategies: "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>"
+    and strategies_continue: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; w \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> \<sigma> \<in> good w"
+begin
+
+abbreviation "Strategies \<equiv> {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
+
+definition choose' where
+  "choose' v \<sigma> \<equiv> \<sigma> \<in> good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> good v)"
+definition choose where
+  "choose v \<equiv> THE \<sigma>. choose' v \<sigma>"
+definition well_ordered_strategy where
+  "well_ordered_strategy \<equiv> override_on \<sigma>_arbitrary (\<lambda>v. choose v v) S"
+
+lemma r_refl [simp]: "refl_on Strategies r"
+  using r_wo unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
+lemma r_total [simp]: "total_on Strategies r"
+  using r_wo unfolding well_order_on_def linear_order_on_def by blast
+lemma r_trans [simp]: "trans r"
+  using r_wo unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
+lemma r_wf [simp]: "wf (r - Id)"
+  using well_order_on_def r_wo by blast
+
+lemma choose_works:
+  assumes "v \<in> S"
+  shows "choose' v (choose v)"
+proof-
+  have wf: "wf (r - Id)" using well_order_on_def r_wo by blast
+  obtain \<sigma> where \<sigma>1: "choose' v \<sigma>" unfolding choose'_def by (meson good_ex[OF `v \<in> S`] wf wf_eq_minimal)
+  hence \<sigma>: "\<sigma> \<in> good v" "\<And>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<Longrightarrow> \<sigma>' \<notin> good v" unfolding choose'_def by auto
+  { fix \<sigma>' assume "choose' v \<sigma>'"
+    hence \<sigma>': "\<sigma>' \<in> good v" "\<And>\<sigma>. (\<sigma>, \<sigma>') \<in> r - Id \<Longrightarrow> \<sigma> \<notin> good v" unfolding choose'_def by auto
+    have "(\<sigma>, \<sigma>') \<notin> r - Id" using \<sigma>(1) \<sigma>'(2) by blast
+    moreover have "(\<sigma>', \<sigma>) \<notin> r - Id" using \<sigma>(2) \<sigma>'(1) by auto
+    moreover have "\<sigma> \<in> Strategies" using \<sigma>(1) `v \<in> S` by auto
+    moreover have "\<sigma>' \<in> Strategies" using \<sigma>'(1) `v \<in> S` by auto
+    ultimately have "\<sigma>' = \<sigma>" using r_wo Linear_order_in_diff_Id well_order_on_Field well_order_on_def by fastforce
+  }
+  with \<sigma>1 have "\<exists>!\<sigma>. choose' v \<sigma>" by blast
+  thus ?thesis using theI'[of "choose' v", folded choose_def] by blast
+qed
+
+corollary
+  assumes "v \<in> S"
+  shows choose_good: "choose v \<in> good v"
+    and choose_minimal: "\<And>\<sigma>'. (\<sigma>', choose v) \<in> r - Id \<Longrightarrow> \<sigma>' \<notin> good v"
+    and choose_strategy: "strategy p (choose v)"
+  using choose_works[OF assms, unfolded choose'_def] good_strategies by blast+
+
+corollary choose_in_Strategies: "v \<in> S \<Longrightarrow> choose v \<in> Strategies" using assms choose_good by blast
+
+lemma well_ordered_strategy_valid: "strategy p well_ordered_strategy"
+proof-
+  {
+    fix v assume "v \<in> S" "v \<in> VV p" "\<not>deadend v"
+    moreover have "strategy p (choose v)"
+      using choose_works[OF `v \<in> S`, unfolded choose'_def, THEN conjunct1] good_strategies by blast
+    ultimately have "v\<rightarrow>(\<lambda>v. choose v v) v" using strategy_def by blast
+  }
+  thus ?thesis unfolding well_ordered_strategy_def using valid_strategy_updates_set by force
+qed
+
+(* Maps a path to its strategies. *)
+definition \<sigma>_map where "\<sigma>_map P \<equiv> \<lambda>n. choose (P $ n)"
+
+lemma \<sigma>_map_in_Strategies:
+  assumes "lset P \<subseteq> S" "enat n < llength P"
+  shows "\<sigma>_map P n \<in> Strategies"
+  using \<sigma>_map_def assms choose_in_Strategies lset_lnth by fastforce
+
+lemma \<sigma>_map_good:
+  assumes "lset P \<subseteq> S" "enat n < llength P"
+  shows "\<sigma>_map P n \<in> good (P $ n)"
+  by (simp add: \<sigma>_map_def assms choose_good lset_lnth)
+
+lemma \<sigma>_map_strategy:
+  assumes "lset P \<subseteq> S" "enat n < llength P"
+  shows "strategy p (\<sigma>_map P n)"
+  using \<sigma>_map_good assms good_strategies by blast
+
+
+lemma \<sigma>_map_monotone_Suc:
+  assumes P: "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
+    "enat (Suc n) < llength P"
+  shows "(\<sigma>_map P (Suc n), \<sigma>_map P n) \<in> r"
+proof-
+  def P' \<equiv> "ldropn n P"
+  hence "enat (Suc 0) < llength P'" using P(4)
+    by (metis enat_ltl_Suc ldrop_eSuc_ltl ldropn_Suc_conv_ldropn llist.disc(2) lnull_0_llength ltl_ldropn)
+  then obtain v w Ps where vw: "P' = LCons v (LCons w Ps)" by (metis ldropn_0 ldropn_Suc_conv_ldropn ldropn_lnull lnull_0_llength)
+  moreover have "lset P' \<subseteq> S" using P(1) P'_def lset_ldropn_subset by fastforce
+  ultimately have "v \<in> S" "w \<in> S" by auto
+  moreover have "v\<rightarrow>w" using valid_path_edges'[of v w Ps, folded vw] valid_path_drop[OF P(2)] P'_def by blast
+  moreover have "choose v \<in> good v" using choose_good `v \<in> S` by blast
+  moreover have "v \<in> VV p \<Longrightarrow> choose v v = w" proof-
+    assume "v \<in> VV p"
+    moreover have "path_conforms_with_strategy p P' well_ordered_strategy"
+      unfolding P'_def using path_conforms_with_strategy_drop P(3) by blast
+    ultimately have "well_ordered_strategy v = w" using vw path_conforms_with_strategy_start by blast
+    thus "choose v v = w" unfolding well_ordered_strategy_def using `v \<in> S` by auto
+  qed
+  ultimately have "choose v \<in> good w" using strategies_continue by blast
+  hence *: "(choose v, choose w) \<notin> r - Id" using choose_minimal `w \<in> S` by blast
+
+  have "(choose w, choose v) \<in> r" proof (cases)
+    assume "choose v = choose w"
+    thus ?thesis using r_refl refl_onD choose_in_Strategies[OF `v \<in> S`] by fastforce
+  next
+    assume "choose v \<noteq> choose w"
+    thus ?thesis using * r_total choose_in_Strategies[OF `v \<in> S`] choose_in_Strategies[OF `w \<in> S`]
+      by (metis (lifting) Linear_order_in_diff_Id r_wo well_order_on_Field well_order_on_def)
+  qed
+  hence "(\<sigma>_map P' (Suc 0), \<sigma>_map P' 0) \<in> r" unfolding \<sigma>_map_def using vw by simp
+  thus ?thesis by (metis P'_def \<sigma>_map_def assms(4) ldropn_Suc_conv_ldropn ldropn_eq_LConsD lnth_0 lnth_Suc_LCons vw)
+qed
+
+lemma \<sigma>_map_monotone:
+  assumes P: "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
+    "n < m" "enat m < llength P"
+  shows "(\<sigma>_map P m, \<sigma>_map P n) \<in> r"
+using assms proof (induct "m - n" arbitrary: n m, simp)
+  case (Suc d)
+  show ?case proof (cases)
+    assume "d = 0"
+    thus ?thesis using \<sigma>_map_monotone_Suc[OF P(1) P(2) P(3)]
+      by (metis (no_types) Suc.hyps(2) Suc.prems(4) Suc.prems(5) Suc_diff_Suc Suc_inject Suc_leI diff_is_0_eq diffs0_imp_equal)
+  next
+    assume "d \<noteq> 0"
+    have "m \<noteq> 0" using Suc.hyps(2) by linarith
+    then obtain m' where m': "Suc m' = m" by (metis nat.exhaust)
+    hence "d = m' - n" using Suc.hyps(2) by presburger
+    moreover hence "n < m'" using `d \<noteq> 0` by presburger 
+    ultimately have "(\<sigma>_map P m', \<sigma>_map P n) \<in> r"
+      using Suc.hyps(1)[of m' n, OF _ P(1) P(2) P(3)] Suc.prems(5) dual_order.strict_trans enat_ord_simps(2) m'
+      by blast
+    thus ?thesis
+      using m' \<sigma>_map_monotone_Suc[OF P(1) P(2) P(3)] by (metis (no_types) Suc.prems(5) r_trans trans_def)
+  qed
+qed
+
+lemma \<sigma>_map_eventually_constant:
+  assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
+  shows "\<exists>n. \<forall>m \<ge> n. \<sigma>_map P n = \<sigma>_map P m"
+proof-
+  def \<sigma>_set \<equiv> "\<sigma>_map P ` UNIV"
+  have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" using \<sigma>_set_def by blast
+  then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set"
+    using wfE_min[of "r - Id" _ \<sigma>_set] by auto
+  then obtain n where n: "\<sigma>_map P n = \<sigma>'" using \<sigma>_set_def by auto
+  {
+    fix m assume "n \<le> m"
+    have "\<sigma>_map P n = \<sigma>_map P m" proof (rule ccontr)
+      assume *: "\<sigma>_map P n \<noteq> \<sigma>_map P m"
+      with `n \<le> m` have "n < m" using le_imp_less_or_eq by blast
+      with \<sigma>_map_monotone have "(\<sigma>_map P m, \<sigma>_map P n) \<in> r" using assms by (simp add: infinite_small_llength)
+      with * have "(\<sigma>_map P m, \<sigma>_map P n) \<in> r - Id" by simp
+      with \<sigma>'(2) n have "\<sigma>_map P m \<notin> \<sigma>_set" by blast
+      thus False unfolding \<sigma>_set_def by blast
+    qed
+  }
+  thus ?thesis by blast
+qed
+
+lemma path_eventually_conforms_to_\<sigma>_map_n:
+  assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
+  shows "\<exists>n. path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
+proof-
+  obtain n where n: "\<And>m. n \<le> m \<Longrightarrow> \<sigma>_map P n = \<sigma>_map P m" using \<sigma>_map_eventually_constant assms by blast
+  let ?\<sigma> = well_ordered_strategy
+  def P' \<equiv> "ldropn n P"
+  { fix v assume "v \<in> lset P'"
+    hence "v \<in> S" using `lset P \<subseteq> S` P'_def in_lset_ldropnD by fastforce
+    from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" by (meson in_lset_conv_lnth)
+    hence "P $ m + n = P' $ m" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
+    moreover have "?\<sigma> v = choose v v" unfolding well_ordered_strategy_def using `v \<in> S` by auto
+    ultimately have "?\<sigma> v = \<sigma>_map P (m + n) v" unfolding \<sigma>_map_def using m(2) by auto
+    hence "?\<sigma> v = \<sigma>_map P n v" using n[of "m + n"] by simp
+  }
+  moreover have "path_conforms_with_strategy p P' well_ordered_strategy"
+    unfolding P'_def by (simp add: assms(4) path_conforms_with_strategy_drop)
+  ultimately show ?thesis
+    using path_conforms_with_strategy_irrelevant_updates P'_def by blast
+qed
+
+end -- "WellOrderedStrategies"
+
 context ParityGame begin
+
+(* An attractor set S - W of W cannot contain deadends because from deadends one cannot attract to W. *)
+lemma attractor_no_deadends:
+  assumes "S \<subseteq> V" "v \<in> S - W" "strategy_attracts_via p \<sigma> v S W"
+  shows "\<not>deadend v"
+proof
+  assume "deadend v"
+  def [simp]: P \<equiv> "LCons v LNil"
+  moreover have "\<not>lnull P \<and> P $ 0 = v" by simp
+  moreover have "valid_path P" using `v \<in> S - W` `S \<subseteq> V` valid_path_base' by auto
+  moreover have "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
+  moreover have "path_conforms_with_strategy p P \<sigma>" by (simp add: path_conforms_LCons_LNil)
+  ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S"
+    using assms(3) unfolding strategy_attracts_via_def by blast
+  moreover have "llength P = eSuc 0" by simp
+  ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1))
+  with `v \<in> S - W` show False by auto
+qed
 
 lemma merge_attractor_strategies:
   assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> S W"
 proof-
-  let ?good = "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W }"
-  def G \<equiv> "{ \<sigma>. \<exists>v \<in> S. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W }"
-  obtain r where r: "well_order_on G r" using well_order_on by blast
-  hence wf: "wf (r - Id)" using well_order_on_def by blast
+  def good \<equiv> "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W }"
+  let ?G = "{\<sigma>. \<exists>v \<in> S - W. \<sigma> \<in> good v}"
+  obtain r where r: "well_order_on ?G r" using well_order_on by blast
 
-  def [simp]: choose' \<equiv> "\<lambda>v \<sigma>. \<sigma> \<in> ?good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> ?good v)"
-  def [simp]: choose \<equiv> "\<lambda>v. THE \<sigma>. choose' v \<sigma>"
-  def \<sigma> \<equiv> "override_on \<sigma>_arbitrary (\<lambda>v. choose v v) (S - W)"
-
-  { fix v assume "v \<in> S"
-    hence "\<exists>\<sigma>. \<sigma> \<in> ?good v" using strategies_ex by blast
-    then obtain \<sigma> where \<sigma>: "choose' v \<sigma>" unfolding choose'_def by (meson local.wf wf_eq_minimal)
-    { fix \<sigma>' assume \<sigma>': "choose' v \<sigma>'"
-      have "(\<sigma>, \<sigma>') \<notin> r - Id" using \<sigma> \<sigma>' by auto
-      moreover have "(\<sigma>', \<sigma>) \<notin> r - Id" using \<sigma> \<sigma>' by auto
-      moreover have "\<sigma> \<in> G" using G_def \<sigma>(1) `v \<in> S` by auto
-      moreover have "\<sigma>' \<in> G" using G_def \<sigma>'(1) `v \<in> S` by auto
-      ultimately have "\<sigma>' = \<sigma>" using r Linear_order_in_diff_Id well_order_on_Field well_order_on_def by fastforce
-    }
-    with \<sigma> have "\<exists>!\<sigma>. choose' v \<sigma>" by blast
-    hence "choose' v (choose v)" using theI'[of "choose' v"] choose_def by fastforce
-  } note choose_works = this
-
-  have \<sigma>_valid: "strategy p \<sigma>" proof-
-    {
-      fix v assume *: "v \<in> S" "v \<in> VV p" "\<not>deadend v"
-      from `v \<in> S` have "strategy p (choose v)" using choose_works choose'_def by blast
-      with * have "v\<rightarrow>(\<lambda>v. choose v v) v" using strategy_def by blast
-    }
-    thus ?thesis using valid_strategy_updates_set \<sigma>_def by force
+  interpret WellOrderedStrategies G "S - W" p good r proof
+    show "S - W \<subseteq> V" using `S \<subseteq> V` by blast
+  next
+    show "well_order_on ?G r" using r .
+  next
+    show "\<And>v. v \<in> S - W \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex by blast
+  next
+    show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
+  next
+    fix v w \<sigma> assume v: "v \<in> S - W" "w \<in> S - W" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
+    hence \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v S W" unfolding good_def by simp_all
+    hence "strategy_attracts_via p \<sigma> w S W" using strategy_attracts_via_successor v by blast
+    thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
   qed
 
-  have S_W_no_deadends: "\<And>v. v \<in> S - W \<Longrightarrow> \<not>deadend v" proof (rule ccontr, subst (asm) not_not)
-    fix v assume "v \<in> S - W" "deadend v"
-    def [simp]: P \<equiv> "LCons v LNil"
-    obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' v S W" using `v \<in> S - W` strategies_ex by auto
-    moreover have "\<not>lnull P \<and> P $ 0 = v" by simp
-    moreover have "valid_path P" using `v \<in> S - W` `S \<subseteq> V` valid_path_base' by auto
-    moreover have "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
-    moreover have "path_conforms_with_strategy p P \<sigma>'" by (simp add: path_conforms_LCons_LNil)
-    ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S"
-      using \<sigma>'(2) unfolding strategy_attracts_via_def by blast
-    moreover have "llength P = eSuc 0" by simp
-    ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1))
-    with `v \<in> S - W` show False by auto
-  qed
+  def [simp]: \<sigma> \<equiv> "well_ordered_strategy"
+
+  have S_W_no_deadends: "\<And>v. v \<in> S - W \<Longrightarrow> \<not>deadend v"
+    using attractor_no_deadends[OF `S \<subseteq> V`] strategies_ex by (meson Diff_iff)
 
   {
     fix v0 assume "v0 \<in> S"
@@ -84,20 +272,24 @@ proof-
           def [simp]: P' \<equiv> "ldropn n' P"
           def [simp]: \<sigma>' \<equiv> "choose (P $ n')"
           hence \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' (P $ n') S W"
-            using `P $ n' \<in> S - W` choose_works unfolding choose'_def by blast+
+            using `P $ n' \<in> S - W` choose_good good_def \<sigma>'_def by blast+
           have "enat n' < llength P" using n(1) n' using dual_order.strict_trans enat_ord_simps(2) by blast
           show False proof (cases)
             assume "P $ n' \<in> VV p"
-            hence "\<sigma> (P $ n') \<in> S \<union> W" using \<sigma>'(1) \<sigma>'(2) \<sigma>_def `P $ n' \<in> S - W` assms(1) assms(2) strategy_attracts_VVp S_W_no_deadends by auto
+            hence "\<sigma> (P $ n') \<in> S \<union> W"
+              using \<sigma>'(1) \<sigma>'(2) \<sigma>_def `P $ n' \<in> S - W` assms(1) assms(2)
+                strategy_attracts_VVp S_W_no_deadends well_ordered_strategy_def by auto
             moreover have "\<sigma> (P $ n') = P $ n" proof-
               have "enat (Suc n') < llength P" using n' n(1) by simp
-              hence "\<sigma> (P $ n') = P $ Suc n'" using P_conforms P_valid `P $ n' \<in> VV p` path_conforms_with_strategy_conforms by blast
+              hence "\<sigma> (P $ n') = P $ Suc n'"
+                using P_conforms P_valid `P $ n' \<in> VV p` path_conforms_with_strategy_conforms by blast
               thus ?thesis using n' by simp
             qed
             ultimately show False using `P $ n \<in> V - S - W` by auto
           next
             assume "P $ n' \<notin> VV p"
-            hence "\<not>(P $ n')\<rightarrow>(P $ n)" using strategy_attracts_VVpstar \<sigma>'(1) \<sigma>'(2) `P $ n \<in> V - S - W` `P $ n' \<in> S - W` assms(1) assms(2) by blast
+            hence "\<not>(P $ n')\<rightarrow>(P $ n)" using strategy_attracts_VVpstar
+              \<sigma>'(1) \<sigma>'(2) `P $ n \<in> V - S - W` `P $ n' \<in> S - W` assms(1) assms(2) by blast
             hence "\<not>(P $ n')\<rightarrow>(P $ Suc n')" using n' by simp
             moreover have "enat (Suc n') < llength P" using n' n(1) by simp
             ultimately show False using P_valid `enat n' < llength P` valid_path_impl1 by blast
@@ -114,150 +306,37 @@ proof-
       qed
       have P_no_deadends: "\<And>n. \<not>deadend (P $ n)"
         using `\<not>lfinite P` S_W_no_deadends `lset P \<subseteq> S - W` llist_nth_set by fastforce
-      show False proof (cases "\<exists>n. lset (ldropn n P) \<subseteq> VV p**")
-        case True
-        then obtain n where n: "lset (ldropn n P) \<subseteq> VV p**" by blast
-        def [simp]: P' \<equiv> "ldropn n P"
-        have "lset P' \<subseteq> S - W" using `lset P \<subseteq> S - W` P'_def lset_ldropn_subset by force
-        moreover have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
-        ultimately have "P' $ 0 \<in> S" by (metis Diff_subset P'_def `\<not>lfinite P` lfinite_ldropn llist_set_nth subset_trans)
-        then obtain \<sigma>' where \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' (P' $ 0) S W" using strategies_ex by blast
-        moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
-        moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
-        moreover have "path_conforms_with_strategy p P' \<sigma>'" using n path_conforms_with_strategy_VVpstar by simp
-        ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W" "lset (ltake (enat m) P') \<subseteq> S"
-          unfolding strategy_attracts_via_def using `\<not>lnull P'` by blast
-        thus False by (meson Diff_iff `lset P' \<subseteq> S - W` lset_lnth)
-      next
-        case False
-        have always_again_in_VVp: "\<And>n. \<exists>m. n \<le> m \<and> P $ m \<in> VV p" proof-
-          fix n
-          have "\<not>lset (ldropn n P) \<subseteq> VV p**" using False by blast
-          then obtain m where m: "ldropn n P $ m \<notin> VV p**" using lset_subset[of "ldropn n P" "VV p**"] by blast
-          hence "ldropn n P $ m \<in> VV p" using P_valid VV_cases `\<not>lfinite P` lfinite_ldropn valid_path_drop valid_path_in_V' by blast
-          hence "P $ m + n \<in> VV p" using lnth_ldropn `\<not>lfinite P` by (simp add: infinite_small_llength)
-          thus "\<exists>m. n \<le> m \<and> P $ m \<in> VV p" using le_add2 by blast
-        qed
-        def [simp]: \<sigma>_map \<equiv> "\<lambda>n. choose (P $ n)"
-        have "\<And>n. P $ n \<in> S" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
-        {
-          fix n
-          let ?v = "P $ n"
-          have "choose' ?v (\<sigma>_map n)" using choose_works[of ?v] `\<And>n. P $ n \<in> S` unfolding \<sigma>_map_def by blast
-          hence "strategy p (\<sigma>_map n) \<and> strategy_attracts_via p (\<sigma>_map n) ?v S W" unfolding choose'_def by blast
-        } note \<sigma>_map_choose' = this
-        hence \<sigma>_map_in_G: "\<And>n. \<sigma>_map n \<in> G" unfolding G_def using `\<And>n. P $ n \<in> S` by blast
-        have \<sigma>_map_monotone: "\<And>n m. n < m \<Longrightarrow> (\<sigma>_map m, \<sigma>_map n) \<in> r" proof-
-          {
-            fix n
-            have "(\<sigma>_map (Suc n), \<sigma>_map n) \<in> r" proof-
-              have "strategy p (\<sigma>_map n)" using \<sigma>_map_choose' by blast
-              moreover have *: "P $ n \<in> VV p \<Longrightarrow> \<sigma>_map n (P $ n) = P $ Suc n" proof-
-                assume "P $ n \<in> VV p"
-                hence "\<sigma> (P $ n) = P $ Suc n" using P_conforms P_valid path_conforms_with_strategy_conforms infinite_small_llength `\<not>lfinite P` by fastforce
-                moreover have "\<sigma> (P $ n) = \<sigma>_map n (P $ n)" proof-
-                  have "P $ n \<in> S - W" using `\<not>lfinite P` `lset P \<subseteq> S - W` llist_set_nth by blast
-                  thus ?thesis by (simp add: \<sigma>_def)
-                qed
-                ultimately show "\<sigma>_map n (P $ n) = P $ Suc n" by simp
-              qed
-              moreover have "P $ n \<in> S - W" using `\<not>lfinite P` `lset P \<subseteq> S - W` llist_set_nth by blast
-              moreover have "P $ n \<rightarrow> P $ Suc n" using P_valid `\<not>lfinite P` infinite_small_llength valid_path_edges by blast
-              moreover have "strategy_attracts_via p (\<sigma>_map n) (P $ n) S W" using \<sigma>_map_choose' by blast
-              ultimately have "strategy_attracts_via p (\<sigma>_map n) (P $ Suc n) S W" using strategy_attracts_via_successor[of p "\<sigma>_map n" "P $ n" S W "P $ Suc n"] \<sigma>_def `strategy p (\<sigma>_map n)` by force
-              hence "\<sigma>_map n \<in> ?good (P $ Suc n)" using `strategy p (\<sigma>_map n)` by blast
-              hence *: "(\<sigma>_map n, choose (P $ Suc n)) \<notin> r - Id" using `\<And>n. P $ n \<in> S` choose'_def choose_works by blast
-              have "(choose (P $ Suc n), \<sigma>_map n) \<in> r" proof (cases)
-                assume "\<sigma>_map n = choose (P $ Suc n)"
-                moreover have "refl_on G r" using r unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
-                ultimately show ?thesis using \<sigma>_map_in_G refl_onD by fastforce
-              next
-                assume "\<sigma>_map n \<noteq> choose (P $ Suc n)"
-                moreover with * have "(\<sigma>_map n, choose (P $ Suc n)) \<notin> r" by blast
-                moreover have "total_on G r" using r unfolding well_order_on_def linear_order_on_def by blast
-                ultimately show ?thesis by (metis \<sigma>_map_def \<sigma>_map_in_G total_on_def)
-              qed
-              thus ?thesis unfolding \<sigma>_map_def by blast
-            qed
-          } note case_Suc' = this
-          {
-            fix n m assume "(\<sigma>_map m, \<sigma>_map n) \<in> r"
-            moreover have "(\<sigma>_map (Suc m), \<sigma>_map m) \<in> r" using case_Suc' by blast
-            moreover have "trans r" using r unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
-            ultimately have "(\<sigma>_map (Suc m), \<sigma>_map n) \<in> r" by (meson transE)
-          } note case_Suc = this
 
-          fix n m :: nat assume "n < m"
-          thus "(\<sigma>_map m, \<sigma>_map n) \<in> r" proof (induct "m - n" arbitrary: n m)
-            case 0 thus ?case by simp
-          next
-            case (Suc d)
-            show ?case proof (cases)
-              assume "d = 0"
-              thus ?thesis using case_Suc' by (metis Suc.hyps(2) Suc.prems Suc_diff_Suc Suc_inject Suc_leI diff_is_0_eq diffs0_imp_equal)
-            next
-              assume "d \<noteq> 0"
-              have "m \<noteq> 0" using Suc.hyps(2) by linarith
-              then obtain m' where m': "Suc m' = m" by (metis nat.exhaust)
-              hence "d = m' - n" using Suc.hyps(2) by linarith
-              hence "(\<sigma>_map m', \<sigma>_map n) \<in> r" using Suc.hyps(1) `d \<noteq> 0` zero_less_diff by blast
-              thus ?thesis using m' case_Suc by blast
-            qed
-          qed
-        qed
-        def [simp]: \<sigma>_set \<equiv> "\<sigma>_map ` UNIV"
-        have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" using \<sigma>_set_def by blast
-        then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set" using wfE_min[of "r - Id" _ \<sigma>_set] wf by blast
-        then obtain n where n: "\<sigma>_map n = \<sigma>'" by auto
-        have \<sigma>_map_constant: "\<And>m. n \<le> m \<Longrightarrow> \<sigma>_map n = \<sigma>_map m" proof-
-          fix m assume "n \<le> m"
-          show "\<sigma>_map n = \<sigma>_map m" proof (rule ccontr)
-            assume *: "\<sigma>_map n \<noteq> \<sigma>_map m"
-            with `n \<le> m` have "n < m" using le_imp_less_or_eq by blast
-            with \<sigma>_map_monotone have "(\<sigma>_map m, \<sigma>_map n) \<in> r" by blast
-            with * have "(\<sigma>_map m, \<sigma>_map n) \<in> r - Id" by simp
-            with \<sigma>'(2) n have "\<sigma>_map m \<notin> \<sigma>_set" by blast
-            thus False unfolding \<sigma>_set_def by blast
-          qed
-        qed
-        def [simp]: P' \<equiv> "ldropn n P"
-        have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
-        moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
-        moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
-        moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
-          have "\<And>v. v \<in> lset P' \<Longrightarrow> \<sigma> v = \<sigma>' v" proof-
-            fix v assume "v \<in> lset P'"
-            hence "v \<in> S - W" using `lset P \<subseteq> S - W` by (metis P'_def contra_subsetD in_lset_ldropnD)
-            from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" by (meson in_lset_conv_lnth)
-            hence "P $ m + n = P' $ m" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
-            moreover have "\<sigma> v = choose v v" unfolding \<sigma>_def using `v \<in> S - W` by auto
-            ultimately have "\<sigma> v = \<sigma>_map (m + n) v" unfolding \<sigma>_map_def using m(2) by auto
-            thus "\<sigma> v = \<sigma>' v" using n \<sigma>_map_constant[of "m + n"] by simp
-          qed
-          moreover have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def by (simp add: P_conforms path_conforms_with_strategy_drop)
-          ultimately show ?thesis using path_conforms_with_strategy_irrelevant_updates by blast
-        qed
-        moreover have "strategy p \<sigma>'" unfolding \<sigma>_set_def using \<sigma>'(1) G_def \<sigma>_map_in_G by auto
-        moreover have "strategy_attracts_via p \<sigma>' (P' $ 0) S W" proof-
-          have "P $ n \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
-          hence "choose' (P $ n) (choose (P $ n))" using choose_works by blast
-          hence "strategy_attracts_via p \<sigma>' (P $ n) S W" unfolding choose'_def using n \<sigma>_map_def by blast
-          moreover have "P $ n = P' $ 0" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
-          ultimately show ?thesis by simp
-        qed
-        ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
-          unfolding strategy_attracts_via_def using `\<not>lnull P'` by blast
-        moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W" using lset_ldropn_subset by fastforce
-        ultimately show False by (meson Diff_iff lset_lnth)
+      obtain n where n: "path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
+        using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S - W` P_valid P_conforms[unfolded \<sigma>_def]]
+          by blast
+      def [simp]: \<sigma>' \<equiv> "\<sigma>_map P n"
+      def [simp]: P' \<equiv> "ldropn n P"
+      have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
+      moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
+      moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
+      moreover have "path_conforms_with_strategy p P' \<sigma>'" using n by simp
+      moreover have "strategy p \<sigma>'" unfolding \<sigma>'_def
+        using \<sigma>_map_strategy `lset P \<subseteq> S - W` `\<not>lfinite P` infinite_small_llength by blast
+      moreover have "strategy_attracts_via p \<sigma>' (P' $ 0) S W" proof-
+        have "P $ n \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
+        hence "\<sigma>' \<in> good (P $ n)" using \<sigma>_map_good by (simp add: \<sigma>_map_def choose_good)
+        hence "strategy_attracts_via p \<sigma>' (P $ n) S W" unfolding good_def by blast
+        moreover have "P $ n = P' $ 0" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
+        ultimately show ?thesis by simp
       qed
+      ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
+        unfolding strategy_attracts_via_def using `\<not>lnull P'` by blast
+      moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W" using lset_ldropn_subset by fastforce
+      ultimately show False by (meson Diff_iff lset_lnth)
     qed
   }
   hence "strategy_attracts p \<sigma> S W" using strategy_attracts_def strategy_attracts_via_def by auto
-  thus ?thesis using \<sigma>_valid by auto
+  thus ?thesis using well_ordered_strategy_valid by auto
 qed
 
 lemma merge_winning_strategies:
-  assumes "S \<subseteq> V" "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
+  assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> (\<forall>v \<in> S. winning_strategy p \<sigma> v)"
 proof-
   show ?thesis sorry
