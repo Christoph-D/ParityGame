@@ -200,6 +200,21 @@ end -- "WellOrderedStrategies"
 
 context ParityGame begin
 
+lemma no_winning_strategy_on_deadends:
+  assumes "v \<in> VV p" "deadend v" "strategy p \<sigma>"
+  shows "\<not>winning_strategy p \<sigma> v"
+proof
+  assume contra: "winning_strategy p \<sigma> v"
+  obtain P where
+    P: "\<not>lnull P" "P $ 0 = v" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
+    using strategy_conforming_path_exists_single assms by blast
+  obtain P' where "P = LCons v P'" using P(1) P(2) by (metis lnth_0 not_lnull_conv)
+  moreover hence "lnull P'" using `deadend v` P(3) valid_path_cons_simp by auto
+  ultimately have "P = LCons v LNil" by simp
+  hence "\<not>winning_path p P" unfolding winning_path_def using `v \<in> VV p` by auto
+  thus False using winning_strategy_def contra P by blast
+qed
+
 (* An attractor set S - W of W cannot contain deadends because from deadends one cannot attract to W. *)
 lemma attractor_no_deadends:
   assumes "S \<subseteq> V" "v \<in> S - W" "strategy_attracts_via p \<sigma> v S W"
