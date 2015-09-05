@@ -168,7 +168,7 @@ lemma strategy_attracts_irrelevant:
         with m(3) show ?thesis by simp
       qed
       moreover from `m \<le> n` P'(6) have "enat m < llength P"
-        using dual_order.strict_trans by fastforce
+        using dual_order.strict_trans by (metis enat_ord_simps(2) le_imp_less_Suc)
       moreover have "P $ m \<in> W" proof-
         from `m \<le> n` have "enat m < enat (Suc n)" by simp
         with prefix have "P' $ m = P $ m" using ltake_lnth by blast

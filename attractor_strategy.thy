@@ -82,7 +82,8 @@ proof-
 
         from `m \<le> n` n_valid(2) have "enat (Suc m) < llength P''"
           by (metis Suc_ile_eq dual_order.strict_iff_order dual_order.strict_trans enat_ord_simps(2))
-        hence 3: "enat (Suc m) < llength P" using dual_order.strict_trans enat_ltl_Suc by force
+        moreover have "llength P'' \<le> llength P" unfolding P''_def by (metis P(1) ile_eSuc llength_LCons ltl_simps(2) not_lnull_conv)
+        ultimately have 3: "enat (Suc m) < llength P" by simp
 
         with 1 2 3 show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" by blast
       next
