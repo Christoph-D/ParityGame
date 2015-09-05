@@ -14,7 +14,7 @@ locale WellOrderedStrategies = ParityGame +
     and r_wo: "well_order_on {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v} r"
     and good_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v"
     and good_strategies: "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>"
-    and strategies_continue: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; w \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> \<sigma> \<in> good w"
+    and strategies_continue: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> \<sigma> \<in> good w"
 begin
 
 abbreviation "Strategies \<equiv> {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
@@ -250,7 +250,7 @@ proof-
   next
     show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
   next
-    fix v w \<sigma> assume v: "v \<in> S - W" "w \<in> S - W" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
+    fix v w \<sigma> assume v: "v \<in> S - W" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
     hence \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v S W" unfolding good_def by simp_all
     hence "strategy_attracts_via p \<sigma> w S W" using strategy_attracts_via_successor v by blast
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
@@ -368,19 +368,25 @@ proof-
   next
     show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
   next
-    fix v w \<sigma> assume v: "v \<in> S" "w \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
+    fix v w \<sigma> assume v: "v \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
     hence \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v" unfolding good_def by simp_all
     hence "winning_strategy p \<sigma> w" proof (cases)
       assume "v \<in> VV p"
-      moreover hence "\<sigma> v = w" using v(4) by blast
+      moreover hence "\<sigma> v = w" using v(3) by blast
       moreover have "\<not>deadend v" using no_VVp_deadends `v \<in> VV p` `v \<in> S` by blast
       ultimately show ?thesis using strategy_extends_VVp \<sigma> by blast
     next
       assume "v \<notin> VV p"
-      hence "v \<in> VV p**" using edges_are_in_V v(3) by auto
+      hence "v \<in> VV p**" using edges_are_in_V v(2) by auto
       thus ?thesis using strategy_extends_VVpstar \<sigma> `v\<rightarrow>w` by blast
     qed
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
+  qed
+
+  have S_closed: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> w \<in> S" proof-
+    fix v w \<sigma> assume "v \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
+    hence "\<sigma> \<in> good w" using strategies_continue by blast
+    thus "w \<in> S" using strategies_continue edges_are_in_V good_def strategies_ex `v\<rightarrow>w` by auto
   qed
 
   def [simp]: \<sigma> \<equiv> "well_ordered_strategy"
@@ -391,37 +397,38 @@ proof-
       and P_maximal: "maximal_path P"
       and P_conforms: "path_conforms_with_strategy p P \<sigma>"
       and P_valid_start: "P $ 0 = v0"
+    note P = this
     have "winning_path p P" proof (rule ccontr)
       assume contra: "\<not>winning_path p P"
       hence "winning_path p** P" using paths_are_winning_for_exactly_one_player P_valid by blast
-      have "lset P \<subseteq> S" proof (rule ccontr)
-        (* This part needs work. *)
-        assume "\<not>lset P \<subseteq> S"
-        hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> S" by (meson lset_subset)
-        then obtain n where n: "enat n < llength P" "P $ n \<notin> S" "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> S)"
-          using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S"] by metis
-        from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S" using dual_order.strict_trans enat_ord_simps(2) by blast
-        hence "lset (ltake (enat n) P) \<subseteq> S" using lset_ltake by blast
-        have "P $ n \<notin> V - S" proof
-          assume "P $ n \<in> V - S"
-          hence "n \<noteq> 0" using P_valid_start `v0 \<in> S` n(2) by metis
-          then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
-          hence "P $ n' \<in> S" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S` by blast
-          def [simp]: P' \<equiv> "ldropn n' P"
-          def [simp]: \<sigma>' \<equiv> "choose (P $ n')"
-          hence \<sigma>': "strategy p \<sigma>'" "winning_strategy p \<sigma>' (P $ n')"
-            using `P $ n' \<in> S` choose_good good_def \<sigma>'_def by blast+
-          have "enat n' < llength P" using n(1) n' using dual_order.strict_trans enat_ord_simps(2) by blast
-          show False proof (cases)
-            assume "P $ n' \<in> VV p"
-            show False sorry
+      have "lset P \<subseteq> S" proof
+        fix v assume "v \<in> lset P"
+        thus "v \<in> S" using `v0 \<in> S` P `winning_path p** P` proof (induct arbitrary: v0 rule: llist_set_induct)
+          case (find P) thus ?case using lnth_0_conv_lhd by metis
+        next
+          case (step P v)
+          show ?case proof (cases)
+            assume "lnull (ltl P)"
+            hence "P = LCons v LNil" by (metis llist.disc(2) lset_cases step.hyps(2))
+            thus ?thesis using step.prems(1) step.prems(6) by auto
           next
-            assume "P $ n' \<notin> VV p"
-            show False sorry
+            have *: "\<exists>P'. P = LCons v0 P'" by (metis lhd_LCons_ltl lnth_0_conv_lhd step.prems(2) step.prems(6))
+            assume "\<not>lnull (ltl P)"
+            then obtain w P' where P': "P = LCons v0 (LCons w P')" by (metis * lhd_LCons_ltl ltl_simps(2))
+            hence "v0\<rightarrow>w" using step.prems(3) by (simp add: valid_path_edges')
+            { assume "v0 \<in> VV p"
+              hence "\<sigma> v0 = w" using P' path_conforms_with_strategy_start step.prems(5) by blast
+              hence "choose v0 v0 = w" by (simp add: step.prems(1) well_ordered_strategy_def)
+            }
+            hence "w \<in> S" using S_closed `v0\<rightarrow>w` choose_good step.prems(1) by blast
+            moreover have "valid_path (ltl P)" by (simp add: step.prems(3) valid_path_ltl)
+            moreover have "maximal_path (ltl P)" by (simp add: step.prems(4) maximal_ltl)
+            moreover have "path_conforms_with_strategy p (ltl P) \<sigma>" using step.prems(5) by auto
+            moreover have "ltl P $ 0 = w" by (simp add: P')
+            moreover have "winning_path p** (ltl P)" using `\<not>lnull P` `\<not>lnull (ltl P)` step.prems(7) winning_path_ltl by blast
+            ultimately show "v \<in> S" using step.hyps(3) `\<not>lnull (ltl P)` by blast
           qed
         qed
-        moreover have "P $ n \<in> V" using n(1) P_valid valid_path_finite_in_V' by blast
-        ultimately show False using n(2) by blast
       qed
       have "\<not>lfinite P" proof
         assume "lfinite P"
