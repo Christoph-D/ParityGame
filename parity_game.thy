@@ -221,11 +221,15 @@ proof-
       assume *: "enat (Suc i) > llength P"
       then obtain j where j: "llength P = enat j" using enat_iless by fastforce
       with * have "j \<le> i" by (metis enat_ord_simps(2) leI not_less_eq)
-      hence **: "?P $ i = P' $ (i - j) \<and> ?P $ (Suc i) = P' $ (Suc i - j)" using j lnth_lappend2[of P "j" "i" P'] lnth_lappend2[of P "j" "Suc i" P'] by simp
+      hence **: "?P $ i = P' $ (i - j) \<and> ?P $ (Suc i) = P' $ (Suc i - j)"
+        using j lnth_lappend2[of P "j" "i" P'] lnth_lappend2[of P "j" "Suc i" P'] by simp
       have "enat (Suc i) < llength P + llength P'" using `enat (Suc i) < llength ?P` by auto
-      with j have "enat (Suc i - j) < llength P'" by (metis `j \<le> i` add.commute enat_ord_simps(2) infinite_small_llength le_Suc_eq less_diff_conv2 lfinite_llength_enat plus_enat_simps(1))
-      moreover hence "enat (i - j) < llength P'" using Suc_diff_le Suc_ile_eq `j \<le> i` by fastforce
-      ultimately have "P' $ (i - j) \<rightarrow> P' $ (Suc i - j)" by (simp add: Suc_diff_le `j \<le> i` P'(2) valid_path_edges)
+      with j have "enat (Suc i - j) < llength P'"
+        by (metis `j \<le> i` add.commute enat_ord_simps(2) infinite_small_llength le_Suc_eq less_diff_conv2 lfinite_llength_enat plus_enat_simps(1))
+      moreover hence "enat (i - j) < llength P'"
+        using Suc_diff_le[OF `j \<le> i`] Suc_ile_eq order.strict_implies_order by auto
+      ultimately have "P' $ (i - j) \<rightarrow> P' $ (Suc i - j)"
+        by (simp add: Suc_diff_le `j \<le> i` P'(2) valid_path_edges)
       with ** have "?P $ i \<rightarrow> ?P $ Suc i" by simp
     }
     ultimately show "?P $ i \<rightarrow> ?P $ Suc i" using linorder_cases by blast
