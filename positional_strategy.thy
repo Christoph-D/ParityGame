@@ -810,27 +810,30 @@ proof-
         assume "\<not>deadend v"
         hence "\<exists>w. v\<rightarrow>w" by auto
         have all_in_attractor:
-          "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**)" sorry
-        moreover { fix p assume "v \<in> VV p"
-          have "\<not>(\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p (?deadends p**))" sorry
-        } note none_in_attractor = this
-        show False proof (cases)
-          assume "v \<in> VV Even"
-          hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Odd (?deadends Odd**)" using all_in_attractor none_in_attractor[of Even] by blast
-          hence "v \<in> attractor Odd (?deadends Odd**)" using `\<not>deadend v` `v \<in> VV Even` attractor_set_VVpstar by auto
-          thus False using `v \<in> V'` unfolding V'_def by blast
-        next
-          assume "v \<notin> VV Even"
-          hence "v \<in> VV Odd" using `v \<in> V` by simp
-          hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Even (?deadends Even**)" using all_in_attractor none_in_attractor[of Odd] by blast
-          hence "v \<in> attractor Even (?deadends Even**)" using `\<not>deadend v` `v \<in> VV Odd` attractor_set_VVpstar by auto
-          thus False using `v \<in> V'` unfolding V'_def by blast
+          "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**)" proof (rule ccontr)
+          fix w assume "v\<rightarrow>w" "\<not>(w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**))"
+          hence "w \<in> V'" unfolding V'_def using edges_are_in_V by auto
+          hence "w \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v\<rightarrow>w` edges_are_in_V by auto
+          hence "v \<rightarrow>\<^bsub>G'\<^esub> w" using `v\<rightarrow>w` `v \<in> V\<^bsub>G'\<^esub>` unfolding G'_def subgame_def by auto
+          thus False using `Digraph.deadend G' v` using `w \<in> V\<^bsub>G'\<^esub>` by blast
         qed
+        { fix p assume "v \<in> VV p"
+          { assume "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p (?deadends p**)"
+            hence "v \<in> attractor p (?deadends p**)" using `v \<in> VV p` attractor_set_VVp by blast
+            hence False using `v \<in> V'` unfolding V'_def by (cases p) blast+
+          }
+          hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor p** (?deadends p****)" using all_in_attractor by (cases p) auto
+          hence "v \<in> attractor p** (?deadends p****)" using `\<not>deadend v` `v \<in> VV p` attractor_set_VVpstar by auto
+          hence False using `v \<in> V'` unfolding V'_def by (cases p) auto
+        }
+        thus False using `v \<in> V` by auto
       qed
     qed
     ultimately obtain p \<sigma> where \<sigma>: "ParityGame.strategy G' p \<sigma>" "ParityGame.winning_strategy G' p \<sigma> v0"
       using ParityGame.positional_strategy_exists_without_deadends[of G'] by blast
-    def \<sigma>' \<equiv> "override_on \<sigma>_arbitrary \<sigma> V'"
+    obtain \<sigma>_attr where \<sigma>_attr: "strategy p \<sigma>_attr" "strategy_attracts p \<sigma>_attr (attractor p (?deadends p**)) (?deadends p**)"
+      using attractor_has_strategy[OF `?deadends p** \<subseteq> V`] by blast
+    def \<sigma>' \<equiv> "override_on \<sigma>_attr \<sigma> V'"
     have "strategy p \<sigma>'" proof-
       { fix v assume v: "v \<in> VV p" "\<not>deadend v"
         have "v\<rightarrow>\<sigma>' v" proof (cases)
@@ -843,8 +846,8 @@ proof-
           thus ?thesis unfolding \<sigma>'_def using `v \<in> V'` by simp
         next
           assume "v \<notin> V'"
-          hence "\<sigma>' v = \<sigma>_arbitrary v" unfolding \<sigma>'_def by simp
-          thus ?thesis using v valid_arbitrary_strategy[unfolded strategy_def] by auto
+          hence "\<sigma>' v = \<sigma>_attr v" unfolding \<sigma>'_def by simp
+          thus ?thesis using v \<sigma>_attr(1)[unfolded strategy_def] by auto
         qed
       }
       thus ?thesis unfolding strategy_def by blast
@@ -852,7 +855,10 @@ proof-
     moreover have "winning_strategy p \<sigma>' v0" proof-
       { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "P $ 0 = v0"
         assume contra: "\<not>winning_path p P"
-        have "lset P \<subseteq> V'" sorry
+        have "lset P \<subseteq> V'" proof (rule ccontr)
+          assume "\<not>lset P \<subseteq> V'"
+          show False sorry
+        qed
         have False sorry
       }
       thus ?thesis unfolding winning_strategy_def by blast
