@@ -747,7 +747,7 @@ proof-
   ultimately show ?thesis by blast
 qed
 
-theorem positional_strategy_exists:
+theorem positional_strategy_exists_without_deadends:
   assumes "v \<in> V" "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
 proof-
@@ -755,6 +755,115 @@ proof-
   with assms show ?thesis
     by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
        (rule ParityGame.positional_strategy_induction_step, simp_all)
+qed
+
+theorem positional_strategy_exists:
+  assumes "v0 \<in> V"
+  shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0"
+proof-
+  let ?deadends = "\<lambda>p. {v \<in> VV p. deadend v}"
+  have deadends_in_V: "\<And>p. ?deadends p \<subseteq> V" by auto
+  { fix p
+    def A \<equiv> "attractor p (?deadends p**)"
+    assume v_in_attractor: "v0 \<in> attractor p (?deadends p**)"
+    then obtain \<sigma> where \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> A (?deadends p**)"
+      using attractor_has_strategy[of "?deadends p**" "p"] A_def deadends_in_V by blast
+
+    have "A \<subseteq> V" using A_def using attractor_is_bounded_by_V deadends_in_V by blast
+    hence "A - ?deadends p** \<subseteq> V" by auto
+
+    have "winning_strategy p \<sigma> v0" proof (unfold winning_strategy_def, clarify)
+      fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>" "v0 = P $ 0"
+      with \<sigma>(2) v_in_attractor obtain i where i_def: "enat i < llength P" "P $ i \<in> ?deadends p**" "lset (ltake (enat i) P) \<subseteq> A"
+        unfolding strategy_attracts_def strategy_attracts_via_def using A_def by blast
+      have *: "enat (Suc i) = llength P" using P(2) i_def valid_path_ends_on_deadend by auto
+      hence "lfinite P" using llength_eq_enat_lfiniteD by force
+      moreover have "llast P \<in> VV p**" proof-
+        from * have "eSuc (enat i) = llength P" by (simp add: eSuc_enat)
+        moreover have "P $ i \<in> VV p**" using i_def by blast
+        ultimately show ?thesis by (metis llast_conv_lnth)
+      qed
+      ultimately show "winning_path p P" using winning_path_def P(1) by blast
+    qed
+    hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0" using \<sigma> by blast
+  } note lemma_path_to_deadend = this
+  def V' \<equiv> "V - (attractor Even (?deadends Even**)) - (attractor Odd (?deadends Odd**))"
+  hence "V' \<subseteq> V" by blast
+  show ?thesis proof (cases)
+    assume "v0 \<in> V'"
+    hence "V' \<inter> V \<noteq> {}" using `v0 \<in> V` by blast
+    def G' \<equiv> "subgame V'"
+    have "ParityGame G'" using `V' \<inter> V \<noteq> {}` unfolding G'_def using subgame_ParityGame by blast
+    moreover have "v0 \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v0 \<in> V` `v0 \<in> V'` by simp
+    moreover have V'_no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>Digraph.deadend G' v" proof
+      fix v assume "v \<in> V\<^bsub>G'\<^esub>" "Digraph.deadend G' v"
+      hence "v \<in> V'" "v \<in> V" unfolding G'_def subgame_def by simp_all
+      show False proof (cases)
+        assume "deadend v"
+        { fix p assume "v \<in> VV p**"
+          hence "v \<in> attractor p (?deadends p**)" using `deadend v`
+            using attractor_set_base[of "?deadends p**" p] by blast
+          hence False using `v \<in> V'` unfolding V'_def by (cases p) simp_all
+        }
+        thus False using `v \<in> V` by auto
+      next
+        assume "\<not>deadend v"
+        hence "\<exists>w. v\<rightarrow>w" by auto
+        have all_in_attractor:
+          "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**)" sorry
+        moreover { fix p assume "v \<in> VV p"
+          have "\<not>(\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p (?deadends p**))" sorry
+        } note none_in_attractor = this
+        show False proof (cases)
+          assume "v \<in> VV Even"
+          hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Odd (?deadends Odd**)" using all_in_attractor none_in_attractor[of Even] by blast
+          hence "v \<in> attractor Odd (?deadends Odd**)" using `\<not>deadend v` `v \<in> VV Even` attractor_set_VVpstar by auto
+          thus False using `v \<in> V'` unfolding V'_def by blast
+        next
+          assume "v \<notin> VV Even"
+          hence "v \<in> VV Odd" using `v \<in> V` by simp
+          hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Even (?deadends Even**)" using all_in_attractor none_in_attractor[of Odd] by blast
+          hence "v \<in> attractor Even (?deadends Even**)" using `\<not>deadend v` `v \<in> VV Odd` attractor_set_VVpstar by auto
+          thus False using `v \<in> V'` unfolding V'_def by blast
+        qed
+      qed
+    qed
+    ultimately obtain p \<sigma> where \<sigma>: "ParityGame.strategy G' p \<sigma>" "ParityGame.winning_strategy G' p \<sigma> v0"
+      using ParityGame.positional_strategy_exists_without_deadends[of G'] by blast
+    def \<sigma>' \<equiv> "override_on \<sigma>_arbitrary \<sigma> V'"
+    have "strategy p \<sigma>'" proof-
+      { fix v assume v: "v \<in> VV p" "\<not>deadend v"
+        have "v\<rightarrow>\<sigma>' v" proof (cases)
+          assume "v \<in> V'"
+          hence "v \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `V' \<subseteq> V` by auto
+          hence "v \<in> ParityGame.VV G' p" unfolding G'_def subgame_def using `v \<in> VV p` by auto
+          moreover have "\<not>Digraph.deadend G' v" using V'_no_deadends `v \<in> V\<^bsub>G'\<^esub>` by blast
+          ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1)[unfolded ParityGame.strategy_def[OF `ParityGame G'`]] by blast
+          hence "v \<rightarrow> \<sigma> v" unfolding G'_def subgame_def by auto
+          thus ?thesis unfolding \<sigma>'_def using `v \<in> V'` by simp
+        next
+          assume "v \<notin> V'"
+          hence "\<sigma>' v = \<sigma>_arbitrary v" unfolding \<sigma>'_def by simp
+          thus ?thesis using v valid_arbitrary_strategy[unfolded strategy_def] by auto
+        qed
+      }
+      thus ?thesis unfolding strategy_def by blast
+    qed
+    moreover have "winning_strategy p \<sigma>' v0" proof-
+      { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "P $ 0 = v0"
+        assume contra: "\<not>winning_path p P"
+        have "lset P \<subseteq> V'" sorry
+        have False sorry
+      }
+      thus ?thesis unfolding winning_strategy_def by blast
+    qed
+    ultimately show ?thesis by blast
+  next
+    assume "v0 \<notin> V'"
+    then obtain p where "v0 \<in> attractor p (?deadends p**)"
+      unfolding V'_def using `v0 \<in> V` by blast
+    thus ?thesis using lemma_path_to_deadend[of p] by blast
+  qed
 qed
 
 end -- "context ParityGame"
