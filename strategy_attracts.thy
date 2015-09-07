@@ -286,6 +286,25 @@ lemma strategy_attracts_VVpstar:
   shows "\<not>v0 \<rightarrow> w0"
   by (metis assms strategy_attracts_not_outside strategy_attracts_via_successor)
 
+lemma attracted_path:
+  assumes "W \<subseteq> V"
+    and \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> S W"
+    and P: "\<not>lfinite P" "valid_path P" "path_conforms_with_strategy p P \<sigma>" "lset P \<inter> S \<noteq> {}"
+  shows "lset P \<inter> W \<noteq> {}"
+proof-
+  obtain n where n: "P $ n \<in> S" using P(4) path_set_at[of _ P] by blast
+  def P' \<equiv> "ldropn n P"
+  have "\<not>lfinite P'" unfolding P'_def using P(1) by auto
+  hence "\<not>lnull P'" by auto
+  moreover have "valid_path P'" unfolding P'_def using P(2) valid_path_drop by blast
+  moreover hence "maximal_path P'" using `\<not>lfinite P'` infinite_path_is_maximal by blast
+  moreover have "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def using P(3) path_conforms_with_strategy_drop by blast
+  moreover have "P' $ 0 \<in> S" unfolding P'_def by (simp add: P(1) n infinite_small_llength)
+  ultimately obtain m where "enat m < llength P'" "P' $ m \<in> W" using \<sigma>(2) unfolding strategy_attracts_def strategy_attracts_via_def by blast
+  hence "lset P' \<inter> W \<noteq> {}" by (meson disjoint_iff_not_equal in_lset_conv_lnth)
+  thus ?thesis unfolding P'_def using in_lset_ldropnD[of _ n P] by blast
+qed
+
 (* Winning strategies *)
 
 lemma strategy_extends_VVp:
