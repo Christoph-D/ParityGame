@@ -355,6 +355,11 @@ proof (rule ccontr)
   with i show False by simp
 qed
 
+lemma infinite_path_is_maximal: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> maximal_path P"
+  apply (coinduction arbitrary: P rule: maximal_path.coinduct)
+  apply (cases rule: valid_path.cases, simp)
+  by simp_all
+
 end -- "locale Digraph"
 
 datatype Player = Even | Odd
