@@ -787,7 +787,8 @@ proof-
     qed
     hence "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0" using \<sigma> by blast
   } note lemma_path_to_deadend = this
-  def V' \<equiv> "V - (attractor Even (?deadends Even**)) - (attractor Odd (?deadends Odd**))"
+  def A \<equiv> "\<lambda>p. attractor p (?deadends p**)"
+  def V' \<equiv> "V - A Even - A Odd"
   hence "V' \<subseteq> V" by blast
   show ?thesis proof (cases)
     assume "v0 \<in> V'"
@@ -803,7 +804,7 @@ proof-
         { fix p assume "v \<in> VV p**"
           hence "v \<in> attractor p (?deadends p**)" using `deadend v`
             using attractor_set_base[of "?deadends p**" p] by blast
-          hence False using `v \<in> V'` unfolding V'_def by (cases p) simp_all
+          hence False using `v \<in> V'` unfolding V'_def A_def by (cases p) simp_all
         }
         thus False using `v \<in> V` by auto
       next
@@ -812,7 +813,7 @@ proof-
         have all_in_attractor:
           "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**)" proof (rule ccontr)
           fix w assume "v\<rightarrow>w" "\<not>(w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**))"
-          hence "w \<in> V'" unfolding V'_def using edges_are_in_V by auto
+          hence "w \<in> V'" unfolding V'_def using edges_are_in_V A_def by auto
           hence "w \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v\<rightarrow>w` edges_are_in_V by auto
           hence "v \<rightarrow>\<^bsub>G'\<^esub> w" using `v\<rightarrow>w` `v \<in> V\<^bsub>G'\<^esub>` unfolding G'_def subgame_def by auto
           thus False using `Digraph.deadend G' v` using `w \<in> V\<^bsub>G'\<^esub>` by blast
@@ -820,20 +821,21 @@ proof-
         { fix p assume "v \<in> VV p"
           { assume "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p (?deadends p**)"
             hence "v \<in> attractor p (?deadends p**)" using `v \<in> VV p` attractor_set_VVp by blast
-            hence False using `v \<in> V'` unfolding V'_def by (cases p) blast+
+            hence False using `v \<in> V'` unfolding V'_def A_def by (cases p) blast+
           }
           hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor p** (?deadends p****)" using all_in_attractor by (cases p) auto
           hence "v \<in> attractor p** (?deadends p****)" using `\<not>deadend v` `v \<in> VV p` attractor_set_VVpstar by auto
-          hence False using `v \<in> V'` unfolding V'_def by (cases p) auto
+          hence False using `v \<in> V'` unfolding V'_def A_def by (cases p) auto
         }
         thus False using `v \<in> V` by auto
       qed
     qed
     ultimately obtain p \<sigma> where \<sigma>: "ParityGame.strategy G' p \<sigma>" "ParityGame.winning_strategy G' p \<sigma> v0"
       using ParityGame.positional_strategy_exists_without_deadends[of G'] by blast
-    obtain \<sigma>_attr where \<sigma>_attr: "strategy p \<sigma>_attr" "strategy_attracts p \<sigma>_attr (attractor p (?deadends p**)) (?deadends p**)"
-      using attractor_has_strategy[OF `?deadends p** \<subseteq> V`] by blast
-    def \<sigma>' \<equiv> "override_on \<sigma>_attr \<sigma> V'"
+    obtain \<sigma>_attr where \<sigma>_attr: "strategy p \<sigma>_attr" "strategy_attracts p \<sigma>_attr (A p) (?deadends p**)"
+      using attractor_has_strategy[OF `?deadends p** \<subseteq> V`] using A_def by blast
+    def \<sigma>' \<equiv> "override_on \<sigma> \<sigma>_attr (A Even \<union> A Odd)"
+    have \<sigma>'_is_\<sigma>_on_V': "\<And>v. v \<in> V' \<Longrightarrow> \<sigma>' v = \<sigma> v" unfolding V'_def \<sigma>'_def A_def by (cases p) simp_all 
     have "strategy p \<sigma>'" proof-
       { fix v assume v: "v \<in> VV p" "\<not>deadend v"
         have "v\<rightarrow>\<sigma>' v" proof (cases)
@@ -843,10 +845,10 @@ proof-
           moreover have "\<not>Digraph.deadend G' v" using V'_no_deadends `v \<in> V\<^bsub>G'\<^esub>` by blast
           ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1)[unfolded ParityGame.strategy_def[OF `ParityGame G'`]] by blast
           hence "v \<rightarrow> \<sigma> v" unfolding G'_def subgame_def by auto
-          thus ?thesis unfolding \<sigma>'_def using `v \<in> V'` by simp
+          thus ?thesis using \<sigma>'_is_\<sigma>_on_V' `v \<in> V'` by simp
         next
           assume "v \<notin> V'"
-          hence "\<sigma>' v = \<sigma>_attr v" unfolding \<sigma>'_def by simp
+          hence "\<sigma>' v = \<sigma>_attr v" unfolding \<sigma>'_def V'_def A_def by (cases p) (insert edges_are_in_V v(2), auto)
           thus ?thesis using v \<sigma>_attr(1)[unfolded strategy_def] by auto
         qed
       }
@@ -855,8 +857,20 @@ proof-
     moreover have "winning_strategy p \<sigma>' v0" proof-
       { fix P assume P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>'" "P $ 0 = v0"
         assume contra: "\<not>winning_path p P"
+        have "\<not>lfinite P" sorry
         have "lset P \<subseteq> V'" proof (rule ccontr)
           assume "\<not>lset P \<subseteq> V'"
+          {
+            have "strategy_attracts p (override_on \<sigma>' \<sigma>_attr (A p - ?deadends p**)) (A p) (?deadends p**)"
+              using strategy_attracts_irrelevant_override[OF \<sigma>_attr(2) \<sigma>_attr(1) `strategy p \<sigma>'`] by blast
+            moreover have "override_on \<sigma>' \<sigma>_attr (A p - ?deadends p**) = \<sigma>'" by (rule ext, unfold \<sigma>'_def, cases p) (simp_all add: override_on_def)
+            ultimately have "strategy_attracts p \<sigma>' (A p) (?deadends p**)" by simp
+            moreover assume "lset P \<inter> A p \<noteq> {}"
+            ultimately have "lset P \<inter> ?deadends p** \<noteq> {}"
+              using attracted_path[OF `?deadends p** \<subseteq> V` `strategy p \<sigma>'` _ `\<not>lfinite P` P(2) P(4)] by blast
+            hence "\<exists>n. enat n < llength P \<and> deadend (P $ n)" by (metis (no_types, lifting) CollectD lset_intersect_lnth)
+            hence False using `\<not>lfinite P` P(2) by (metis llength_eq_enat_lfiniteD valid_path_ends_on_deadend)
+          }
           show False sorry
         qed
         have False sorry
