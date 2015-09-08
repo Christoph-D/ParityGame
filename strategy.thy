@@ -46,7 +46,7 @@ definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
 lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof-
   { fix v assume "\<not>deadend v"
-    hence "\<not>deadend v \<Longrightarrow> v \<rightarrow> \<sigma>_arbitrary v" unfolding \<sigma>_arbitrary_def using someI_ex[of "\<lambda>w. v\<rightarrow>w"] by blast
+    hence "v \<rightarrow> \<sigma>_arbitrary v" unfolding \<sigma>_arbitrary_def using someI_ex[of "\<lambda>w. v\<rightarrow>w"] by blast
   }
   thus ?thesis unfolding strategy_def by blast
 qed
@@ -192,7 +192,7 @@ lemma path_conforms_with_strategy_lappend:
   assumes
     P: "lfinite P" "\<not>lnull P" "path_conforms_with_strategy p P \<sigma>"
     and P': "\<not>lnull P'" "path_conforms_with_strategy p P' \<sigma>"
-    and conforms: "llast P \<in> VV p" "\<sigma> (llast P) = lhd P'"
+    and conforms: "llast P \<in> VV p \<Longrightarrow> \<sigma> (llast P) = lhd P'"
   shows "path_conforms_with_strategy p (lappend P P') \<sigma>"
 using assms proof (induct P rule: lfinite_induct, simp)
   case (LCons P)
@@ -202,18 +202,18 @@ using assms proof (induct P rule: lfinite_induct, simp)
     have "path_conforms_with_strategy p (LCons (lhd P) P') \<sigma>" proof (cases)
       assume "lhd P \<in> VV p"
       moreover with v0 have "lhd P' = \<sigma> (lhd P)"
-        using LCons.prems(6) by auto
+        using LCons.prems(5) by auto
       ultimately show ?thesis
         using path_conforms_VVp[of "lhd P" p "lhd P'" \<sigma>] by (metis (no_types) LCons.prems(4) `\<not>lnull P'` lhd_LCons_ltl)
     next
       assume "lhd P \<notin> VV p"
-      thus ?thesis using path_conforms_VVpstar using LCons.prems(5) v0 by auto
+      thus ?thesis using path_conforms_VVpstar using LCons.prems(4) v0 by blast
     qed
     thus ?thesis by (simp add: v0)
   next
     assume "\<not>lnull (ltl P)"
     hence *: "path_conforms_with_strategy p (lappend (ltl P) P') \<sigma>"
-      by (metis LCons.hyps(3) LCons.prems(1) LCons.prems(2) LCons.prems(5) LCons.prems(6) assms(4) assms(5) lhd_LCons_ltl llast_LCons2 path_conforms_with_strategy_ltl)
+      by (metis LCons.hyps(3) LCons.prems(1) LCons.prems(2) LCons.prems(5) LCons.prems(5) assms(4) assms(5) lhd_LCons_ltl llast_LCons2 path_conforms_with_strategy_ltl)
     have "path_conforms_with_strategy p (LCons (lhd P) (lappend (ltl P) P')) \<sigma>" proof (cases)
       assume "lhd P \<in> VV p"
       moreover hence "lhd (ltl P) = \<sigma> (lhd P)"
