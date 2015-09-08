@@ -158,8 +158,8 @@ next
   ultimately show ?case
     using step.prems step.hyps(2)
     attractor_strategy_on_extends[of p _ v0 "insert v0 S" W "W \<union> S \<union> directly_attracted p S"]
-    attractor_strategy_on_extends[of p _ v0 "S" W "W \<union> S \<union> directly_attracted p S"]
-    attractor_strategy_on_extends[of p _ v0 "{}" W "W \<union> S \<union> directly_attracted p S"]
+    attractor_strategy_on_extends[of p _ v0 "S"           W "W \<union> S \<union> directly_attracted p S"]
+    attractor_strategy_on_extends[of p _ v0 "{}"          W "W \<union> S \<union> directly_attracted p S"]
     by blast
 next
   case (union M)
