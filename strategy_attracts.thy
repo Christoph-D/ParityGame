@@ -5,6 +5,45 @@ imports
   parity_game strategy
 begin
 
+locale ValidMaximalConformingPath = ParityGame +
+  fixes P \<sigma>
+  assumes P_not_null: "\<not>lnull P"
+    and P_valid: "valid_path P"
+    and P_maximal: "maximal_path P"
+    and P_conforms: "path_conforms_with_strategy p P \<sigma>"
+begin
+
+definition "v0 \<equiv> lhd P"
+definition "Ptl \<equiv> ltl P"
+
+lemma P_LCons: "P = LCons v0 Ptl" unfolding v0_def Ptl_def using P_not_null by simp
+
+lemma Ptl_valid [simp]: "valid_path Ptl" unfolding Ptl_def using P_valid valid_path_ltl by blast
+lemma Ptl_maximal [simp]: "maximal_path Ptl" unfolding Ptl_def using P_maximal maximal_ltl by blast
+lemma Ptl_conforms [simp]: "path_conforms_with_strategy p Ptl \<sigma>" unfolding Ptl_def using P_conforms path_conforms_with_strategy_ltl by blast
+
+lemma Pdrop_valid [simp]: "valid_path (ldropn n P)" using P_valid valid_path_drop by blast
+lemma Pdrop_maximal [simp]: "maximal_path (ldropn n P)" using P_maximal maximal_drop by blast
+lemma Pdrop_conforms [simp]: "path_conforms_with_strategy p (ldropn n P) \<sigma>" using P_conforms path_conforms_with_strategy_drop by blast
+
+lemma prefix_valid [simp]: "valid_path (ltake n P)" using P_valid valid_path_prefix by blast
+lemma prefix_conforms [simp]: "path_conforms_with_strategy p (ltake n P) \<sigma>" using P_conforms path_conforms_with_strategy_prefix by blast
+
+lemma
+  assumes "\<not>deadend v0"
+  shows Ptl_not_null: "\<not>lnull Ptl"
+    and Ptl_0: "Ptl $ 0 = lhd Ptl"
+    and Ptl_edge: "v0 \<rightarrow> lhd Ptl"
+proof-
+  show "\<not>lnull Ptl" using P_LCons assms P_maximal maximal_no_deadend by metis
+  then obtain w Ps where w: "P = LCons v0 (LCons w Ps)" using P_LCons by (metis lhd_LCons_ltl)
+  hence "Ptl $ 0 = w" unfolding Ptl_def by (metis lnth_0 ltl_simps(2))
+  moreover show "Ptl $ 0 = lhd Ptl" using Ptl_def w `\<not>lnull Ptl` lnth_0_conv_lhd by blast
+  ultimately show "v0 \<rightarrow> lhd Ptl" using P_valid w valid_path_edges' by metis
+qed
+
+end -- "ValidMaximalConformingPath"
+
 context ParityGame begin
 
 (* All \<sigma>-paths starting from v0 visit W and until then they stay in A. *)
@@ -12,6 +51,11 @@ definition strategy_attracts_via :: "Player \<Rightarrow> 'a Strategy \<Rightarr
   "strategy_attracts_via p \<sigma> v0 A W \<equiv> \<forall>P.
       \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0
     \<longrightarrow> (\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
+
+lemma (in ValidMaximalConformingPath)
+  assumes "strategy_attracts_via p \<sigma> v0 A W"
+  shows "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+  using P_not_null P_valid P_maximal P_conforms P_LCons by (metis assms lnth_0 strategy_attracts_via_def)
 
 (* All \<sigma>-paths starting from A visit W and until then they stay in A. *)
 definition strategy_attracts :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
