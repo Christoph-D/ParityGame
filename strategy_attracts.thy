@@ -305,6 +305,69 @@ proof-
   thus ?thesis unfolding P'_def using in_lset_ldropnD[of _ n P] by blast
 qed
 
+lemma attracted_path_VVpstar:
+  assumes "W \<subseteq> V"
+    and \<sigma>: "strategy p \<sigma>"
+    and \<sigma>': "strategy p** \<sigma>'" "strategy_attracts p** \<sigma>' S W"
+    and P: "\<not>lfinite P" "valid_path P" "path_conforms_with_strategy p P \<sigma>" "lset P \<inter> S \<noteq> {}"
+  shows "\<exists>P'. valid_path P' \<and> maximal_path P' \<and> path_conforms_with_strategy p P' \<sigma> \<and> P' $ 0 = P $ 0 \<and> lset P' \<inter> W \<noteq> {}"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> S" using P(4) path_set_at[of _ P] by (meson lset_intersect_lnth)
+  def P' \<equiv> "ltake (enat (Suc n)) P"
+  have "llength P' = min (enat (Suc n)) (llength P)" unfolding P'_def using llength_ltake by blast
+  with P(1) have P'_len: "llength P' = enat (Suc n)" by (simp add: infinite_small_llength less_imp_le min_absorb1)
+  have "lfinite P'" unfolding P'_def by auto
+  have "\<not>lnull P'" by (metis `llength P' = enat (Suc n)` enat.inject llength_eq_0 old.nat.distinct(1) zero_enat_def)
+  have "valid_path P'" unfolding P'_def using P(2) path_prefix_valid by blast
+  have P'_conforms: "path_conforms_with_strategy p P' \<sigma>" unfolding P'_def using P(3) path_conforms_with_strategy_prefix by blast
+  have "llast P' = P $ n" unfolding P'_def using P'_len
+    by (metis P'_def enat_ord_simps(2) ldropn_Suc_conv_ldropn lessI llast_LCons llast_ldropn lnull_ldropn lprefix_ltake_same ltake_is_lprefix ltake_ltake min.left_idem path_prefix_included)
+  have "P $ n \<in> V" by (simp add: assms(5) assms(6) valid_path_in_V')
+  obtain P'' where P'': "\<not>lnull P''" "valid_path P''" "maximal_path P''"
+    "path_conforms_with_strategy p P'' \<sigma>" "path_conforms_with_strategy p** P'' \<sigma>'"
+    "P'' $ 0 = P $ n"
+    using strategy_conforming_path_exists[OF `P $ n \<in> V` \<sigma> \<sigma>'(1)] by blast
+  { assume "llast P' \<in> VV p"
+    hence "P $ n \<in> VV p" using `llast P' = P $ n` by simp
+    moreover have "\<not>deadend (P $ n)" using P(1) P(2) valid_path_no_deadends by blast
+    ultimately have "\<sigma> (P $ n) = P $ Suc n"
+      using P(1) P(2) P(3) path_conforms_with_strategy_conforms infinite_path_is_maximal maximal_path_impl1 n(1) by auto
+    hence "\<sigma> (P $ n) = lhd (ltl P'')" using P''(6) lnth_0_conv_lhd[OF P''(1)] sledgehammer
+  }
+  def P2 \<equiv> "lappend P' (ltl P'')"
+  have "\<not>lnull P2" unfolding P2_def by (simp add: P''(1))
+  moreover have "valid_path P2" proof-
+    have "llast P' \<rightarrow> lhd P''" proof-
+      have "enat (Suc n) < llength P" using P(1) by blast
+      hence "P $ n \<rightarrow> P $ Suc n" using P(2) using valid_path_edges by blast
+      thus ?thesis using `llast P' = P $ n` P''(6) lnth_0_conv_lhd[OF P''(1)] by simp
+    qed
+    thus ?thesis unfolding P2_def
+      using valid_path_lappend[OF `lfinite P'` `valid_path P'` `\<not>lnull P''` `valid_path P''`]
+      by blast
+  qed
+  moreover have "maximal_path P2" unfolding P2_def
+    using maximal_path_lappend[OF `\<not>lnull P''` `maximal_path P''`] by blast
+  moreover have "path_conforms_with_strategy p P2 \<sigma>" proof-
+    { assume "llast P' \<in> VV p"
+      hence "P $ n \<in> VV p" using `llast P' = P $ n` by simp
+      moreover have "\<not>deadend (P $ n)" using P(1) P(2) valid_path_no_deadends by blast
+      ultimately have "\<sigma> (P $ n) = P $ Suc n"
+        using P(1) P(2) P(3) path_conforms_with_strategy_conforms infinite_path_is_maximal maximal_path_impl1 n(1) by auto
+      hence "\<sigma> (P $ n) = lhd P''" using P''(6) lnth_0_conv_lhd[OF P''(1)] by simp
+      hence "\<sigma> (llast P') = lhd P''" using `llast P' = P $ n` by simp
+    }
+    thus ?thesis unfolding P2_def using path_conforms_with_strategy_lappend `lfinite P'` `\<not>lnull P'` P'_conforms `\<not>lnull P''` P''(4) by blast
+  qed
+  moreover have "P2 $ 0 = P $ 0" unfolding P2_def by (metis P'_def `\<not> lnull P'` lnth_lappend1 lnth_lprefix lnull_0_llength ltake_is_lprefix)
+  moreover have "lset P2 \<inter> W \<noteq> {}" proof-
+    have "P' $ n \<in> S" unfolding P'_def using n(2) by (simp add: lnth_ltake)
+    hence "lset P'' \<inter> W \<noteq> {}" using \<sigma>'(2)[unfolded strategy_attracts_def strategy_attracts_via_def] P'' by blast
+    thus ?thesis unfolding P2_def sledgehammer
+  qed
+  ultimately show ?thesis by blast
+qed
+
 (* Winning strategies *)
 
 lemma strategy_extends_VVp:
