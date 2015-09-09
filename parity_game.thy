@@ -86,6 +86,9 @@ next
   qed
 qed
 
+lemma llength_ltake': "enat n < llength xs \<Longrightarrow> llength (ltake (enat n) xs) = enat n"
+  by (metis assms llength_ltake min.strict_order_iff)
+
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
 (* A path is a possibly infinite list of vertices. *)
