@@ -20,9 +20,18 @@ path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
 | path_conforms_VVp: "\<lbrakk> v \<in> VV p; w = \<sigma> v; path_conforms_with_strategy p (LCons w Ps) \<sigma> \<rbrakk> \<Longrightarrow> path_conforms_with_strategy p (LCons v (LCons w Ps)) \<sigma>"
 | path_conforms_VVpstar: "\<lbrakk> v \<notin> VV p; path_conforms_with_strategy p Ps \<sigma> \<rbrakk> \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
 
+end
+(* A valid maximal path that conforms to a strategy *)
+locale ValidMaximalConformingPath = ValidMaximalPath +
+  fixes p \<sigma> assumes P_conforms: "path_conforms_with_strategy p P \<sigma>"
+(* A valid maximal path that conforms to two strategies *)
+locale ValidMaximalConformingPathDouble = ValidMaximalConformingPath +
+  fixes \<sigma>' assumes P_conforms': "path_conforms_with_strategy p** P \<sigma>'"
+context ParityGame begin
+
 (* A strategy is winning for player p from v0 if every maximal \<sigma>-path starting in v0 is winning. *)
 definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 = v0 \<longrightarrow> winning_path p P"
+  "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. ValidMaximalConformingPath G P v0 p \<sigma> \<longrightarrow> winning_path p P"
 
 abbreviation path_prefix :: "'a Path \<Rightarrow> 'a Path \<Rightarrow> bool" where "path_prefix \<equiv> lprefix"
 
@@ -187,6 +196,11 @@ proof-
   hence "\<sigma> v = w" using P'' `path_conforms_with_strategy p P' \<sigma>` path_conforms_with_strategy_start by blast
   thus ?thesis by (metis P'' P'_def `enat n < llength P` assms(3) ldropn_Suc_conv_ldropn llist.inject)
 qed
+corollary (in ValidMaximalConformingPath) path_conforms_with_strategy_conforms:
+  assumes "enat (Suc n) < llength P" "P $ n \<in> VV p"
+  shows "\<sigma> (P $ n) = P $ Suc n"
+  using assms path_conforms_with_strategy_conforms P_valid P_conforms by blast
+
 
 lemma path_conforms_with_strategy_lappend:
   assumes
@@ -369,24 +383,103 @@ qed
 
 corollary strategy_conforming_path_exists:
   assumes "v0 \<in> V" "strategy p \<sigma>" "strategy p** \<sigma>'"
-  obtains P where
-    "\<not>lnull P" "P $ 0 = v0" "valid_path P" "maximal_path P"
-    "path_conforms_with_strategy p P \<sigma>" "path_conforms_with_strategy p** P \<sigma>'"
-  using assms greedy_conforming_path_properties by metis
+  obtains P where "ValidMaximalConformingPathDouble G P v0 p \<sigma> \<sigma>'"
+proof
+  show "ValidMaximalConformingPathDouble G (greedy_conforming_path p \<sigma> \<sigma>' v0) v0 p \<sigma> \<sigma>'"
+    using assms by unfold_locales simp_all
+qed
 
 corollary strategy_conforming_path_exists_single:
   assumes "v0 \<in> V" "strategy p \<sigma>"
-  obtains P where
-    "\<not>lnull P" "P $ 0 = v0" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
-  using assms strategy_conforming_path_exists[of v0 p \<sigma> \<sigma>_arbitrary] valid_arbitrary_strategy by metis
+  obtains P where "ValidMaximalConformingPath G P v0 p \<sigma>"
+proof
+  show "ValidMaximalConformingPath G (greedy_conforming_path p \<sigma> \<sigma>_arbitrary v0) v0 p \<sigma>"
+    using assms by unfold_locales simp_all
+qed
 
-lemma path_conforms_with_strategy_update_path:
+end
+
+context ValidMaximalConformingPath begin
+lemma Ptl_conforms [simp]: "path_conforms_with_strategy p Ptl \<sigma>"
+  unfolding Ptl_def using P_conforms path_conforms_with_strategy_ltl by blast
+lemma Pdrop_conforms [simp]: "path_conforms_with_strategy p (ldropn n P) \<sigma>"
+  using P_conforms path_conforms_with_strategy_drop by blast
+lemma prefix_conforms [simp]: "path_conforms_with_strategy p (ltake n P) \<sigma>"
+  using P_conforms path_conforms_with_strategy_prefix by blast
+lemma extension_conforms [simp]:
+  "(v' \<in> VV p \<Longrightarrow> \<sigma> v' = v0) \<Longrightarrow> path_conforms_with_strategy p (LCons v' P) \<sigma>"
+  by (metis P_LCons P_conforms path_conforms_VVp path_conforms_VVpstar)
+
+lemma extension_valid_maximal_conforming:
+  assumes "v'\<rightarrow>v0" "v' \<in> VV p \<Longrightarrow> \<sigma> v' = v0"
+  shows "ValidMaximalConformingPath G (LCons v' P) v' p \<sigma>"
+  using assms by unfold_locales simp_all
+
+lemma v0_VV: "v0 \<in> VV p \<or> v0 \<in> VV p**" by simp
+
+lemma conforms_to_another_strategy:
+  "path_conforms_with_strategy p P \<sigma>' \<Longrightarrow> ValidMaximalConformingPath G P v0 p \<sigma>'"
+  using P_not_null P_valid P_maximal P_v0 by unfold_locales blast+
+end
+
+lemma (in ParityGame) valid_maximal_conforming_path_0:
+  assumes "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
+  shows "ValidMaximalConformingPath G P (P $ 0) p \<sigma>"
+  using assms by unfold_locales (simp_all add: lnth_0_conv_lhd)
+
+locale ValidMaximalConformingPathNoDeadend = ValidMaximalConformingPath +
+  assumes v0_no_deadend: "\<not>deadend v0"
+begin
+definition "w0 \<equiv> lhd Ptl"
+definition "Ptltl \<equiv> ltl Ptl"
+
+lemma Ptl_not_null [simp]: "\<not>lnull Ptl"
+  using P_LCons P_maximal maximal_no_deadend v0_no_deadend by metis
+lemma Ptl_LCons: "Ptl = LCons w0 Ptltl" unfolding w0_def Ptltl_def by simp
+lemma P_LCons': "P = LCons v0 (LCons w0 Ptltl)" using P_LCons Ptl_LCons by simp
+lemma v0_edge_w0 [simp]: "v0\<rightarrow>w0" using P_valid P_LCons' by (metis valid_path_edges')
+
+lemma Ptl_0: "Ptl $ 0 = lhd Ptl" by (simp add: lhd_conv_lnth)
+lemma Ptl_edge [simp]: "v0 \<rightarrow> lhd Ptl" by (metis P_LCons' P_valid valid_path_edges' w0_def)
+
+lemma v0_conforms: "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
+  using path_conforms_with_strategy_start by (metis P_LCons' P_conforms)
+
+lemma w0_V [simp]: "w0 \<in> V" by (metis Ptl_LCons Ptl_valid valid_path_cons_simp)
+lemma w0_VV: "w0 \<in> VV p \<or> w0 \<in> VV p**" by simp
+end
+
+lemma (in ValidMaximalConformingPath) valid_maximal_conforming_lappend:
+  assumes "enat (Suc n) < llength P" "ValidMaximalConformingPath G P' (P $ n) p \<sigma>"
+  shows "ValidMaximalConformingPath G (lappend (ltake (enat (Suc n)) P) (ltl P')) v0 p \<sigma>"
+proof (unfold_locales)
+  let ?P = "lappend (ltake (enat (Suc n)) P) (ltl P')"
+  have len_Suc_P: "llength (ltake (enat (Suc n)) P) = enat (Suc n)"
+    using assms(1) llength_ltake' by blast
+  hence "enat (Suc n) \<le> llength ?P" by simp
+  thus "\<not>lnull ?P" using Suc_ile_eq by auto
+  have "\<not>deadend (P $ n)" using P_no_deadends assms(1) by blast
+  then interpret P': ValidMaximalConformingPathNoDeadend G P' "P $ n" p \<sigma>
+    by (unfold ValidMaximalConformingPathNoDeadend_def)
+       (simp add: assms(2), unfold_locales, simp)
+  have "P $ n \<rightarrow> P $ Suc n" using assms(1) P_valid valid_path_edges by blast
+  show "valid_path ?P" sorry
+  show "maximal_path ?P" proof-
+    have "maximal_path (ltl P')" using P'.Ptl_maximal P'.Ptl_def by simp
+    moreover have "\<not>lnull (ltl P')" using P'.Ptl_not_null P'.Ptl_def by simp
+    ultimately show ?thesis using maximal_path_lappend by blast
+  qed
+  show "path_conforms_with_strategy p (lappend (ltake (enat (Suc n)) P) (ltl P')) \<sigma>" sorry
+  show "lhd (lappend (ltake (enat (Suc n)) P) (ltl P')) = v0"
+    by (metis P_v0 Suc_ile_eq len_Suc_P dual_order.irrefl enat_ltl_Suc lappend_ltake_enat_ldropn lhd_lappend llist.expand lnull_ltlI order_refl)
+qed
+
+lemma (in ValidMaximalConformingPath) path_conforms_with_strategy_update_path:
   assumes \<sigma>: "strategy p \<sigma>" and \<sigma>': "strategy p \<sigma>'"
-    and P: "\<not>lnull P" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
     (* P is influenced by changing \<sigma> to \<sigma>'. *)
     and v: "v \<in> lset P" "v \<in> VV p" "\<not>deadend v" "\<sigma> v \<noteq> \<sigma>' v"
   shows "\<exists>P' n.
-    \<not>lnull P' \<and> valid_path P' \<and> maximal_path P' \<and> path_conforms_with_strategy p P' \<sigma>'
+    ValidMaximalConformingPath G P' (P' $ 0) p \<sigma>'
     \<and> enat (Suc n) < llength P' \<and> enat (Suc n) < llength P
     \<and> ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P
     \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n)
@@ -396,20 +489,25 @@ proof-
   def fail \<equiv> "\<lambda>P n. enat (Suc n) < llength P \<and> P $ n \<in> VV p \<and> \<not>deadend (P $ n) \<and> \<sigma>' (P $ n) \<noteq> P $ Suc n"
   hence "\<exists>n. fail P n" proof-
     from v(1) obtain n where n: "enat n < llength P" "P $ n = v" by (meson in_lset_conv_lnth)
-    with v(3) `maximal_path P`
+    with v(3) P_maximal
       have "enat (Suc n) < llength P" using maximal_path_impl1 by blast
     moreover from n(2) v(2)
       have "P $ n \<in> VV p" by simp
-    moreover with P(4) `enat (Suc n) < llength P` n(2) v(4) assms(4)
+    moreover with P_conforms `enat (Suc n) < llength P` n(2) v(4)
       have "\<sigma>' (P $ n) \<noteq> P $ Suc n" using path_conforms_with_strategy_conforms by auto
     ultimately show ?thesis unfolding fail_def using n(2) v(3) by blast
   qed
-  then obtain n where "fail P n" and n_min: "\<And>m. m < n \<Longrightarrow> \<not>fail P m" using obtain_min[of "\<lambda>n. fail P n"] by blast
-  hence n: "enat (Suc n) < llength P" "P $ n \<in> VV p" "\<not>deadend (P $ n)" "\<sigma>' (P $ n) \<noteq> P $ Suc n" unfolding fail_def by blast+
-  def P' \<equiv> "lappend (ltake (enat (Suc n)) P) (greedy_conforming_path p \<sigma>' \<sigma>_arbitrary (\<sigma>' (P $ n)))" (is "lappend ?A ?B")
+  then obtain n where "fail P n" and n_min: "\<And>m. m < n \<Longrightarrow> \<not>fail P m"
+    using obtain_min[of "\<lambda>n. fail P n"] by blast
+  hence n: "enat (Suc n) < llength P" "P $ n \<in> VV p" "\<not>deadend (P $ n)" "\<sigma>' (P $ n) \<noteq> P $ Suc n"
+    unfolding fail_def by blast+
+  def P' \<equiv> "lappend (ltake (enat (Suc n)) P) (greedy_conforming_path p \<sigma>' \<sigma>_arbitrary (\<sigma>' (P $ n)))"
+    (is "lappend ?A ?B")
+  have "\<sigma>' (P $ n) \<in> V" using \<sigma>' n(2) n(3) valid_strategy_in_V by blast
+  then interpret PB: ValidMaximalConformingPath G ?B "\<sigma>' (P $ n)" p \<sigma>'
+    by unfold_locales (simp_all add: \<sigma>')
 
-  have "llength ?A = min (enat (Suc n)) (llength P)" using llength_ltake by blast
-  with n(1) have "llength ?A = enat (Suc n)" by (simp add: min.strict_order_iff)
+  have "llength ?A = enat (Suc n)" using llength_ltake' n(1) by blast
 
   from n(2) n(3) \<sigma>' have "\<sigma>' (P $ n) \<in> V" using valid_strategy_in_V by blast
 
@@ -419,26 +517,20 @@ proof-
     ultimately show ?thesis using lnth_lappend1[of n ?A ?B] by (simp add: lnth_ltake)
   qed
 
-  from P(4) n(1) n(2) n(4) assms(4)
-    have "\<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)" using path_conforms_with_strategy_conforms by auto
+  have "\<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)" using n(1) n(2) n(4) path_conforms_with_strategy_conforms by auto
   moreover have "\<not>lnull P'" unfolding P'_def by simp
   moreover have "enat (Suc n) < llength P'" unfolding P'_def using `llength ?A = enat (Suc n)` by simp
   moreover have "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P" unfolding P'_def using `llength ?A = enat (Suc n)`
     by (metis P'_def `enat (Suc n) < llength P'` llength_ltake lprefix_lappendD lprefix_llength_eq_imp_eq ltake_is_lprefix min.strict_order_iff)
 
   moreover have "valid_path P'" proof-
-    have "lfinite ?A" "\<not>lnull ?B" by simp_all
-    moreover have "valid_path ?A" using assms(4) path_prefix_valid by blast
-    moreover from \<sigma>' `\<sigma>' (P $ n) \<in> V`
-      have "valid_path ?B"
-        using greedy_conforming_path_properties(3)[of "\<sigma>' (P $ n)" p \<sigma>' \<sigma>_arbitrary] valid_arbitrary_strategy by blast
-    moreover have "llast ?A \<rightarrow> lhd ?B" proof-
+    have "llast ?A \<rightarrow> lhd ?B" proof-
       have "lhd ?B = \<sigma>' (P $ n)" by simp
       moreover from n(2) n(3) \<sigma>'
         have "P $ n \<rightarrow> \<sigma>' (P $ n)" using strategy_def by blast
       ultimately show ?thesis using `llast ?A = P $ n` by simp
     qed
-    ultimately show ?thesis unfolding P'_def using valid_path_lappend[of ?A ?B] by blast
+    thus ?thesis unfolding P'_def using PB.P_valid valid_path_lappend[of ?A ?B] by auto
   qed
 
   moreover have "maximal_path P'" proof-
@@ -451,15 +543,19 @@ proof-
 
   moreover have "path_conforms_with_strategy p P' \<sigma>'" proof-
     have "lfinite ?A" "\<not>lnull ?B" by simp_all
-    moreover have "\<not>lnull ?A" using assms(3) enat_0_iff(2) by auto
+    moreover have "\<not>lnull ?A" by (simp add: P_not_null enat_0_iff(1))
     moreover have "llast ?A \<in> VV p" by (simp add: `llast ?A = P $ n` n(2))
     moreover have "\<sigma>' (llast ?A) = lhd ?B" using `llast ?A = P $ n` by simp
     moreover have "path_conforms_with_strategy p ?A \<sigma>'" proof-
+      have *: "ValidMaximalConformingPath G P v0 p \<sigma>" by unfold_locales
       have "path_prefix ?A P" by simp
-      moreover from `valid_path P` `\<not>lnull P` `path_conforms_with_strategy p P \<sigma>` n n_min have "path_conforms_with_strategy p ?A \<sigma>'"
+      moreover from * n n_min
+        have "path_conforms_with_strategy p ?A \<sigma>'"
       proof (induct n arbitrary: P)
         case 0
-        have "ltake (enat (Suc 0)) P = LCons (lhd P) LNil" by (simp add: "0.prems"(2) lnth_0_conv_lhd lnull_0_llength ltake.ctr(1) ltake_Suc_conv_snoc_lnth zero_enat_def)
+        then interpret P: ValidMaximalConformingPath G P v0 p \<sigma> by blast
+        have "ltake (enat (Suc 0)) P = LCons (lhd P) LNil"
+          by (simp add: P.P_v0 lappend_lnull1 ltake_Suc_conv_snoc_lnth zero_enat_def)
         thus ?case by (simp add: path_conforms_LCons_LNil)
       next
         case (Suc n P)
