@@ -203,16 +203,13 @@ context ParityGame begin
 lemma no_winning_strategy_on_deadends:
   assumes "v \<in> VV p" "deadend v" "strategy p \<sigma>"
   shows "\<not>winning_strategy p \<sigma> v"
-proof
-  assume contra: "winning_strategy p \<sigma> v"
-  obtain P where
-    P: "\<not>lnull P" "P $ 0 = v" "valid_path P" "maximal_path P" "path_conforms_with_strategy p P \<sigma>"
-    using strategy_conforming_path_exists_single assms by blast
-  obtain P' where "P = LCons v P'" using P(1) P(2) by (metis lnth_0 not_lnull_conv)
-  moreover hence "lnull P'" using `deadend v` P(3) valid_path_cons_simp by auto
-  ultimately have "P = LCons v LNil" by simp
+proof-
+  obtain P where "vmc_path G P v p \<sigma>" using strategy_conforming_path_exists_single assms by blast
+  then interpret vmc_path G P v p \<sigma> .
+  have "lnull (ltl P)" using `deadend v` using P_LCons lnull_def valid_path_cons_simp by fastforce
+  hence "P = LCons v LNil" by (metis P_LCons lnull_def)
   hence "\<not>winning_path p P" unfolding winning_path_def using `v \<in> VV p` by auto
-  thus False using winning_strategy_def contra P by blast
+  thus ?thesis using winning_strategy_def by fastforce
 qed
 
 (* An attractor set S - W of W cannot contain deadends because from deadends one cannot attract to W. *)
@@ -222,12 +219,13 @@ lemma attractor_no_deadends:
 proof
   assume "deadend v"
   def [simp]: P \<equiv> "LCons v LNil"
-  moreover have "\<not>lnull P \<and> P $ 0 = v" by simp
-  moreover have "valid_path P" using `v \<in> S - W` `S \<subseteq> V` valid_path_base' by auto
-  moreover have "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
-  moreover have "path_conforms_with_strategy p P \<sigma>" by (simp add: path_conforms_LCons_LNil)
-  ultimately have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S"
-    using assms(3) unfolding strategy_attracts_via_def by blast
+  interpret vmc_path G P v p \<sigma> proof
+    show "valid_path P" using `v \<in> S - W` `S \<subseteq> V` valid_path_base' by auto
+    show "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
+    show "path_conforms_with_strategy p P \<sigma>" by (simp add: path_conforms_LCons_LNil)
+  qed simp_all
+  have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S"
+    using assms(3) strategy_attracts_viaE by blast
   moreover have "llength P = eSuc 0" by simp
   ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1))
   with `v \<in> S - W` show False by auto
@@ -263,11 +261,8 @@ proof-
 
   {
     fix v0 assume "v0 \<in> S"
-    fix P assume "\<not>lnull P"
-      and P_valid: "valid_path P"
-      and P_maximal: "maximal_path P"
-      and P_conforms: "path_conforms_with_strategy p P \<sigma>"
-      and P_valid_start: "P $ 0 = v0"
+    fix P assume "vmc_path G P v0 p \<sigma>"
+    then interpret vmc_path G P v0 p \<sigma> .
     have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S" proof (rule ccontr)
       assume "\<not>?thesis"
       hence contra: "\<And>n. enat n < llength P \<Longrightarrow> P $ n \<in> W \<Longrightarrow> \<not>lset (ltake (enat n) P) \<subseteq> S" by blast
@@ -281,7 +276,7 @@ proof-
         hence "P $ n \<notin> W" using contra n(1) by blast
         moreover have "P $ n \<notin> V - S - W" proof
           assume "P $ n \<in> V - S - W"
-          hence "n \<noteq> 0" using P_valid_start `v0 \<in> S` n(2) by force
+          hence "n \<noteq> 0" using `v0 \<in> S` n(2) by force
           then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
           hence "P $ n' \<in> S - W" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W` by blast
           def [simp]: P' \<equiv> "ldropn n' P"
@@ -325,27 +320,27 @@ proof-
           by blast
       def [simp]: \<sigma>' \<equiv> "\<sigma>_map P n"
       def [simp]: P' \<equiv> "ldropn n P"
-      have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
-      moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
-      moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
-      moreover have "path_conforms_with_strategy p P' \<sigma>'" using n by simp
-      moreover have "strategy p \<sigma>'" unfolding \<sigma>'_def
+      interpret vmc_path G P' "lhd P'" p \<sigma>' proof
+        show "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
+        show "valid_path P'" using P_valid by (simp add: valid_path_drop)
+        show "maximal_path P'" using P_maximal by (simp add: maximal_drop)
+        show "path_conforms_with_strategy p P' \<sigma>'" using n by simp
+      qed simp
+      have "strategy p \<sigma>'" unfolding \<sigma>'_def
         using \<sigma>_map_strategy `lset P \<subseteq> S - W` `\<not>lfinite P` infinite_small_llength by blast
-      moreover have "strategy_attracts_via p \<sigma>' (P' $ 0) S W" proof-
+      moreover have "strategy_attracts_via p \<sigma>' (lhd P') S W" proof-
         have "P $ n \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
         hence "\<sigma>' \<in> good (P $ n)" using \<sigma>_map_good by (simp add: \<sigma>_map_def choose_good)
         hence "strategy_attracts_via p \<sigma>' (P $ n) S W" unfolding good_def by blast
-        moreover have "P $ n = P' $ 0" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
-        ultimately show ?thesis by simp
+        thus ?thesis unfolding P'_def using P_0 by (simp add: `\<not>lfinite P` infinite_small_llength)
       qed
       ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
-        unfolding strategy_attracts_via_def using `\<not>lnull P'` by blast
+        using strategy_attracts_viaE by blast
       moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W" using lset_ldropn_subset by fastforce
       ultimately show False by (meson Diff_iff lset_lnth)
     qed
   }
-  hence "strategy_attracts p \<sigma> S W" using strategy_attracts_def strategy_attracts_via_def by auto
-  thus ?thesis using well_ordered_strategy_valid by auto
+  thus ?thesis using strategy_attractsI[of S] well_ordered_strategy_valid by auto
 qed
 
 lemma merge_winning_strategies:
@@ -392,40 +387,35 @@ proof-
   def [simp]: \<sigma> \<equiv> "well_ordered_strategy"
   {
     fix v0 assume "v0 \<in> S"
-    fix P assume "\<not>lnull P"
-      and P_valid: "valid_path P"
-      and P_maximal: "maximal_path P"
-      and P_conforms: "path_conforms_with_strategy p P \<sigma>"
-      and P_valid_start: "P $ 0 = v0"
-    note P = this
+    fix P assume P: "vmc_path G P v0 p \<sigma>"
+    then interpret vmc_path G P v0 p \<sigma> .
     have "winning_path p P" proof (rule ccontr)
       assume contra: "\<not>winning_path p P"
       hence "winning_path p** P" using paths_are_winning_for_exactly_one_player P_valid by blast
       have "lset P \<subseteq> S" proof
         fix v assume "v \<in> lset P"
         thus "v \<in> S" using `v0 \<in> S` P `winning_path p** P` proof (induct arbitrary: v0 rule: llist_set_induct)
-          case (find P) thus ?case using lnth_0_conv_lhd by metis
+          case (find P)
+          then interpret vmc_path G P v0 p \<sigma> by blast
+          show ?case by (simp add: find.prems(1))
         next
           case (step P v)
+          then interpret vmc_path G P v0 p \<sigma> by blast
           show ?case proof (cases)
             assume "lnull (ltl P)"
             hence "P = LCons v LNil" by (metis llist.disc(2) lset_cases step.hyps(2))
-            thus ?thesis using step.prems(1) step.prems(6) by auto
+            thus ?thesis using step.prems(1) P_LCons by blast
           next
-            have *: "\<exists>P'. P = LCons v0 P'" by (metis lhd_LCons_ltl lnth_0_conv_lhd step.prems(2) step.prems(6))
             assume "\<not>lnull (ltl P)"
-            then obtain w P' where P': "P = LCons v0 (LCons w P')" by (metis * lhd_LCons_ltl ltl_simps(2))
-            hence "v0\<rightarrow>w" using step.prems(3) by (simp add: valid_path_edges')
+            then interpret vmc_path_no_deadend G P v0 p \<sigma> using vmc_path_lnull_ltl_no_deadend by blast
             { assume "v0 \<in> VV p"
-              hence "\<sigma> v0 = w" using P' path_conforms_with_strategy_start step.prems(5) by blast
-              hence "choose v0 v0 = w" by (simp add: step.prems(1) well_ordered_strategy_def)
+              hence "\<sigma> v0 = w0" using v0_conforms by blast
+              hence "choose v0 v0 = w0" by (simp add: v0_conforms step.prems(1) well_ordered_strategy_def)
             }
-            hence "w \<in> S" using S_closed `v0\<rightarrow>w` choose_good step.prems(1) by blast
-            moreover have "valid_path (ltl P)" by (simp add: step.prems(3) valid_path_ltl)
-            moreover have "maximal_path (ltl P)" by (simp add: step.prems(4) maximal_ltl)
-            moreover have "path_conforms_with_strategy p (ltl P) \<sigma>" using step.prems(5) by auto
-            moreover have "ltl P $ 0 = w" by (simp add: P')
-            moreover have "winning_path p** (ltl P)" using `\<not>lnull P` `\<not>lnull (ltl P)` step.prems(7) winning_path_ltl by blast
+            hence "w0 \<in> S" using S_closed `v0\<rightarrow>w0` choose_good step.prems(1) by blast
+            moreover have "vmc_path G (ltl P) w0 p \<sigma>" using vmc_path_ltl by blast
+            moreover have "winning_path p** (ltl P)"
+              using `\<not>lnull P` `\<not>lnull (ltl P)` winning_path_ltl step.prems(3) by blast
             ultimately show "v \<in> S" using step.hyps(3) `\<not>lnull (ltl P)` by blast
           qed
         qed
@@ -443,22 +433,25 @@ proof-
           by blast
       def [simp]: \<sigma>' \<equiv> "\<sigma>_map P n"
       def [simp]: P' \<equiv> "ldropn n P"
-      have "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
-      moreover have "valid_path P'" using P_valid by (simp add: valid_path_drop)
-      moreover have "maximal_path P'" using P_maximal by (simp add: maximal_drop)
-      moreover have "path_conforms_with_strategy p P' \<sigma>'" using n by simp
-      moreover have "strategy p \<sigma>'" unfolding \<sigma>'_def
+      interpret P': vmc_path G P' "lhd P'" p \<sigma>' proof
+        show "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
+        show "valid_path P'" using P_valid by (simp add: valid_path_drop)
+        show "maximal_path P'" using P_maximal by (simp add: maximal_drop)
+        show "path_conforms_with_strategy p P' \<sigma>'" using n by simp
+      qed simp
+      have "strategy p \<sigma>'" unfolding \<sigma>'_def
         using \<sigma>_map_strategy `lset P \<subseteq> S` `\<not>lfinite P` by blast
-      moreover have "winning_strategy p \<sigma>' (P' $ 0)" proof-
+      moreover have "winning_strategy p \<sigma>' (lhd P')" proof-
         have "P $ n \<in> S" using `lset P \<subseteq> S` `\<not>lfinite P` llist_set_nth by blast
         hence "\<sigma>' \<in> good (P $ n)" using \<sigma>_map_good by (simp add: \<sigma>_map_def choose_good)
         hence "winning_strategy p \<sigma>' (P $ n)" unfolding good_def by blast
-        moreover have "P $ n = P' $ 0" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
-        ultimately show ?thesis by simp
+        thus ?thesis
+          unfolding P'_def using P_0 `\<not>lfinite P` by (simp add: infinite_small_llength lhd_ldropn)
       qed
-      ultimately have "winning_path p P'"
-        unfolding winning_strategy_def using `\<not>lnull P'` by blast
-      thus False using contra P'_def winning_path_drop_add P_valid `\<not>lfinite P` by blast
+      ultimately have "winning_path p P'" unfolding winning_strategy_def using P'.vmc_path by blast
+      moreover have "\<not>lfinite P'" using `\<not>lfinite P` P'_def by simp
+      ultimately show False
+        using contra winning_path_drop_add[OF P_valid] by auto
     qed
   }
   thus ?thesis unfolding winning_strategy_def using well_ordered_strategy_valid by auto

@@ -372,7 +372,7 @@ end -- "locale Digraph"
 datatype Player = Even | Odd
 abbreviation other_player :: "Player \<Rightarrow> Player" where "other_player p \<equiv> (if p = Even then Odd else Even)"
 notation other_player ("(_**)" [1000] 1000)
-lemma [simp]: "p**** = p" using Player.exhaust by auto
+lemma other_other_player [simp]: "p**** = p" using Player.exhaust by auto
 
 record 'a ParityGame = "'a Graph" +
   priority :: "'a \<Rightarrow> nat" ("\<omega>\<index>")
@@ -657,9 +657,10 @@ end -- "locale ParityGame"
 locale vm_path = ParityGame +
   fixes P v0
   assumes P_not_null [simp]: "\<not>lnull P"
-    and P_valid [simp]: "valid_path P"
-    and P_maximal [simp]: "maximal_path P"
-    and P_v0 [simp]: "lhd P = v0"
+      and P_valid    [simp]: "valid_path P"
+      and P_maximal  [simp]: "maximal_path P"
+      and P_v0       [simp]: "lhd P = v0"
+lemma (in vm_path) vm_path [simp]: "vm_path G P v0" by unfold_locales
 
 lemma (in ParityGame) vm_pathI:
   assumes "\<not>lnull P" "valid_path P" "maximal_path P" "lhd P = v0"

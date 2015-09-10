@@ -19,42 +19,32 @@ proof-
   have "strategy p ?\<sigma>" using \<sigma>(1) `v0\<rightarrow>w` valid_strategy_updates by blast
   moreover have "strategy_attracts_via p ?\<sigma> v0 (insert v0 S) W" proof-
     { fix P
-      assume P: "\<not>lnull P" "valid_path P" "maximal_path P"
-        "path_conforms_with_strategy p P ?\<sigma>" "P $ 0 = v0"
+      assume "vmc_path G P v0 p ?\<sigma>"
+      then interpret vmc_path G P v0 p ?\<sigma> .
+      interpret vmc_path_no_deadend G P v0 p ?\<sigma> using `\<not>deadend v0` by unfold_locales
 
       def [simp]: P'' \<equiv> "ltl P"
-      have "\<not>lnull P''" proof-
-        from P(1) have "enat 0 < llength P" using lnull_0_llength by blast
-        moreover from P(5) `\<not>deadend v0` have "\<not>deadend (P $ 0)" by blast
-        ultimately have "enat (Suc 0) < llength P" using P(3) maximal_path_impl1 by blast
-        hence "enat 0 < llength P''" using enat_Suc_ltl P''_def by blast
-        then show "\<not>lnull P''" by auto
-      qed
-      have "P'' $ 0 = w" proof-
-        from P(1) P(5) have "P = LCons v0 P''" by (metis P''_def lnth_0 ltl_simps(2) not_lnull_conv)
-        with P(4) `v0 \<in> VV p` `\<not>lnull P''` have "lhd P'' = ?\<sigma> v0" by (metis lhd_LCons_ltl path_conforms_with_strategy_start)
-        thus "P'' $ 0 = w" using `\<not> lnull P''` lhd_conv_lnth by force
-      qed
-      from P(2) P(3) P(4) have P'': "valid_path P''" "maximal_path P''" "path_conforms_with_strategy p P'' ?\<sigma>"
-        using valid_path_ltl maximal_ltl path_conforms_with_strategy_ltl by auto
+      have "lhd P'' = w" using v0(1) v0_conforms w0_def by auto
+      hence "vmc_path G P'' w p ?\<sigma>" using vmc_path_ltl by (simp add: w0_def)
+      then interpret vmc_path G P'' w p ?\<sigma> .
 
       have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" proof (cases)
         assume "v0 \<in> lset P'' \<and> ?\<sigma> v0 \<noteq> \<sigma> v0"
 
-        with \<sigma>(1) `strategy p ?\<sigma>` `v0 \<in> VV p` P'' `\<not>lnull P''` `\<not>deadend v0`
+        with \<sigma>(1) `strategy p ?\<sigma>` `v0 \<in> VV p` `\<not>deadend v0`
           obtain P' n where
-            P': "\<not>lnull P'" "valid_path P'" "maximal_path P'" "path_conforms_with_strategy p P' \<sigma>"
+            "vmc_path G P' w p \<sigma>"
             and n_valid: "enat (Suc n) < llength P'" "enat (Suc n) < llength P''"
             and P'_P''_same_prefix: "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P''"
             and P''_n: "P'' $ n \<in> VV p" "\<not>deadend (P'' $ n)" "?\<sigma> (P'' $ n) \<noteq> \<sigma> (P'' $ n)"
           using path_conforms_with_strategy_update_path by blast
+        then interpret vmc_path G P' w p \<sigma> by blast
 
-        from P''_n(3) have "P'' $ n = v0" by (meson fun_upd_apply)
-        from `P'' $ 0 = w` P'_P''_same_prefix have "P' $ 0 = w" using ltake_lnth[of "enat (Suc n)" P' P'' 0] by simp
+        have "P'' $ n = v0" using P''_n(3) by (meson fun_upd_apply)
+        have "P' $ 0 = w" by simp
 
-        with P' `strategy_attracts_via p \<sigma> w S W`
-          obtain m where m: "enat m < llength P'" "P' $ m \<in> W" "lset (ltake (enat m) P') \<subseteq> S"
-          unfolding strategy_attracts_via_def by blast
+        obtain m where m: "enat m < llength P'" "P' $ m \<in> W" "lset (ltake (enat m) P') \<subseteq> S"
+          using `strategy_attracts_via p \<sigma> w S W` strategy_attracts_viaE by blast
 
         have "m \<le> n" proof (rule ccontr)
           assume "\<not>m \<le> n"
@@ -71,32 +61,30 @@ proof-
         qed
         with P'_P''_same_prefix have "P' $ m = P'' $ m" using ltake_lnth[of "enat (Suc n)" P' P'' m] by simp
         with m(2) have "P'' $ m \<in> W" by simp
-        hence 1: "P $ Suc m \<in> W" by (simp add: P(1) lnth_ltl)
+        hence 1: "P $ Suc m \<in> W" by (simp add: lnth_ltl)
 
         from P'_P''_same_prefix `m \<le> n` m(3)
           have "lset (ltake (enat m) P'') \<subseteq> S"
           using ltake_eq_ltake_antimono by fastforce
-        hence "lset (ltake (eSuc (enat m)) P) \<subseteq> insert v0 S"
-          by (metis P''_def P(1) P(5) lnth_0 ltl_simps(2) lset_ltake_Suc not_lnull_conv)
-        hence 2: "lset (ltake (enat (Suc m)) P) \<subseteq> insert v0 S" by (simp add: eSuc_enat)
+        hence 2: "lset (ltake (enat (Suc m)) P) \<subseteq> insert v0 S"
+          unfolding P''_def using lset_ltake_Suc'[of P] by simp
 
         from `m \<le> n` n_valid(2) have "enat (Suc m) < llength P''"
           by (metis Suc_ile_eq dual_order.strict_iff_order dual_order.strict_trans enat_ord_simps(2))
-        moreover have "llength P'' \<le> llength P" unfolding P''_def by (metis P(1) ile_eSuc llength_LCons ltl_simps(2) not_lnull_conv)
+        moreover have "llength P'' \<le> llength P"
+          unfolding P''_def by (metis Coinductive_List.ltl_ldrop eq_refl lnull_ldrop lnull_ltlI)
         ultimately have 3: "enat (Suc m) < llength P" by simp
 
-        with 1 2 3 show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S" by blast
+        with 1 2 3 show ?thesis by blast
       next
         assume "\<not>(v0 \<in> lset P'' \<and> ?\<sigma> v0 \<noteq> \<sigma> v0)"
-        with P''(3)
-          have "path_conforms_with_strategy p P'' \<sigma>"
-          using path_conforms_with_strategy_irrelevant'[of p P'' \<sigma> v0 w] by auto
-        with P'' `strategy_attracts_via p \<sigma> w S W` `P'' $ 0 = w` `\<not>lnull P''`
-          have "\<exists>n. enat n < llength P'' \<and> P'' $ n \<in> W \<and> lset (ltake (enat n) P'') \<subseteq> S"
-          unfolding strategy_attracts_via_def by auto
-        with P(1) P(5)
-          show ?thesis
-          unfolding P''_def using lset_ltake_Suc' enat_ltl_Suc lnth_ltl by metis
+        then interpret vmc_path G P'' w p \<sigma>
+          using path_conforms_with_strategy_irrelevant'[of p P'' \<sigma> v0 w] P_conforms P_v0
+          by unfold_locales fastforce
+        have "\<exists>n. enat n < llength P'' \<and> P'' $ n \<in> W \<and> lset (ltake (enat n) P'') \<subseteq> S"
+          using strategy_attracts_viaE[OF `strategy_attracts_via p \<sigma> w S W`] by metis
+        thus ?thesis
+          by (metis P''_def P_LCons' enat_ltl_Suc llist.disc(2) lnth_0 lnth_ltl lset_ltake_Suc')
       qed
     }
     thus ?thesis unfolding strategy_attracts_via_def by blast
@@ -109,29 +97,16 @@ lemma strategy_attracts_extends_VVpstar:
     and v0: "v0 \<notin> VV p" "v0 \<in> directly_attracted p S"
   shows "strategy_attracts_via p \<sigma> v0 (insert v0 S) W"
 proof-
-  from v0(2) have "\<not>deadend v0" using directly_attracted_contains_no_deadends by blast
-  from v0 have "\<forall>w. v0\<rightarrow>w \<longrightarrow> w \<in> S" by (simp add: directly_attracted_def)
   { fix P
-    assume P: "\<not>lnull P" "valid_path P" "maximal_path P"
-      "path_conforms_with_strategy p P \<sigma>" "P $ 0 = v0"
-    def [simp]: P' \<equiv> "ltl P"
-    from P(2) P(3) P(4) have ltl_P: "valid_path P'" "maximal_path P'" "path_conforms_with_strategy p P' \<sigma>"
-      using valid_path_ltl maximal_ltl path_conforms_with_strategy_ltl by auto
-    moreover have "\<not>lnull P'" proof-
-      from P(1) have "enat 0 < llength P" using lnull_0_llength by blast
-      moreover from P(5) `\<not>deadend v0` have "\<not>deadend (P $ 0)" by blast
-      ultimately have "enat (Suc 0) < llength P" using P(3) maximal_path_impl1 by blast
-      hence "enat 0 < llength P'" using enat_Suc_ltl P'_def by blast
-      thus ?thesis by auto
-    qed
-    moreover have "P' $ 0 \<in> S" proof-
-      from `\<not>lnull P'` ltl_P P(1) P(2) have "P $ 0 \<rightarrow> P' $ 0" by (metis P'_def lhd_LCons_ltl lnth_0_conv_lhd valid_path_edges')
-      with P(5) `\<forall>w. v0\<rightarrow>w \<longrightarrow> w \<in> S` show ?thesis by blast
-    qed
-    ultimately have "\<exists>n. enat n < llength P' \<and> P' $ n \<in> W \<and> lset (ltake (enat n) P') \<subseteq> S"
-      using \<sigma> unfolding strategy_attracts_def strategy_attracts_via_def by blast
-    with P(1) P(5) have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S"
-      unfolding P'_def using lset_ltake_Suc' enat_ltl_Suc lnth_ltl by metis
+    assume "vmc_path G P v0 p \<sigma>"
+    then interpret vmc_path G P v0 p \<sigma> .
+    have "\<not>deadend v0" using v0(2) directly_attracted_contains_no_deadends by blast
+    then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
+    interpret vmc_path G "ltl P" w0 p \<sigma> using vmc_path_ltl by blast
+    have "\<exists>n. enat n < llength (ltl P) \<and> (ltl P) $ n \<in> W \<and> lset (ltake (enat n) (ltl P)) \<subseteq> S"
+      using strategy_attractsE[OF \<sigma>] v0 directly_attracted_def by simp
+    hence "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> insert v0 S"
+      by (metis P_LCons' Ptl_LCons enat_ltl_Suc llist.discI(2) lnth_0 lnth_Suc_LCons lset_ltake_Suc')
   }
   thus ?thesis unfolding strategy_attracts_via_def by blast
 qed
@@ -211,51 +186,59 @@ proof (intro exI conjI)
     case False
     {
       fix P v
-      have "v \<in> lset P \<Longrightarrow> \<not>lnull P \<and> valid_path P \<and> path_conforms_with_strategy p P \<sigma> \<and> P $ 0 \<in> V - A \<longrightarrow> v \<notin> A"
+      have "v \<in> lset P \<Longrightarrow> vmc_path G P (lhd P) p \<sigma> \<and> lhd P \<in> V - A \<longrightarrow> v \<notin> A"
       proof (induct rule: llist_set_induct, simp add: lnth_0_conv_lhd)
-        case (step P w)
+        case (step P v)
         show ?case proof (intro impI, elim conjE, cases "lnull (ltl P)")
           case True
-          thus "w \<notin> A" using lset_lnull step.hyps(2) by fastforce
+          thus "v \<notin> A" using lset_lnull step.hyps(2) by fastforce
         next
           case False
-          assume P: "valid_path P" "path_conforms_with_strategy p P \<sigma>" "P $ 0 \<in> V - A"
-          from `\<not>lnull (ltl P)` obtain v u P' where u: "P = LCons v (LCons u P')" by (metis lhd_LCons_ltl step.hyps(1))
-          with P(1) have "\<not>deadend v" using edges_are_in_V valid_path_edges' by blast
-          from P(3) u have "v \<in> V - A" by simp
-          have "u \<notin> A" proof (cases)
-            assume "v \<in> VV p"
-            with u P(2)
-              have "path_conforms_with_strategy p (LCons v (LCons u P')) \<sigma>" by blast
-            with `v \<in> VV p`
-              have "\<sigma> v = u" using path_conforms_with_strategy_start by blast
-            from `v \<in> VV p` `\<not>deadend v` `v \<in> V - A`
-              have "\<sigma>' v \<notin> A" using \<sigma>'_correct(1) by blast
-            with \<sigma>_def `\<sigma> v = u` `v \<in> V - A`  
-              show "u \<notin> A" by auto
+          assume P: "vmc_path G P (lhd P) p \<sigma>" "lhd P \<in> V - A"
+          def [simp]: v0 \<equiv> "lhd P"
+          then interpret vmc_path G P v0 p \<sigma> using P(1) by blast
+          have "\<not>deadend v0"
+            using `\<not>lnull (ltl P)` v0_def by (metis P_LCons P_valid lnull_def valid_path_cons_simp)
+          then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
+          have "v0 \<in> V - A" using P(2) v0_def by blast
+          have "w0 \<notin> A" proof (cases)
+            assume "v0 \<in> VV p"
+            hence "path_conforms_with_strategy p (LCons v0 (LCons w0 (ltl (ltl P)))) \<sigma>"
+              using P_LCons' P_conforms by presburger
+            hence "\<sigma> v0 = w0" using `v0 \<in> VV p` v0_conforms by blast
+            have "\<sigma>' v0 \<notin> A"
+              using `v0 \<in> VV p` `\<not>deadend v0` `v0 \<in> V - A` \<sigma>'_correct(1)[of v0]
+              by blast
+            thus "w0 \<notin> A"
+              using \<sigma>_def `\<sigma> v0 = w0` `v0 \<in> V - A` by (metis override_on_apply_in)
           next
-            assume "v \<notin> VV p"
-            { assume "u \<in> A"
-              from `v \<notin> VV p` `v \<in> V - A`
-                have "v \<in> VV p**" by auto
-              moreover from `u \<in> A` u P(1)
-                have "\<exists>w. v\<rightarrow>w \<and> w \<in> A" using valid_path_edges' by blast
-              ultimately
-                have "v \<in> directly_attracted p** A"
-                using `\<not>deadend v` `v \<in> V - A` unfolding directly_attracted_def by auto
-              with `v \<in> V - A` assms
-                have False unfolding A_def using attractor_unfolding by fastforce
+            assume "v0 \<notin> VV p"
+            { assume "w0 \<in> A"
+              have "v0 \<in> VV p**" using `v0 \<notin> VV p` `v0 \<in> V - A` by blast
+              moreover have "v0 \<notin> VV p****" using `v0 \<notin> VV p` other_other_player[of p] by metis
+              moreover have "\<exists>w. v0\<rightarrow>w \<and> w \<in> A"
+                using `w0 \<in> A` using v0_edge_w0 by blast
+              ultimately have "v0 \<in> directly_attracted p** A"
+                using `\<not>deadend v0` `v0 \<in> V - A`
+                unfolding directly_attracted_def
+                by blast
+              with `v0 \<in> V - A` assms
+                have False unfolding A_def using attractor_unfolding[of "p**" W] by blast
             }
-            thus "u \<notin> A" by blast
+            thus "w0 \<notin> A" by blast
           qed
-          with P(1) u have "u \<in> V - A" by (metis DiffI in_mono llist.set_intros(1) ltl_simps(2) valid_path_in_V valid_path_ltl)
-          with u have "ltl P $ 0 \<in> V - A" by simp
-          with `\<not>lnull (ltl P)` P(1) P(2) step.hyps(3)
-            show "w \<notin> A" using valid_path_ltl path_conforms_with_strategy_ltl by blast
+          hence "w0 \<in> V - A" using w0_V by blast
+          hence "lhd (ltl P) \<in> V - A" using w0_def by simp
+          moreover have "vmc_path G (ltl P) (lhd (ltl P)) p \<sigma>" using vmc_path_ltl w0_def by simp
+          ultimately show "v \<notin> A" using step.hyps(3) by blast
         qed
       qed
+    } note * = this
+    moreover { fix P v0 assume "v0 \<in> A" "vmc_path G P v0 p \<sigma>"
+      then interpret vmc_path G P v0 p \<sigma> by blast
+      have "lhd P \<in> A \<and> vmc_path G P (lhd P) p \<sigma>" using `v0 \<in> A` vmc_path P_LCons by auto
     }
-    thus ?thesis unfolding strategy_avoids_def by blast
+    ultimately show ?thesis sledgehammer
   qed
 qed
 

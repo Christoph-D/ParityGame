@@ -22,9 +22,11 @@ path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
 (* A valid maximal path that conforms to a strategy *)
 locale vmc_path = vm_path +
   fixes p \<sigma> assumes P_conforms [simp]: "path_conforms_with_strategy p P \<sigma>"
+lemma (in vmc_path) vmc_path [simp]: "vmc_path G P v0 p \<sigma>" by unfold_locales
 (* A valid maximal path that conforms to two strategies *)
-locale vmc2_path = vmc_path +
-  fixes \<sigma>' assumes P_conforms' [simp]: "path_conforms_with_strategy p** P \<sigma>'"
+locale vmc2_path = comp: vmc_path G P v0 "p**" \<sigma>' + vmc_path G P v0 p \<sigma>
+  for G P v0 p \<sigma> \<sigma>'
+lemma (in vmc2_path) vmc2_path [simp]: "vmc2_path G P v0 p \<sigma> \<sigma>'" by unfold_locales
 
 context ParityGame begin
 
@@ -465,6 +467,12 @@ lemma (in vmc_path) vmc_path_llength_no_deadend:
   by (unfold_locales)
      (metis P_len_Suc enat_ltl_Suc ldropn_Suc_conv_ldropn ldropn_lnull llist.distinct(1) lnull_0_llength)
 
+lemma (in vmc_path) vmc_path_lnull_ltl_no_deadend:
+  assumes "\<not>lnull (ltl P)"
+  shows "vmc_path_no_deadend G P v0 p \<sigma>"
+  using assms P_0 P_no_deadends
+  by (unfold_locales) (metis enat_ltl_Suc lnull_0_llength)
+
 lemma (in vmc_path) valid_maximal_conforming_lappend:
   assumes "enat (Suc n) < llength P" "vmc_path G P' (P $ n) p \<sigma>"
   shows "vmc_path G (lappend (ltake (enat (Suc n)) P) (ltl P')) v0 p \<sigma>"
@@ -652,7 +660,5 @@ proof-
   qed
   ultimately show ?thesis using n by blast
 qed
-
-end -- "context ParityGame"
 
 end
