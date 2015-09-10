@@ -88,6 +88,10 @@ qed
 
 lemma llength_ltake': "enat n < llength xs \<Longrightarrow> llength (ltake (enat n) xs) = enat n"
   by (metis assms llength_ltake min.strict_order_iff)
+lemma llast_ltake:
+  assumes "enat (Suc n) < llength xs"
+  shows "llast (ltake (enat (Suc n)) xs) = lnth xs n" (is "llast ?A = _")
+  unfolding llast_def using llength_ltake'[OF assms] by (auto simp add: lnth_ltake)
 
 (* 'a is the vertex type. *)
 type_synonym 'a Edge = "'a \<times> 'a"
