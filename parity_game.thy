@@ -652,31 +652,34 @@ proof-
   ultimately show ?thesis using ParityGame.winning_path_def[of G' p P] G'(1) by blast
 qed
 
-definition "vm_path P v0 \<equiv> \<not>lnull P \<and> valid_path P \<and> maximal_path P \<and> lhd P = v0"
+end -- "locale ParityGame"
 
-lemma vm_pathI:
+locale vm_path = ParityGame +
+  fixes P v0
+  assumes P_not_null [simp]: "\<not>lnull P"
+    and P_valid [simp]: "valid_path P"
+    and P_maximal [simp]: "maximal_path P"
+    and P_v0 [simp]: "lhd P = v0"
+
+lemma (in ParityGame) vm_pathI:
   assumes "\<not>lnull P" "valid_path P" "maximal_path P" "lhd P = v0"
-  shows "vm_path P v0"
-  unfolding vm_path_def using assms by blast
+  shows "vm_path G P v0"
+  using assms by unfold_locales blast
 
-lemma vm_pathE [simp]:
-  assumes "vm_path P v0"
-  shows vm_not_null: "\<not>lnull P"
-    and vm_valid:    "valid_path P"
-    and vm_maximal:  "maximal_path P"
-    and vm_lhd:      "lhd P = v0"
-  using assms unfolding vm_path_def by simp_all
+lemma (in ParityGame) vm_pathI0:
+  assumes "\<not>lnull P" "valid_path P" "maximal_path P"
+  shows "vm_path G P (P $ 0)"
+  using assms vm_pathI by (simp add: lnth_0_conv_lhd)
 
-lemma P_LCons: "vm_path P v0 \<Longrightarrow> P = LCons v0 (ltl P)" unfolding vm_path_def by auto
+context vm_path begin
+lemma P_LCons: "P = LCons v0 (ltl P)" using lhd_LCons_ltl[OF P_not_null] by simp
 
-lemma P_len [simp]: "vm_path P v0 \<Longrightarrow> enat 0 < llength P" by (simp add: lnull_0_llength)
-lemma P_0 [simp]: "vm_path P v0 \<Longrightarrow> P $ 0 = v0" by (simp add: lnth_0_conv_lhd)
-lemma P_len_Suc: "vm_path P v0 \<Longrightarrow> enat (Suc n) < llength P \<Longrightarrow> enat n < llength (ltl P)"
+lemma P_len [simp]: "enat 0 < llength P" by (simp add: lnull_0_llength)
+lemma P_0 [simp]: "P $ 0 = v0" by (simp add: lnth_0_conv_lhd)
+lemma P_len_Suc: "enat (Suc n) < llength P \<Longrightarrow> enat n < llength (ltl P)"
   using enat_Suc_ltl by auto
-lemma P_lnth_Suc: "vm_path P v0 \<Longrightarrow> P $ Suc n = ltl P $ n" by (simp add: lnth_ltl)
-lemma P_lset:
-  assumes "vm_path P v0"
-  shows "lset (ltake (enat n) (ltl P)) \<subseteq> lset (ltake (enat (Suc n)) P)"
+lemma P_lnth_Suc: "P $ Suc n = ltl P $ n" by (simp add: lnth_ltl)
+lemma P_lset: "lset (ltake (enat n) (ltl P)) \<subseteq> lset (ltake (enat (Suc n)) P)"
 proof-
   have "ltake (eSuc (enat n)) P = LCons v0 (ltake (enat n) (ltl P))"
     by (metis assms P_LCons ltake_eSuc_LCons)
@@ -684,32 +687,27 @@ proof-
     by (simp add: eSuc_enat)
   thus ?thesis using lset_LCons[of v0 "ltake (enat n) (ltl P)"] by blast
 qed
-lemma P_no_deadends: "vm_path P v0 \<Longrightarrow> enat (Suc n) < llength P \<Longrightarrow> \<not>deadend (P $ n)"
+lemma P_no_deadends: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend (P $ n)"
   using valid_path_no_deadends by simp
 
-lemma Ptl_valid [simp]: "vm_path P v0 \<Longrightarrow> valid_path (ltl P)" using valid_path_ltl by auto
-lemma Ptl_maximal [simp]: "vm_path P v0 \<Longrightarrow> maximal_path (ltl P)" using maximal_ltl by auto
+lemma Ptl_valid [simp]: "valid_path (ltl P)" using valid_path_ltl by auto
+lemma Ptl_maximal [simp]: "maximal_path (ltl P)" using maximal_ltl by auto
 
-lemma Pdrop_valid [simp]: "vm_path P v0 \<Longrightarrow> valid_path (ldropn n P)" using valid_path_drop by auto
-lemma Pdrop_maximal [simp]: "vm_path P v0 \<Longrightarrow> maximal_path (ldropn n P)" using maximal_drop by auto
+lemma Pdrop_valid [simp]: "valid_path (ldropn n P)" using valid_path_drop by auto
+lemma Pdrop_maximal [simp]: "maximal_path (ldropn n P)" using maximal_drop by auto
 
-lemma prefix_valid [simp]: "vm_path P v0 \<Longrightarrow> valid_path (ltake n P)"
+lemma prefix_valid [simp]: "valid_path (ltake n P)"
   using valid_path_prefix[of P] by auto
 
-lemma extension_valid [simp]: "vm_path P v0 \<Longrightarrow> v'\<rightarrow>v0 \<Longrightarrow> valid_path (LCons v' P)"
+lemma extension_valid [simp]: "v'\<rightarrow>v0 \<Longrightarrow> valid_path (LCons v' P)"
   by (simp add: valid_path_cons')
-lemma extension_maximal [simp]: "vm_path P v0 \<Longrightarrow> maximal_path (LCons v' P)"
+lemma extension_maximal [simp]: "maximal_path (LCons v' P)"
   by (simp add: maximal_path_cons)
-lemma lappend_maximal [simp]: "vm_path P v0 \<Longrightarrow> maximal_path (lappend P' P)"
+lemma lappend_maximal [simp]: "maximal_path (lappend P' P)"
   by (simp add: maximal_path_lappend)
 
-lemma v0_V [simp]: "vm_path P v0 \<Longrightarrow> v0 \<in> V" by (metis P_LCons vm_valid valid_path_cons_simp)
+lemma v0_V [simp]: "v0 \<in> V" by (metis P_LCons P_valid valid_path_cons_simp)
 
-lemma vm_0:
-  assumes "\<not>lnull P" "valid_path P" "maximal_path P"
-  shows "vm_path P (P $ 0)"
-  unfolding vm_path_def using assms by (simp add: lnth_0_conv_lhd)
-
-end -- "locale ParityGame"
+end
 
 end
