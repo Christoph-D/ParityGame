@@ -425,7 +425,10 @@ lemma extension_valid_maximal_conforming:
   shows "vmc_path G (LCons v' P) v' p \<sigma>"
   using assms by unfold_locales simp_all
 
-lemma v0_VV: "v0 \<in> VV p \<or> v0 \<in> VV p**" by simp
+lemma vmc_path_ldropn:
+  assumes "enat n < llength P"
+  shows "vmc_path G (ldropn n P) (P $ n) p \<sigma>"
+  using assms by unfold_locales (simp_all add: lhd_ldropn)
 
 lemma conforms_to_another_strategy:
   "path_conforms_with_strategy p P \<sigma>' \<Longrightarrow> vmc_path G P v0 p \<sigma>'"
@@ -456,8 +459,9 @@ lemma v0_conforms: "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
 
 lemma w0_V [simp]: "w0 \<in> V" by (metis Ptl_LCons Ptl_valid valid_path_cons_simp)
 lemma w0_VV: "w0 \<in> VV p \<or> w0 \<in> VV p**" by simp
+lemma w0_lnth: "P $ Suc 0 = w0" by (simp add: P_lnth_Suc Ptl_0 w0_def)
 
-lemma vmc_path_ltl: "vmc_path G (ltl P) w0 p \<sigma>" by (unfold_locales) (simp_all add: w0_def)
+lemma vmc_path_ltl [simp]: "vmc_path G (ltl P) w0 p \<sigma>" by (unfold_locales) (simp_all add: w0_def)
 end
 
 lemma (in vmc_path) vmc_path_llength_no_deadend:

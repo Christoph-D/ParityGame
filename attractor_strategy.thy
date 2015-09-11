@@ -178,68 +178,52 @@ proof (intro exI conjI)
     with v(1) have "\<sigma>' v \<notin> A" "v\<rightarrow>\<sigma>' v" unfolding \<sigma>'_def using someI_ex[of "\<lambda>w. w \<notin> A \<and> v\<rightarrow>w"] by auto
   } note \<sigma>'_correct = this
 
-  from \<sigma>'_correct(2)
-    show "strategy p \<sigma>"
-    unfolding \<sigma>_def using valid_strategy_updates_set valid_arbitrary_strategy by blast
+  show "strategy p \<sigma>"
+    unfolding \<sigma>_def using \<sigma>'_correct(2) valid_strategy_updates_set valid_arbitrary_strategy by blast
 
-  show "strategy_avoids p \<sigma> (V - A) A" proof (cases "V - A = {}", simp del: Diff_eq_empty_iff)
+  show "strategy_avoids p \<sigma> (V - A) A" proof (cases "V - A = {}")
     case False
     {
-      fix P v
-      have "v \<in> lset P \<Longrightarrow> vmc_path G P (lhd P) p \<sigma> \<and> lhd P \<in> V - A \<longrightarrow> v \<notin> A"
-      proof (induct rule: llist_set_induct, simp add: lnth_0_conv_lhd)
-        case (step P v)
-        show ?case proof (intro impI, elim conjE, cases "lnull (ltl P)")
+      fix P v v0 assume v0: "v0 \<in> V - A" "vmc_path G P v0 p \<sigma>"
+      then interpret vmc_path G P v0 p \<sigma> by blast
+      have "v \<in> lset P \<Longrightarrow> v \<in> V - A" proof (insert v0, induct arbitrary: v0 rule: llist_set_induct)
+        case (find P v0)
+        interpret vmc_path G P v0 p \<sigma> using find.prems(2) .
+        show ?case using P_v0 find.prems(1) by blast
+      next
+        case (step P v v0)
+        interpret vmc_path G P v0 p \<sigma> using step.prems(2) .
+        show ?case proof (cases "lnull (ltl P)")
           case True
-          thus "v \<notin> A" using lset_lnull step.hyps(2) by fastforce
+          thus "v \<in> V - A" using lset_lnull step.hyps(2) by blast
         next
           case False
-          assume P: "vmc_path G P (lhd P) p \<sigma>" "lhd P \<in> V - A"
-          def [simp]: v0 \<equiv> "lhd P"
-          then interpret vmc_path G P v0 p \<sigma> using P(1) by blast
-          have "\<not>deadend v0"
-            using `\<not>lnull (ltl P)` v0_def by (metis P_LCons P_valid lnull_def valid_path_cons_simp)
-          then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
-          have "v0 \<in> V - A" using P(2) v0_def by blast
+          then interpret vmc_path_no_deadend G P v0 p \<sigma> using P_no_deadend_v0 by unfold_locales
           have "w0 \<notin> A" proof (cases)
             assume "v0 \<in> VV p"
-            hence "path_conforms_with_strategy p (LCons v0 (LCons w0 (ltl (ltl P)))) \<sigma>"
-              using P_LCons' P_conforms by presburger
-            hence "\<sigma> v0 = w0" using `v0 \<in> VV p` v0_conforms by blast
-            have "\<sigma>' v0 \<notin> A"
-              using `v0 \<in> VV p` `\<not>deadend v0` `v0 \<in> V - A` \<sigma>'_correct(1)[of v0]
-              by blast
-            thus "w0 \<notin> A"
-              using \<sigma>_def `\<sigma> v0 = w0` `v0 \<in> V - A` by (metis override_on_apply_in)
+            moreover hence "\<sigma>' v0 \<notin> A" using \<sigma>'_correct(1) step.prems(1) v0_edge_w0 w0_V by blast
+            ultimately show "w0 \<notin> A" using \<sigma>_def step.prems(1) v0_conforms by auto
           next
             assume "v0 \<notin> VV p"
             { assume "w0 \<in> A"
               have "v0 \<in> VV p**" using `v0 \<notin> VV p` `v0 \<in> V - A` by blast
               moreover have "v0 \<notin> VV p****" using `v0 \<notin> VV p` other_other_player[of p] by metis
-              moreover have "\<exists>w. v0\<rightarrow>w \<and> w \<in> A"
-                using `w0 \<in> A` using v0_edge_w0 by blast
+              moreover have "\<exists>w. v0\<rightarrow>w \<and> w \<in> A" using `w0 \<in> A` using v0_edge_w0 by blast
               ultimately have "v0 \<in> directly_attracted p** A"
-                using `\<not>deadend v0` `v0 \<in> V - A`
                 unfolding directly_attracted_def
+                using `\<not>deadend v0` `v0 \<in> V - A`
                 by blast
-              with `v0 \<in> V - A` assms
-                have False unfolding A_def using attractor_unfolding[of "p**" W] by blast
+              hence False
+                unfolding A_def using `v0 \<in> V - A` assms attractor_unfolding[of "p**" W] by blast
             }
             thus "w0 \<notin> A" by blast
           qed
-          hence "w0 \<in> V - A" using w0_V by blast
-          hence "lhd (ltl P) \<in> V - A" using w0_def by simp
-          moreover have "vmc_path G (ltl P) (lhd (ltl P)) p \<sigma>" using vmc_path_ltl w0_def by simp
-          ultimately show "v \<notin> A" using step.hyps(3) by blast
+          thus "v \<in> V - A" using w0_V w0_def vmc_path_ltl w0_def step.hyps(3) by simp
         qed
       qed
-    } note * = this
-    moreover { fix P v0 assume "v0 \<in> A" "vmc_path G P v0 p \<sigma>"
-      then interpret vmc_path G P v0 p \<sigma> by blast
-      have "lhd P \<in> A \<and> vmc_path G P (lhd P) p \<sigma>" using `v0 \<in> A` vmc_path P_LCons by auto
     }
-    ultimately show ?thesis sledgehammer
-  qed
+    thus ?thesis unfolding strategy_avoids_def by blast
+  qed (simp del: Diff_eq_empty_iff)
 qed
 
 end -- "context ParityGame"

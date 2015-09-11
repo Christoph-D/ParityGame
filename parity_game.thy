@@ -125,6 +125,8 @@ locale Digraph =
     and *) non_empty_vertex_set: "V \<noteq> {}"
     and valid_edge_set: "E \<subseteq> V \<times> V"
 begin
+lemma Digraph [simp]: "Digraph G" by unfold_locales
+
 lemma edges_are_in_V: "v\<rightarrow>w \<Longrightarrow> v \<in> V \<and> w \<in> V" using valid_edge_set by blast
 
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
@@ -386,6 +388,7 @@ locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) 
   assumes valid_player0_set: "V0 \<subseteq> V"
     and priorities_finite: "finite (\<omega> ` V)"
 begin
+lemma ParityGame [simp]: "ParityGame G" by unfold_locales
 
 abbreviation VV :: "Player \<Rightarrow> 'a set" where "VV p \<equiv> (if p = Even then V0 else V - V0)"
 lemma VVp_to_V [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" by (metis (full_types) Diff_subset subsetCE valid_player0_set)
@@ -690,6 +693,19 @@ proof-
 qed
 lemma P_no_deadends: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend (P $ n)"
   using valid_path_no_deadends by simp
+lemma P_no_deadend_v0: "\<not>lnull (ltl P) \<Longrightarrow> \<not>deadend v0"
+  by (metis P_LCons P_valid edges_are_in_V not_lnull_conv valid_path_edges')
+lemma P_no_deadend_v0_llength: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend v0"
+  by (metis P_0 P_len P_valid enat_ord_simps(2) not_less_eq valid_path_ends_on_deadend zero_less_Suc)
+lemma P_ends_on_deadend: "enat n < llength P \<Longrightarrow> deadend (P $ n) \<Longrightarrow> enat (Suc n) = llength P"
+  using P_valid valid_path_ends_on_deadend by blast
+
+lemma P_lnull_ltl_deadend_v0: "lnull (ltl P) \<Longrightarrow> deadend v0"
+  using P_LCons maximal_no_deadend by force
+lemma P_lnull_ltl_LCons: "lnull (ltl P) \<Longrightarrow> P = LCons v0 LNil"
+  using P_LCons lnull_def by metis
+lemma P_deadend_v0_LCons: "deadend v0 \<Longrightarrow> P = LCons v0 LNil"
+  using P_lnull_ltl_LCons P_no_deadend_v0 by blast
 
 lemma Ptl_valid [simp]: "valid_path (ltl P)" using valid_path_ltl by auto
 lemma Ptl_maximal [simp]: "maximal_path (ltl P)" using maximal_ltl by auto
@@ -708,6 +724,9 @@ lemma lappend_maximal [simp]: "maximal_path (lappend P' P)"
   by (simp add: maximal_path_lappend)
 
 lemma v0_V [simp]: "v0 \<in> V" by (metis P_LCons P_valid valid_path_cons_simp)
+lemma v0_VV: "v0 \<in> VV p \<or> v0 \<in> VV p**" by simp
+lemma lset_P_V [simp]: "lset P \<subseteq> V" by (simp add: valid_path_in_V)
+lemma lset_ltl_P_V [simp]: "lset (ltl P) \<subseteq> V" by (simp add: valid_path_in_V)
 
 end
 
