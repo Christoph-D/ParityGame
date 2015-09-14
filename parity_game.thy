@@ -727,6 +727,7 @@ lemma lappend_maximal [simp]: "maximal_path (lappend P' P)"
   by (simp add: maximal_path_lappend)
 
 lemma v0_V [simp]: "v0 \<in> V" by (metis P_LCons P_valid valid_path_cons_simp)
+lemma v0_lset_P [simp]: "v0 \<in> lset P" using P_not_null P_v0 llist.set_sel(1) by blast
 lemma v0_VV: "v0 \<in> VV p \<or> v0 \<in> VV p**" by simp
 lemma lset_P_V [simp]: "lset P \<subseteq> V" by (simp add: valid_path_in_V)
 lemma lset_ltl_P_V [simp]: "lset (ltl P) \<subseteq> V" by (simp add: valid_path_in_V)
