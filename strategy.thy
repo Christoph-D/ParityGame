@@ -273,6 +273,19 @@ proof-
        (cases rule: path_conforms_with_strategy.cases, auto)
 qed
 
+lemma (in vmc_path) subgame_path_vmc_path:
+  assumes V': "V' \<inter> V \<noteq> {}" "V' \<subseteq> V" and P: "lset P \<subseteq> V'"
+  shows "vmc_path (subgame V') P v0 p \<sigma>"
+proof-
+  interpret G': ParityGame "subgame V'" using subgame_ParityGame V'(1) by blast
+  show ?thesis proof
+    show "G'.valid_path P" using subgame_valid_path V'(1) P_valid P by blast
+    show "G'.maximal_path P" using subgame_maximal_path V' P_maximal P by blast
+    show "G'.path_conforms_with_strategy p P \<sigma>"
+      using subgame_path_conforms_with_strategy V' P_conforms P by blast
+  qed simp_all
+qed
+
 primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a Path" where
   "greedy_conforming_path p \<sigma> \<sigma>' v0 =
     LCons v0 (if deadend v0
