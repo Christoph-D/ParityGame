@@ -825,11 +825,22 @@ proof-
     qed
     ultimately obtain p \<sigma> where \<sigma>: "G'.strategy p \<sigma>" "G'.winning_strategy p \<sigma> v0"
       using G'.positional_strategy_exists_without_deadends by blast
+
+    have V'_no_deadends': "\<And>v. v \<in> V' \<Longrightarrow> \<not>deadend v" proof
+      fix v assume "v \<in> V'" "deadend v"
+      obtain p where "v \<in> VV p****" using `v \<in> V'` `V' \<subseteq> V` by blast
+      hence "v \<in> A p**"
+        unfolding A_def using `deadend v` attractor_set_base[of "?deadends p****" "p**"] by blast
+      thus False using `v \<in> V'` unfolding V'_def by (cases p) auto
+    qed
+
     obtain \<sigma>_attr
       where \<sigma>_attr: "strategy p \<sigma>_attr" "strategy_attracts p \<sigma>_attr (A p) (?deadends p**)"
       using attractor_has_strategy[OF `?deadends p** \<subseteq> V`] A_def by blast
     def \<sigma>' \<equiv> "override_on \<sigma> \<sigma>_attr (A Even \<union> A Odd)"
-    have \<sigma>'_is_\<sigma>_on_V': "\<And>v. v \<in> V' \<Longrightarrow> \<sigma>' v = \<sigma> v" unfolding V'_def \<sigma>'_def A_def by (cases p) simp_all 
+    have \<sigma>'_is_\<sigma>_on_V': "\<And>v. v \<in> V' \<Longrightarrow> \<sigma>' v = \<sigma> v"
+      unfolding V'_def \<sigma>'_def A_def by (cases p) simp_all
+    (* have \<sigma>_avoids: "strategy_avoids p \<sigma> V' (A p** )" sorry *)
     have "strategy p \<sigma>'" proof-
       { fix v assume v: "v \<in> VV p" "\<not>deadend v"
         have "v\<rightarrow>\<sigma>' v" proof (cases)
