@@ -155,6 +155,21 @@ proof (rule ccontr)
   thus False by (meson DiffE \<sigma>(1) strategy_attractsE v(2))
 qed
 
+lemma strategy_attracts_no_deadends:
+  assumes \<sigma>: "strategy_attracts p \<sigma> A W" "strategy p \<sigma>"
+    and v: "v0 \<in> V" "v0 \<in> A - W"
+  shows "\<not>deadend v0"
+proof
+  assume "deadend v0"
+  obtain P where "vmc_path G P v0 p \<sigma>"
+    using v(1) \<sigma>(2) strategy_conforming_path_exists_single by blast
+  then interpret vmc_path G P v0 p \<sigma> .
+  have "lset P \<inter> W \<noteq> {}"
+    using \<sigma>(1) v(2) strategy_attracts_via_lset unfolding strategy_attracts_def by auto
+  moreover have "lset P = {v0}" using `deadend v0` P_deadend_v0_LCons by simp
+  ultimately show False using v(2) by simp
+qed
+
 lemma strategy_attracts_irrelevant_override:
   assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
   shows "strategy_attracts p (override_on \<sigma>' \<sigma> (A - W)) A W"
