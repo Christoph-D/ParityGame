@@ -471,6 +471,7 @@ lemma v0_conforms: "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
   using path_conforms_with_strategy_start by (metis P_LCons' P_conforms)
 
 lemma w0_V [simp]: "w0 \<in> V" by (metis Ptl_LCons Ptl_valid valid_path_cons_simp)
+lemma w0_lset_P [simp]: "w0 \<in> lset P" by (metis P_LCons' lset_intros(1) lset_intros(2))
 lemma w0_VV: "w0 \<in> VV p \<or> w0 \<in> VV p**" by simp
 lemma w0_lnth: "P $ Suc 0 = w0" by (simp add: P_lnth_Suc Ptl_0 w0_def)
 
