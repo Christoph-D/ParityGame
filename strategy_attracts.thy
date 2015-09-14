@@ -371,25 +371,17 @@ lemma strategy_attracts_VVpstar:
   shows "\<not>v0 \<rightarrow> w0"
   by (metis assms strategy_attracts_not_outside strategy_attracts_via_successor)
 
-lemma attracted_path:
+lemma (in vmc_path) attracted_path:
   assumes "W \<subseteq> V"
-    and \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> S W"
-    and P: "\<not>lfinite P" "valid_path P" "path_conforms_with_strategy p P \<sigma>" "lset P \<inter> S \<noteq> {}"
+    and \<sigma>: "strategy_attracts p \<sigma> S W"
+    and P: "lset P \<inter> S \<noteq> {}"
   shows "lset P \<inter> W \<noteq> {}"
 proof-
-  obtain n where n: "P $ n \<in> S" using P(4) path_set_at[of _ P] by blast
+  obtain n where n: "enat n < llength P" "P $ n \<in> S" using P by (meson lset_intersect_lnth)
   def P' \<equiv> "ldropn n P"
-  have "\<not>lfinite P'" unfolding P'_def using P(1) by auto
-  hence "\<not>lnull P'" by auto
-  moreover have "valid_path P'" unfolding P'_def using P(2) valid_path_drop by blast
-  moreover hence "maximal_path P'" using `\<not>lfinite P'` infinite_path_is_maximal by blast
-  moreover have "path_conforms_with_strategy p P' \<sigma>"
-    unfolding P'_def using P(3) path_conforms_with_strategy_drop by blast
-  moreover have "P' $ 0 \<in> S" unfolding P'_def by (simp add: P(1) n infinite_small_llength)
-  ultimately interpret vmc_path G P' "P' $ 0" p \<sigma>
-    using valid_maximal_conforming_path_0 by blast
+  interpret vmc_path G P' "P $ n" p \<sigma> unfolding P'_def using vmc_path_ldropn n(1) by blast
   obtain m where "enat m < llength P'" "P' $ m \<in> W"
-    using \<sigma>(2) by (meson `P' $ 0 \<in> S` strategy_attractsE)
+    using \<sigma> n(2) by (meson strategy_attractsE)
   hence "lset P' \<inter> W \<noteq> {}" by (meson disjoint_iff_not_equal in_lset_conv_lnth)
   thus ?thesis unfolding P'_def using in_lset_ldropnD[of _ n P] by blast
 qed
