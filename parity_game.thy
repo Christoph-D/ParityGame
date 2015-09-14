@@ -288,7 +288,7 @@ proof-
   have "P $ n = lhd P'" by (simp add: P'_def assms(2) lhd_ldropn)
   hence "\<not>deadend v" using assms(3) v by auto
   hence "\<not>lnull Ps" using P'_def assms(1) maximal_drop maximal_no_deadend v by force
-  thus ?thesis using P'_def ldropn_Suc_conv_ldropn ldropn_eq_LConsD v by fastforce
+  thus ?thesis using P'_def ldropn_Suc_conv_ldropn ldropn_eq_LConsD v by fastforce (* TODO: make faster *)
 qed
 lemma maximal_path_impl2: "(\<And>n. enat n < llength P \<and> \<not>deadend (P $ n) \<longrightarrow> enat (Suc n) < llength P) \<Longrightarrow> maximal_path P"
 proof (coinduction arbitrary: P rule: maximal_path.coinduct)
