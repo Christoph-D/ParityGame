@@ -731,6 +731,14 @@ lemma v0_VV: "v0 \<in> VV p \<or> v0 \<in> VV p**" by simp
 lemma lset_P_V [simp]: "lset P \<subseteq> V" by (simp add: valid_path_in_V)
 lemma lset_ltl_P_V [simp]: "lset (ltl P) \<subseteq> V" by (simp add: valid_path_in_V)
 
+lemma finite_llast_deadend [simp]: "lfinite P \<Longrightarrow> deadend (llast P)"
+  using P_maximal P_not_null maximal_ends_on_deadend by blast
+lemma finite_llast_V [simp]: "lfinite P \<Longrightarrow> llast P \<in> V"
+  using P_not_null lfinite_lset lset_P_V by blast
+
+lemma suc_n_deadend: "enat (Suc n) = llength P \<Longrightarrow> deadend (P $ n)"
+  by (metis P_maximal enat_ord_simps(2) lessI maximal_path_impl1 min.strict_order_iff)
+
 end
 
 end
