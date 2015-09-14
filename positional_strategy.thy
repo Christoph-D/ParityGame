@@ -641,12 +641,9 @@ qed
 theorem positional_strategy_exists_without_deadends:
   assumes "v \<in> V" "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
-proof-
-  have "ParityGame G" by unfold_locales
-  with assms show ?thesis
-    by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
-       (rule ParityGame.positional_strategy_induction_step, simp_all)
-qed
+  using assms ParityGame
+  by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
+     (rule ParityGame.positional_strategy_induction_step, simp_all)
 
 theorem positional_strategy_exists:
   assumes "v0 \<in> V"
