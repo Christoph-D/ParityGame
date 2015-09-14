@@ -444,6 +444,9 @@ proof (unfold_locales)
   show "finite (\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub>)" by simp
 qed
 
+lemma subgame_deadend [simp]: "\<not>Digraph.deadend (subgame V') v \<Longrightarrow> \<not>deadend v"
+  by (meson subgame_E subgame_V subsetCE)
+
 lemma subgame_valid_path:
   assumes "V' \<inter> V \<noteq> {}" and P: "valid_path P" "lset P \<subseteq> V'"
   shows "Digraph.valid_path (subgame V') P"
