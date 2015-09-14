@@ -863,8 +863,46 @@ proof-
     moreover have "winning_strategy p \<sigma>' v0" proof-
       { fix P assume "vmc_path G P v0 p \<sigma>'"
         then interpret vmc_path G P v0 p \<sigma>' .
+        have "\<not>deadend v0" using V'_no_deadends' `v0 \<in> V'` by blast
+        then interpret vmc_path_no_deadend G P v0 p \<sigma>' by unfold_locales
         assume contra: "\<not>winning_path p P"
-        have "\<not>lfinite P" sorry
+        have contra': "winning_path p** P"
+          by (simp add: contra paths_are_winning_for_exactly_one_player)
+        have "lset P \<inter> A p** = {}" proof-
+          { fix v assume "v \<in> lset P"
+            hence "v \<notin> A p**" using vmc_path `v0 \<in> V'`
+            proof (induct arbitrary: v0 rule: llist_set_induct)
+              case (find P v0)
+              interpret vmc_path G P v0 p \<sigma>' using find.prems(1) .
+              show ?case using V'_def find.prems(2) by auto
+            next
+              case (step P v v0)
+              interpret P: vmc_path G P v0 p \<sigma>' using step.prems(1) .
+              have "\<not>deadend v0" using V'_no_deadends' `v0 \<in> V'` by blast
+              then interpret P: vmc_path_no_deadend G P v0 p \<sigma>' by unfold_locales
+              show ?case proof (cases)
+                assume "P.w0 \<in> V'"
+                thus "v \<notin> A p**" using step.hyps(3)[OF P.vmc_path_ltl] by blast
+              next
+                assume "P.w0 \<notin> V'"
+                have "\<not>v0 \<in> VV p" sorry
+                hence "v0 \<in> VV p**" by simp
+                hence "v0 \<notin> A p**" sorry
+                print_statement step.hyps(3)
+              qed
+            qed
+          }
+          thus ?thesis by blast
+        qed
+        have "\<not>lfinite P" proof
+          assume "lfinite P"
+          hence "llast P \<in> VV p****" using contra' unfolding winning_path_def by simp
+          moreover have "deadend (llast P)"
+            using `lfinite P` finite_llast_deadend by blast
+          ultimately have "llast P \<in> ?deadends p****" by blast
+          hence "llast P \<in> A p**" unfolding A_def by (meson attractor_set_base subsetCE)
+          thus False using `lset P \<inter> A p** = {}` by (meson P_not_null `lfinite P` disjoint_iff_not_equal lfinite_lset)
+        qed
         have "lset P \<subseteq> V'" proof (rule ccontr)
           assume "\<not>lset P \<subseteq> V'"
           {
