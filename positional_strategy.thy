@@ -783,7 +783,8 @@ proof-
     def G' \<equiv> "subgame V'"
     have "ParityGame G'" using `V' \<inter> V \<noteq> {}` unfolding G'_def using subgame_ParityGame by blast
     then interpret G': ParityGame G' .
-    have "v0 \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v0 \<in> V` `v0 \<in> V'` by simp
+    have "V\<^bsub>G'\<^esub> = V'" unfolding G'_def using `V' \<subseteq> V` by simp
+    hence "v0 \<in> V\<^bsub>G'\<^esub>" using `v0 \<in> V'` by simp
     moreover have V'_no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>G'.deadend v" proof
       fix v assume "v \<in> V\<^bsub>G'\<^esub>" "G'.deadend v"
       hence "v \<in> V'" "v \<in> V" unfolding G'_def subgame_def by simp_all
@@ -840,7 +841,6 @@ proof-
     def \<sigma>' \<equiv> "override_on \<sigma> \<sigma>_attr (A Even \<union> A Odd)"
     have \<sigma>'_is_\<sigma>_on_V': "\<And>v. v \<in> V' \<Longrightarrow> \<sigma>' v = \<sigma> v"
       unfolding V'_def \<sigma>'_def A_def by (cases p) simp_all
-    (* have \<sigma>_avoids: "strategy_avoids p \<sigma> V' (A p** )" sorry *)
     have "strategy p \<sigma>'" proof-
       { fix v assume v: "v \<in> VV p" "\<not>deadend v"
         have "v\<rightarrow>\<sigma>' v" proof (cases)
@@ -863,14 +863,35 @@ proof-
     moreover have "winning_strategy p \<sigma>' v0" proof-
       { fix P assume "vmc_path G P v0 p \<sigma>'"
         then interpret vmc_path G P v0 p \<sigma>' .
-        have "\<not>deadend v0" using V'_no_deadends' `v0 \<in> V'` by blast
-        then interpret vmc_path_no_deadend G P v0 p \<sigma>' by unfold_locales
+        interpret vmc_path_no_deadend G P v0 p \<sigma>'
+          using V'_no_deadends' `v0 \<in> V'` by unfold_locales
         assume contra: "\<not>winning_path p P"
         have contra': "winning_path p** P"
           by (simp add: contra paths_are_winning_for_exactly_one_player)
-        have "lset P \<inter> A p** = {}" proof-
+
+        have "lset P \<inter> A p = {}" proof (rule ccontr)
+          assume "lset P \<inter> A p \<noteq> {}"
+          have "strategy_attracts p (override_on \<sigma>' \<sigma>_attr (A p - ?deadends p**))
+                                    (A p)
+                                    (?deadends p**)"
+            using strategy_attracts_irrelevant_override[OF \<sigma>_attr(2) \<sigma>_attr(1) `strategy p \<sigma>'`]
+            by blast
+          moreover have "override_on \<sigma>' \<sigma>_attr (A p - ?deadends p**) = \<sigma>'"
+            by (rule ext, unfold \<sigma>'_def, cases p) (simp_all add: override_on_def)
+          ultimately have "strategy_attracts p \<sigma>' (A p) (?deadends p**)" by simp
+          hence "lset P \<inter> ?deadends p** \<noteq> {}"
+            using `lset P \<inter> A p \<noteq> {}` attracted_path[OF `?deadends p** \<subseteq> V`] by simp
+          then obtain n where n: "enat n < llength P" "P $ n \<in> VV p**" "deadend (P $ n)"
+            using lset_intersect_lnth[of P "?deadends p**"] by blast
+          have *: "llength P = enat (Suc n)" using n(1) n(3) P_ends_on_deadend by simp
+          have "lfinite P" using llength_eq_enat_lfiniteD[OF *] by simp
+          moreover have "llast P \<in> VV p**" using n(2) * llast_def[of P] by simp
+          ultimately show False using contra winning_path_def P_not_null by blast
+        qed
+
+        moreover have "lset P \<inter> A p** = {}" proof-
           { fix v assume "v \<in> lset P"
-            hence "v \<notin> A p**" using vmc_path `v0 \<in> V'`
+            hence "v \<notin> A p**" using vmc_path `v0 \<in> V'` `lset P \<inter> A p = {}`
             proof (induct arbitrary: v0 rule: llist_set_induct)
               case (find P v0)
               interpret vmc_path G P v0 p \<sigma>' using find.prems(1) .
@@ -880,53 +901,52 @@ proof-
               interpret P: vmc_path G P v0 p \<sigma>' using step.prems(1) .
               have "\<not>deadend v0" using V'_no_deadends' `v0 \<in> V'` by blast
               then interpret P: vmc_path_no_deadend G P v0 p \<sigma>' by unfold_locales
-              show ?case proof (cases)
-                assume "P.w0 \<in> V'"
-                thus "v \<notin> A p**" using step.hyps(3)[OF P.vmc_path_ltl] by blast
-              next
-                assume "P.w0 \<notin> V'"
-                have "\<not>v0 \<in> VV p" sorry
-                hence "v0 \<in> VV p**" by simp
-                hence "v0 \<notin> A p**" sorry
-                print_statement step.hyps(3)
+              have "P.w0 \<in> V'" proof-
+                have "P.w0 \<notin> A p" using step.prems(3) P.w0_lset_P by blast
+                moreover have "P.w0 \<notin> A p**" proof
+                  assume "P.w0 \<in> A p**"
+                  moreover have "v0 \<in> VV p**" proof (rule ccontr)
+                    assume "v0 \<notin> VV p**"
+                    hence "v0 \<in> VV p" by simp
+                    hence "v0 \<in> G'.VV p" unfolding G'_def using subgame_VV `v0 \<in> V'` by blast
+                    moreover have "v0 \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` `v0 \<in> V'` by simp
+                    moreover hence "\<not>G'.deadend v0" using V'_no_deadends by blast
+                    ultimately have "\<sigma> v0 \<in> V\<^bsub>G'\<^esub>"
+                      using \<sigma>(1)[unfolded G'.strategy_def] G'.edges_are_in_V by blast
+                    hence "\<sigma>' v0 \<in> V'" by (simp add: \<sigma>'_is_\<sigma>_on_V' step.prems(2) `V\<^bsub>G'\<^esub> = V'`)
+                    moreover have "\<sigma>' v0 = P.w0" using `v0 \<in> VV p` P.v0_conforms by blast
+                    ultimately have "P.w0 \<in> V'" by simp
+                    thus False using `P.w0 \<in> A p**` unfolding V'_def by (cases p) auto
+                  qed
+                  ultimately have "v0 \<in> A p**"
+                    using A_def `v0\<rightarrow>P.w0` attractor_outside by blast
+                  thus False using `v0 \<in> V'` unfolding V'_def by (cases p) auto
+                qed
+                ultimately show "P.w0 \<in> V'" unfolding V'_def using A_def by (cases p) auto
               qed
+              moreover have "lset (ltl P) \<inter> A p = {}" using in_lset_ltlD step.prems(3) by fastforce
+              ultimately show "v \<notin> A p**" using step.hyps(3)[OF P.vmc_path_ltl] by blast
             qed
           }
           thus ?thesis by blast
         qed
-        have "\<not>lfinite P" proof
-          assume "lfinite P"
-          hence "llast P \<in> VV p****" using contra' unfolding winning_path_def by simp
-          moreover have "deadend (llast P)"
-            using `lfinite P` finite_llast_deadend by blast
-          ultimately have "llast P \<in> ?deadends p****" by blast
-          hence "llast P \<in> A p**" unfolding A_def by (meson attractor_set_base subsetCE)
-          thus False using `lset P \<inter> A p** = {}` by (meson P_not_null `lfinite P` disjoint_iff_not_equal lfinite_lset)
+
+        ultimately have "lset P \<subseteq> V'"
+          unfolding V'_def using lset_P_V by (cases p) (simp_all add: Diff_Int_distrib le_iff_inf)
+        then interpret vmc_path G' P v0 p \<sigma>'
+          unfolding G'_def using subgame_path_vmc_path[OF `V' \<inter> V \<noteq> {}` `V' \<subseteq> V`] by blast
+        have "G'.path_conforms_with_strategy p P \<sigma>" proof-
+          have "\<And>v. v \<in> lset P \<Longrightarrow> \<sigma>' v = \<sigma> v"
+            using \<sigma>'_is_\<sigma>_on_V' `V\<^bsub>G'\<^esub> = V'` lset_P_V by blast
+          thus "G'.path_conforms_with_strategy p P \<sigma>"
+            using P_conforms G'.path_conforms_with_strategy_irrelevant_updates by blast
         qed
-        have "lset P \<subseteq> V'" proof (rule ccontr)
-          assume "\<not>lset P \<subseteq> V'"
-          {
-            have "strategy_attracts p (override_on \<sigma>' \<sigma>_attr (A p - ?deadends p**))
-                                      (A p)
-                                      (?deadends p**)"
-              using strategy_attracts_irrelevant_override[OF \<sigma>_attr(2) \<sigma>_attr(1) `strategy p \<sigma>'`]
-              by blast
-            moreover have "override_on \<sigma>' \<sigma>_attr (A p - ?deadends p**) = \<sigma>'"
-              by (rule ext, unfold \<sigma>'_def, cases p) (simp_all add: override_on_def)
-            ultimately have "strategy_attracts p \<sigma>' (A p) (?deadends p**)" by simp
-            moreover assume "lset P \<inter> A p \<noteq> {}"
-            ultimately have "lset P \<inter> ?deadends p** \<noteq> {}"
-              using attracted_path[OF `?deadends p** \<subseteq> V` `strategy p \<sigma>'` _ `\<not>lfinite P`]
-              by simp
-            hence "\<exists>n. enat n < llength P \<and> deadend (P $ n)"
-              by (metis (no_types, lifting) CollectD lset_intersect_lnth)
-            hence False
-              using `\<not>lfinite P` P_valid
-              by (metis llength_eq_enat_lfiniteD valid_path_ends_on_deadend)
-          }
-          show False sorry
-        qed
-        have False sorry
+        then interpret vmc_path G' P v0 p \<sigma> using conforms_to_another_strategy by blast
+        have *: "G'.winning_path p P" using \<sigma>(2)[unfolded G'.winning_strategy_def] vmc_path by blast
+        have False using `\<not>winning_path p P`
+          using G'.winning_path_supergame[OF * ParityGame, unfolded G'_def]
+                subgame_VV_subset[of "p**" V'] subgame_\<omega>[of V']
+          by blast
       }
       thus ?thesis unfolding winning_strategy_def by blast
     qed
