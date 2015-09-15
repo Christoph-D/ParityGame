@@ -495,25 +495,26 @@ lemma (in vmc_path) valid_maximal_conforming_lappend:
   assumes "enat (Suc n) < llength P" "vmc_path G P' (P $ n) p \<sigma>"
   shows "vmc_path G (lappend (ltake (enat (Suc n)) P) (ltl P')) v0 p \<sigma>"
 proof (unfold_locales)
-  let ?P = "lappend (ltake (enat (Suc n)) P) (ltl P')"
-  have len_Suc_P: "llength (ltake (enat (Suc n)) P) = enat (Suc n)"
+  let ?A = "ltake (enat (Suc n)) P"
+  let ?P = "lappend ?A (ltl P')"
+  have len_Suc_P: "llength ?A = enat (Suc n)"
     using assms(1) llength_ltake' by blast
   hence "enat (Suc n) \<le> llength ?P" by simp
   thus "\<not>lnull ?P" using Suc_ile_eq by auto
+  interpret P': vmc_path G P' "P $ n" p \<sigma> using assms(2) .
   have "\<not>deadend (P $ n)" using P_no_deadends assms(1) by blast
-  then interpret P': vmc_path_no_deadend G P' "P $ n" p \<sigma>
-    by (unfold vmc_path_no_deadend_def)
-       (simp add: assms(2), unfold_locales, simp)
-  have "P $ n \<rightarrow> P $ Suc n" using assms(1) P_valid valid_path_edges by blast
-  show "valid_path ?P" sorry
-  show "maximal_path ?P" proof-
-    have "maximal_path (ltl P')" using P'.Ptl_maximal by simp
-    moreover have "\<not>lnull (ltl P')" using P'.Ptl_not_null by simp
-    ultimately show ?thesis using maximal_path_lappend by blast
+  then interpret P': vmc_path_no_deadend G P' "P $ n" p \<sigma> by unfold_locales
+  show "valid_path ?P" using valid_path_lappend llast_ltake[OF assms(1)] by simp
+  show "maximal_path ?P" using maximal_path_lappend by simp
+  show "path_conforms_with_strategy p (lappend ?A (ltl P')) \<sigma>" proof-
+    have "\<not>lnull ?A" by (metis P_not_null enat_ord_simps(2) lessI lnull_ltake not_iless0)
+    thus ?thesis
+      using path_conforms_with_strategy_lappend[of ?A]
+      by (simp add: P'.v0_conforms P'.w0_def llast_ltake[OF assms(1)])
   qed
-  show "path_conforms_with_strategy p (lappend (ltake (enat (Suc n)) P) (ltl P')) \<sigma>" sorry
-  show "lhd (lappend (ltake (enat (Suc n)) P) (ltl P')) = v0"
-    by (metis P_v0 Suc_ile_eq len_Suc_P dual_order.irrefl enat_ltl_Suc lappend_ltake_enat_ldropn lhd_lappend llist.expand lnull_ltlI order_refl)
+  show "lhd (lappend ?A (ltl P')) = v0"
+    by (metis P_v0 Suc_ile_eq len_Suc_P dual_order.irrefl enat_ltl_Suc lappend_ltake_enat_ldropn
+              lhd_lappend llist.expand lnull_ltlI order_refl)
 qed
 
 lemma (in vmc_path) path_conforms_with_strategy_update_path:
