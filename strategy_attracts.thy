@@ -54,21 +54,35 @@ proof-
   thus ?thesis using n nat.exhaust by metis
 qed
 
-lemma (in vmc_path) strategy_attracts_via_lset_negative:
-  assumes "strategy_attracts_via p \<sigma> v0 A W"
-  shows "\<not>lset P \<subseteq> A - W"
-proof-
-  obtain n where "enat n < llength P" "P $ n \<in> W" by (meson assms strategy_attracts_viaE)
-  thus ?thesis by (meson DiffE lset_lnth)
-qed
-
 lemma (in vmc_path) strategy_attracts_via_lset:
   assumes "strategy_attracts_via p \<sigma> v0 A W"
   shows "lset P \<inter> W \<noteq> {}"
+    and "\<not>lset P \<subseteq> A - W"
+  by (meson assms strategy_attracts_viaE DiffE lset_lnth disjoint_iff_not_equal in_lset_conv_lnth)+
+
+lemma strategy_attracts_via_v0:
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and v0: "v0 \<in> V"
+  shows "v0 \<in> A \<union> W"
 proof-
-  obtain n where "enat n < llength P" "P $ n \<in> W" using strategy_attracts_viaE assms by blast
-  thus ?thesis by (meson disjoint_iff_not_equal in_lset_conv_lnth)
+  obtain P where "vmc_path G P v0 p \<sigma>" using strategy_conforming_path_exists_single assms by blast
+  then interpret vmc_path G P v0 p \<sigma> .
+  obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
+    using \<sigma>(2) strategy_attracts_via_def vmc_path by blast
+  show ?thesis proof (cases "n = 0")
+    case True thus ?thesis using n(2) by simp
+  next
+    case False
+    hence "lhd (ltake (enat n) P) = lhd P" by (simp add: enat_0_iff(1))
+    hence "v0 \<in> lset (ltake (enat n) P)"
+      by (metis `n \<noteq> 0` P_not_null P_v0 enat_0_iff(1) llist.set_sel(1) ltake.disc(2))
+    thus ?thesis using n(3) by blast
+  qed
 qed
+corollary strategy_attracts_not_outside:
+  "\<lbrakk> v0 \<in> V - A - W; strategy p \<sigma> \<rbrakk> \<Longrightarrow> \<not>strategy_attracts_via p \<sigma> v0 A W"
+  using strategy_attracts_via_v0 by blast
+
 
 lemma strategy_attracts_viaI:
   assumes "\<And>P. vmc_path G P v0 p \<sigma>
@@ -94,8 +108,8 @@ lemma strategy_attractsI:
 lemma (in vmc_path) strategy_attracts_lset:
   assumes "strategy_attracts p \<sigma> A W" "v0 \<in> A"
   shows "lset P \<inter> W \<noteq> {}"
-  using assms(1)[unfolded strategy_attracts_def] assms(2)
-        strategy_attracts_via_lset[of A W] by blast
+  using assms(1)[unfolded strategy_attracts_def] assms(2) strategy_attracts_via_lset(1)[of A W]
+  by blast
 
 (* All \<sigma>-paths starting from A never visit W. *)
 (* "\<exists>\<sigma>. strategy_avoids p \<sigma> A (V - A)" = A is a p-trap. *)
@@ -215,71 +229,18 @@ proof (rule strategy_attractsI, rule ccontr)
     by (metis override_on_apply_in)
 qed
 
-lemma strategy_attracts_irrelevant:
+(*
+lemma strategy_attracts_irrelevant_updates:
   assumes "strategy_attracts p \<sigma> A W" "v \<notin> A" "v\<rightarrow>w" "strategy p \<sigma>"
   shows "strategy_attracts p (\<sigma>(v := w)) A W"
-proof (rule strategy_attractsI)
-  fix P v0 assume "v0 \<in> A"
+proof-
   let ?\<sigma> = "\<sigma>(v := w)"
-  assume "vmc_path G P v0 p ?\<sigma>"
-  then interpret vmc_path G P v0 p ?\<sigma> .
-  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A" proof (cases)
-    assume v: "v \<in> lset P \<and> v \<in> VV p \<and> \<not>deadend v \<and> ?\<sigma> v \<noteq> \<sigma> v"
-
-    have "strategy p ?\<sigma>" by (simp add: assms(3) assms(4) valid_strategy_updates)
-    with v assms(4) obtain P' n where P':
-      "vmc_path G P' v0 p \<sigma>"
-      "enat (Suc n) < llength P'"
-      "enat (Suc n) < llength P"
-      and prefix: "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P"
-      and n: "P $ n \<in> VV p" "\<not>deadend (P $ n)" "?\<sigma> (P $ n) \<noteq> \<sigma> (P $ n)"
-        using path_conforms_with_strategy_update_path by blast
-    then interpret P': vmc_path G P' v0 p \<sigma> by blast
-    have "P' $ 0 = P $ 0" by simp
-    with P' obtain m where m: "enat m < llength P'" "P' $ m \<in> W" "lset (ltake (enat m) P') \<subseteq> A"
-      by (metis P'.strategy_attractsE `v0 \<in> A` assms(1))
-
-    have "m \<le> n" proof (rule ccontr)
-      assume "\<not>m \<le> n"
-      have "P $ n \<in> A" proof-
-        from `\<not>m \<le> n` have "path_prefix (ltake (enat (Suc n)) P') (ltake (enat m) P')" by simp
-        with m(3) have "lset (ltake (enat (Suc n)) P') \<subseteq> A" using lprefix_lsetD by blast
-        with prefix have *: "lset (ltake (enat (Suc n)) P) \<subseteq> A" by simp
-        hence "ltake (enat (Suc n)) P $ n \<in> A"
-          by (metis P'(3) enat_ord_simps(2) lessI llength_ltake' lset_lnth)
-        thus ?thesis by (simp add: lnth_ltake)
-      qed
-      moreover with n(3) have "P $ n = v" by (meson fun_upd_apply)
-      ultimately show False using `v \<notin> A` by blast
-    qed
-
-    have "lset (ltake (enat m) P) \<subseteq> A" proof-
-      from `m \<le> n` prefix have "ltake (enat m) P' = ltake (enat m) P"
-        by (meson enat_ord_simps(1) le_imp_less_Suc less_imp_le_nat ltake_eq_ltake_antimono)
-      with m(3) show ?thesis by simp
-    qed
-    moreover from `m \<le> n` P'(3) have "enat m < llength P"
-      using dual_order.strict_trans by (metis enat_ord_simps(2) le_imp_less_Suc)
-    moreover have "P $ m \<in> W" proof-
-      from `m \<le> n` have "enat m < enat (Suc n)" by simp
-      with prefix have "P' $ m = P $ m" using ltake_lnth by blast
-      with m(2) show ?thesis by simp
-    qed
-    ultimately show ?thesis using m(3) by blast
-  next
-    assume "\<not>(v \<in> lset P \<and> v \<in> VV p \<and> \<not>deadend v \<and> ?\<sigma> v \<noteq> \<sigma> v)"
-    moreover from P_valid P_conforms
-      have "v \<notin> lset P \<or> v \<notin> VV p \<or> deadend v \<Longrightarrow> path_conforms_with_strategy p P \<sigma>"
-        using path_conforms_with_strategy_irrelevant' path_conforms_with_strategy_irrelevant_deadend'
-        by blast
-    moreover from P_conforms
-      have "?\<sigma> v = \<sigma> v \<Longrightarrow> path_conforms_with_strategy p P \<sigma>" by simp
-    ultimately have "path_conforms_with_strategy p P \<sigma>" by blast
-    thus ?thesis
-      using assms(1)
-      by (meson vmc_path.strategy_attractsE `v0 \<in> A` conforms_to_another_strategy)
-  qed
+  have "?\<sigma> = override_on ?\<sigma> \<sigma> (A - W)"
+    by (rule ext) (simp add: assms(2) Diff_subset override_on_def)
+  thus ?thesis using strategy_attracts_irrelevant_override
+    by (metis (no_types) assms(1) assms(3) assms(4) valid_strategy_updates)
 qed
+*)
 
 (* strategy_avoids *)
 
@@ -323,61 +284,30 @@ proof (rule strategy_attracts_viaI)
 qed
 
 lemma strategy_attracts_VVp:
-  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
-    and v: "v0 \<in> S - W" "v0 \<in> VV p" "\<not>deadend v0"
-  shows "\<sigma> v0 \<in> S \<union> W"
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and v: "v0 \<in> A - W" "v0 \<in> VV p" "\<not>deadend v0"
+  shows "\<sigma> v0 \<in> A \<union> W"
 proof-
-  obtain P where "vmc_path G P v0 p \<sigma>" using assms strategy_conforming_path_exists_single by blast
-  then interpret vmc_path G P v0 p \<sigma> .
-  have "enat (Suc 0) < llength P" using v(3) lnull_0_llength maximal_path_impl1 by simp
-  hence "\<sigma> v0 = P $ Suc 0" using vmc_path_conforms[of 0] v(2) by simp
-  moreover have "P $ Suc 0 \<in> S \<union> W" proof-
-    obtain n where n: "enat (Suc n) < llength P" "P $ Suc n \<in> W" "lset (ltake (enat (Suc n)) P) \<subseteq> S"
-      using \<sigma>(2) strategy_attracts_via_SucE using v(1) by blast
-    {
-      assume "P $ Suc 0 \<notin> W"
-      hence "Suc 0 < Suc n" using n(2) Suc_lessI neq0_conv by blast
-      moreover have "ltake (enat (Suc n)) P $ Suc 0 \<in> S" proof-
-        have "enat (Suc 0) < llength (ltake (enat (Suc n)) P)"
-          by (metis `Suc 0 < Suc n` enat_ord_simps(2) llength_ltake' n(1))
-        thus ?thesis using lset_lnth n(3) by blast
-      qed
-      ultimately have "P $ Suc 0 \<in> S" by (metis enat_ord_simps(2) lnth_ltake)
-    }
-    thus ?thesis by blast
-  qed
-  ultimately show ?thesis by simp
-qed
-
-lemma strategy_attracts_not_outside:
-  assumes "v0 \<in> V - S - W" "strategy p \<sigma>"
-  shows "\<not>strategy_attracts_via p \<sigma> v0 S W"
-proof-
-  obtain P where "vmc_path G P v0 p \<sigma>" using assms strategy_conforming_path_exists_single by blast
-  then interpret vmc_path G P v0 p \<sigma> .
-  {
-    fix n assume n: "enat n < llength P" "P $ n \<in> W"
-    hence "n \<noteq> 0" using assms(1) DiffD2 by force
-    hence "lhd (ltake (enat n) P) \<notin> S" "\<not>lnull (ltake (enat n) P)"
-      using assms(1) by (simp_all add: enat_0_iff(1))
-    hence "\<not>lset (ltake (enat n) P) \<subseteq> S" using llist.set_sel(1) by blast
-  }
-  thus ?thesis using strategy_attracts_viaE by metis
+  have "v0\<rightarrow>\<sigma> v0" using \<sigma>(1)[unfolded strategy_def] v(2) v(3) by blast
+  hence "strategy_attracts_via p \<sigma> (\<sigma> v0) A W"
+    using strategy_attracts_via_successor \<sigma> v(1) by blast
+  thus ?thesis using strategy_attracts_via_v0 `v0\<rightarrow>\<sigma> v0` \<sigma>(1) edges_are_in_V by blast
 qed
 
 lemma strategy_attracts_VVpstar:
-  assumes "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 S W"
-    and "v0 \<in> S - W" "v0 \<notin> VV p" "w0 \<in> V - S - W"
+  assumes "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and "v0 \<in> A - W" "v0 \<notin> VV p" "w0 \<in> V - A - W"
   shows "\<not>v0 \<rightarrow> w0"
   by (metis assms strategy_attracts_not_outside strategy_attracts_via_successor)
 
+(* If a \<sigma>-conforming path P hits an attractor A, it will visit W. *)
 lemma (in vmc_path) attracted_path:
   assumes "W \<subseteq> V"
-    and \<sigma>: "strategy_attracts p \<sigma> S W"
-    and P: "lset P \<inter> S \<noteq> {}"
+    and \<sigma>: "strategy_attracts p \<sigma> A W"
+    and P_hits_A: "lset P \<inter> A \<noteq> {}"
   shows "lset P \<inter> W \<noteq> {}"
 proof-
-  obtain n where n: "enat n < llength P" "P $ n \<in> S" using P by (meson lset_intersect_lnth)
+  obtain n where n: "enat n < llength P" "P $ n \<in> A" using P_hits_A by (meson lset_intersect_lnth)
   def P' \<equiv> "ldropn n P"
   interpret vmc_path G P' "P $ n" p \<sigma> unfolding P'_def using vmc_path_ldropn n(1) by blast
   obtain m where "enat m < llength P'" "P' $ m \<in> W"
@@ -386,15 +316,15 @@ proof-
   thus ?thesis unfolding P'_def using in_lset_ldropnD[of _ n P] by blast
 qed
 
+(* If a path P hits an attractor A of the other player, the other player can force a visit of W. *)
 lemma (in vmc_path) attracted_path_VVpstar:
   assumes "W \<subseteq> V"
     and \<sigma>: "strategy p \<sigma>"
-    and \<sigma>': "strategy p** \<sigma>'" "strategy_attracts p** \<sigma>' S W"
-    and P: "lset P \<inter> S \<noteq> {}"
+    and \<sigma>': "strategy p** \<sigma>'" "strategy_attracts p** \<sigma>' A W"
+    and P_hits_A: "lset P \<inter> A \<noteq> {}"
   shows "\<exists>P'. vmc_path G P v0 p \<sigma> \<and> lset P' \<inter> W \<noteq> {}"
 proof-
-  obtain n where n: "enat n < llength P" "P $ n \<in> S"
-    using P(1) path_set_at[of _ P] by (meson lset_intersect_lnth)
+  obtain n where n: "enat n < llength P" "P $ n \<in> A" using P_hits_A by (meson lset_intersect_lnth)
 
   have "P $ n \<in> V" by (simp add: n(1) valid_path_finite_in_V')
 
@@ -417,7 +347,7 @@ proof-
       using valid_maximal_conforming_lappend[of n P''] P_len local.P''.vmc_path by blast
  
     have "lset P2 \<inter> W \<noteq> {}" proof-
-      have "ltake (enat (Suc n)) P $ n \<in> S" using n by (simp add: lnth_ltake)
+      have "ltake (enat (Suc n)) P $ n \<in> A" using n by (simp add: lnth_ltake)
       hence "lset P'' \<inter> W \<noteq> {}"
         using \<sigma>'(2) P''.comp.strategy_attracts_via_lset n strategy_attracts_def by blast
       moreover have "lset P'' \<subseteq> lset P2"
