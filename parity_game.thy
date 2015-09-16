@@ -1,7 +1,6 @@
 theory parity_game
 imports
   Main
-  pigeon_hole_principle
   "Coinductive/Coinductive_List"
 begin
 
@@ -521,13 +520,25 @@ qed
 lemma path_inf_priorities_is_nonempty:
   assumes "valid_path P" "\<not>lfinite P"
   shows "\<exists>k. k \<in> path_inf_priorities P"
-  proof -
-    have "\<forall>i. path_priorities P i \<in> \<omega>`V" using assms path_priorities_in_\<omega>V by blast
-    then obtain k i where "path_priorities P i = k" "\<forall>i. path_priorities P i = k \<longrightarrow> (\<exists>j > i. path_priorities P j = k)"
-      using pigeon_hole_principle[of "\<omega>`V" "path_priorities P"] priorities_finite by blast
-    hence "\<And>n. k \<in> lset (ldropn n (lmap \<omega> P))" using index_infinite_set[of "lmap \<omega> P" i k] by (metis assms(2) lfinite_lmap path_priorities_equiv)
-    thus ?thesis using path_inf_priorities_def by auto
-  qed
+proof-
+  have "range (path_priorities P) \<subseteq> \<omega> ` V"
+    by (simp add: path_priorities_in_\<omega>V assms image_subsetI)
+  hence "finite (range (path_priorities P))"
+    using priorities_finite finite_subset by blast
+  then obtain n0 where n0: "\<not>(finite {n. path_priorities P n = path_priorities P n0})"
+    using pigeonhole_infinite[of UNIV "path_priorities P"] by auto
+  def k \<equiv> "path_priorities P n0"
+  hence "lmap \<omega> P $ n0 = k" using assms(2) path_priorities_equiv by simp
+  moreover {
+    fix n assume "lmap \<omega> P $ n = k"
+    have "\<exists>n' > n. path_priorities P n' = k" using n0 k_def infinite_nat_iff_unbounded by auto
+    hence "\<exists>n' > n. lmap \<omega> P $ n' = k" using assms(2) path_priorities_equiv by auto
+  }
+  ultimately have "\<forall>n. k \<in> lset (ldropn n (lmap \<omega> P))"
+    using index_infinite_set[of "lmap \<omega> P" n0 k] assms(2) lfinite_lmap
+    by blast
+  thus ?thesis using path_inf_priorities_def by auto
+qed
 
 lemma path_inf_priorities_has_minimum:
   assumes "valid_path P" "\<not>lfinite P"
