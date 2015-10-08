@@ -59,7 +59,8 @@ proof-
             by (metis (no_types) lprefix_lnthD ltake_is_lprefix)
           with `P'' $ n = v0` `v0 \<notin> S` show False by blast
         qed
-        with P'_P''_same_prefix have "P' $ m = P'' $ m" using ltake_lnth[of "enat (Suc n)" P' P'' m] by simp
+        with P'_P''_same_prefix have "P' $ m = P'' $ m"
+          using ltake_lnth[of "enat (Suc n)" P' P'' m] by simp
         with m(2) have "P'' $ m \<in> W" by simp
         hence 1: "P $ Suc m \<in> W" by (simp add: lnth_ltl)
 
@@ -145,16 +146,15 @@ corollary attractor_has_strategy:
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> (attractor p W) W"
 proof-
   let ?A = "attractor p W"
-  from `W \<subseteq> V`
-    have "?A \<subseteq> V"
-    by (simp add: attractor_is_bounded_by_V)
-  moreover from `W \<subseteq> V`
+  have "?A \<subseteq> V" by (simp add: `W \<subseteq> V` attractor_is_bounded_by_V)
+  moreover
     have "\<And>v. v \<in> ?A \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v ?A W"
-    using attractor_has_strategy_single by blast
+    using `W \<subseteq> V` attractor_has_strategy_single by blast
   ultimately show ?thesis using merge_attractor_strategies `W \<subseteq> V` by blast
 qed
 
-(* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A. *)
+(* If A is the p-attractor of a set W, then p** has a strategy on V - A avoiding A.
+   Note that this theorem is not required to prove positional_strategy_exists later. *)
 theorem attractor_has_outside_strategy:
   fixes W p
   defines "A \<equiv> attractor p** W"

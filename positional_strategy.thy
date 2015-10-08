@@ -439,10 +439,11 @@ proof-
       ultimately show ?thesis by simp
     qed
 
+    (* Show that \<sigma> is a winning strategy on V - W1. *)
     have "\<forall>v \<in> V - W1. winning_strategy p \<sigma> v" proof-
       {
         fix v P assume P: "v \<in> V - W1" "vmc_path G P v p \<sigma>"
-        then interpret vmc_path G P v p \<sigma> by blast
+        interpret vmc_path G P v p \<sigma> using P(2) .
         have "\<not>lfinite P"
           using no_deadends lfinite_lset maximal_ends_on_deadend P_maximal P_not_null lset_P_V
           by blast
@@ -464,7 +465,8 @@ proof-
                 assume "v \<in> VV p"
                 hence "\<sigma> v = w0" using v0_conforms by blast
                 hence "v \<notin> K" using choose_works(2)[OF `v \<in> VV p`] `v \<in> V - W1` `w0 \<in> W1` by auto
-                moreover { assume *: "v \<in> attractor p K - K"
+                moreover have "v \<notin> attractor p K - K" proof
+                  assume *: "v \<in> attractor p K - K"
                   hence "\<exists>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
                     using \<sigma>_attracts strategy_attractsE by blast
                   then obtain n where
@@ -500,9 +502,10 @@ proof-
                                 ltake.simps(3) ltake_ltl zero_ne_eSuc)
                     thus False using `w0 \<in> W1` `attractor p K \<inter> W1 = {}` by blast
                   qed
-                  hence False using `w0 \<in> W1` K_def U_def by blast
-                }
-                moreover { assume "v \<in> V'"
+                  thus False using `w0 \<in> W1` K_def U_def by blast
+                qed
+                moreover have "v \<notin> V'" proof
+                  assume "v \<in> V'"
                   hence "\<sigma>2 v = w0" using `\<sigma> v = w0` by simp
                   moreover have "v \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` `v \<in> V'` by simp
                   moreover hence "ParityGame G'" using G'_ParityGame by blast
@@ -510,8 +513,8 @@ proof-
                   ultimately have "w0 \<in> V\<^bsub>G'\<^esub>"
                     using G'_no_deadends ParityGame.valid_strategy_in_V `v \<in> V'` `v \<in> VV p`
                     by fastforce
-                  hence False using `V\<^bsub>G'\<^esub> = V'` `w0 \<in> W1` V'_def U_def by blast
-                }
+                  thus False using `V\<^bsub>G'\<^esub> = V'` `w0 \<in> W1` V'_def U_def by blast
+                qed
                 ultimately show False using `v \<in> V - W1` V_decomp' by blast
               next
                 assume "v \<notin> VV p"
@@ -533,6 +536,10 @@ proof-
           qed
         qed
         hence "lset P \<subseteq> attractor p K \<union> V'" using V_decomp by blast
+        (* Every \<sigma>-conforming path starting in V - W1 is winning.  We distinguish two cases:
+           1. P eventually stays in V'.  Then P is winning because \<sigma>2 is winning.
+           2. P visits K infinitely often.  Then P is winning because of the priority of K.
+        *)
         have "winning_path p P" proof (cases)
           assume "\<exists>n. lset (ldropn n P) \<subseteq> V'"
           (* P eventually stays in V'. *)
@@ -644,6 +651,7 @@ theorem positional_strategy_exists_without_deadends:
   by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
      (rule ParityGame.positional_strategy_induction_step, simp_all)
 
+(* Prove a stronger version of the previous theorem: Allow deadends. *)
 theorem positional_strategy_exists:
   assumes "v0 \<in> V"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0"
