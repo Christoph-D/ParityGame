@@ -50,8 +50,7 @@ lemma valid_path_in_V: assumes "valid_path P" shows "lset P \<subseteq> V" proof
     using assms by (induct rule: llist.set_induct) (auto intro: valid_path.cases)
 qed
 lemma valid_path_finite_in_V': "\<lbrakk> valid_path P; enat i < llength P \<rbrakk> \<Longrightarrow> P $ i \<in> V"
-  by (metis (no_types, lifting) ldropn_Suc_conv_ldropn llist.distinct(1)
-                                llist.inject valid_path.cases valid_path_drop)
+  using valid_path_in_V lset_lnth by blast
 
 lemma valid_path_edges': "valid_path (LCons v (LCons w Ps)) \<Longrightarrow> v\<rightarrow>w"
   using valid_path.cases by fastforce

@@ -135,7 +135,7 @@ proof-
         moreover obtain p' \<sigma> where p': "G'.strategy p' \<sigma>" "G'.winning_strategy p' \<sigma> v"
           using G'_winning_regions by blast
         ultimately have "p' \<noteq> p" by blast
-        hence "p' = p**" using Player.exhaust by auto
+        hence "p' = p**" by (cases p; cases p') auto
         with p' have \<sigma>: "G'.strategy p** \<sigma>" "G'.winning_strategy p** \<sigma> v" by simp_all
 
         have "\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v" proof (rule exI, rule conjI)
@@ -354,7 +354,7 @@ proof-
         fix v P assume P: "v \<in> V - W1" "vmc_path G P v p \<sigma>"
         interpret vmc_path G P v p \<sigma> using P(2) .
         have "\<not>lfinite P"
-          using no_deadends lfinite_lset maximal_ends_on_deadend P_maximal P_not_null lset_P_V
+          using no_deadends lfinite_lset maximal_ends_on_deadend[of P] P_maximal P_not_null lset_P_V
           by blast
         have "lset P \<subseteq> V - W1" proof
           fix v' assume "v' \<in> lset P"
