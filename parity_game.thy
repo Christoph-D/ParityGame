@@ -411,15 +411,6 @@ qed
 lemma path_priorities_in_\<omega>V: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> path_priorities P i \<in> \<omega> ` V"
   unfolding path_priorities_def using llist_set_nth[of P V i] valid_path_in_V by blast
 
-lemma LCons_extends:
-  assumes "\<exists>i. P $ i = w"
-  shows "\<exists>i. LCons v P $ i = w"
-proof-
-  from assms obtain i where "P $ i = w" by auto
-  hence "LCons v P $ Suc i = w" by simp
-  thus ?thesis by blast
-qed
-
 lemma path_inf_priorities_is_nonempty:
   assumes "valid_path P" "\<not>lfinite P"
   shows "\<exists>k. k \<in> path_inf_priorities P"
