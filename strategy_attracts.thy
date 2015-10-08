@@ -2,7 +2,7 @@
 theory strategy_attracts
 imports
   Main
-  parity_game strategy
+  strategy
 begin
 
 lemma (in vmc_path) valid_maximal_conforming_ldropn_lappend:
@@ -90,6 +90,72 @@ lemma strategy_attracts_viaI:
   shows "strategy_attracts_via p \<sigma> v0 A W"
   unfolding strategy_attracts_via_def using assms by blast
 
+lemma strategy_attracts_via_no_deadends:
+  assumes "v \<in> V" "v \<in> A - W" "strategy_attracts_via p \<sigma> v A W"
+  shows "\<not>deadend v"
+proof
+  assume "deadend v"
+  def [simp]: P \<equiv> "LCons v LNil"
+  interpret vmc_path G P v p \<sigma> proof
+    show "valid_path P" using `v \<in> A - W` `v \<in> V` valid_path_base' by auto
+    show "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
+    show "path_conforms_with_strategy p P \<sigma>" by (simp add: path_conforms_LCons_LNil)
+  qed simp_all
+  have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+    using assms(3) strategy_attracts_viaE by blast
+  moreover have "llength P = eSuc 0" by simp
+  ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1))
+  with `v \<in> A - W` show False by auto
+qed
+
+lemma attractor_strategy_on_extends:
+  "\<lbrakk> strategy_attracts_via p \<sigma> v0 A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A' W"
+  unfolding strategy_attracts_via_def by blast
+
+lemma strategy_attracts_via_trivial: "v0 \<in> W \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A W"
+proof (rule strategy_attracts_viaI)
+  fix P assume "v0 \<in> W" "vmc_path G P v0 p \<sigma>"
+  then interpret vmc_path G P v0 p \<sigma> by blast
+  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+    by (rule exI[of _ 0]) (simp add: `v0 \<in> W` lset_ltake)
+qed
+
+lemma strategy_attracts_via_successor:
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and v0: "v0 \<in> A - W"
+    and w0: "v0\<rightarrow>w0" "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
+  shows "strategy_attracts_via p \<sigma> w0 A W"
+proof (rule strategy_attracts_viaI)
+  fix P assume "vmc_path G P w0 p \<sigma>"
+  then interpret vmc_path G P w0 p \<sigma> .
+  def [simp]: P' \<equiv> "LCons v0 P"
+  then interpret P': vmc_path G P' v0 p \<sigma>
+    using extension_valid_maximal_conforming w0 by blast
+  obtain n where
+    n: "enat (Suc n) < llength P'" "P' $ Suc n \<in> W" "lset (ltake (enat (Suc n)) P') \<subseteq> A"
+    using \<sigma>(2) P'.strategy_attracts_via_SucE v0 by blast
+  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+    apply (rule exI[of _ n])
+    using n enat_Suc_ltl[of n P'] P'.P_lnth_Suc lset_ltake_ltl[of n P'] by auto
+qed
+
+lemma strategy_attracts_VVp:
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and v: "v0 \<in> A - W" "v0 \<in> VV p" "\<not>deadend v0"
+  shows "\<sigma> v0 \<in> A \<union> W"
+proof-
+  have "v0\<rightarrow>\<sigma> v0" using \<sigma>(1)[unfolded strategy_def] v(2,3) by blast
+  hence "strategy_attracts_via p \<sigma> (\<sigma> v0) A W"
+    using strategy_attracts_via_successor \<sigma> v(1) by blast
+  thus ?thesis using strategy_attracts_via_v0 `v0\<rightarrow>\<sigma> v0` \<sigma>(1) by blast
+qed
+
+lemma strategy_attracts_VVpstar:
+  assumes "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
+    and "v0 \<in> A - W" "v0 \<notin> VV p" "w0 \<in> V - A - W"
+  shows "\<not>v0 \<rightarrow> w0"
+  by (metis assms strategy_attracts_not_outside strategy_attracts_via_successor)
+
 (* All \<sigma>-paths starting from A visit W and until then they stay in A. *)
 definition strategy_attracts :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
   "strategy_attracts p \<sigma> A W \<equiv> \<forall>v0 \<in> A. strategy_attracts_via p \<sigma> v0 A W"
@@ -110,12 +176,6 @@ lemma (in vmc_path) strategy_attracts_lset:
   shows "lset P \<inter> W \<noteq> {}"
   using assms(1)[unfolded strategy_attracts_def] assms(2) strategy_attracts_via_lset(1)[of A W]
   by blast
-
-(* All \<sigma>-paths starting from A never visit W. *)
-(* "\<exists>\<sigma>. strategy_avoids p \<sigma> A (V - A)" = A is a p-trap. *)
-definition strategy_avoids :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_avoids p \<sigma> A W \<equiv>
-    (\<forall>P v0. v0 \<in> A \<and> vmc_path G P v0 p \<sigma> \<longrightarrow> lset P \<inter> W = {})"
 
 (* strategy_attracts *)
 
@@ -169,19 +229,9 @@ proof (rule ccontr)
 qed
 
 lemma strategy_attracts_no_deadends:
-  assumes \<sigma>: "strategy_attracts p \<sigma> A W" "strategy p \<sigma>"
-    and v: "v0 \<in> V" "v0 \<in> A - W"
-  shows "\<not>deadend v0"
-proof
-  assume "deadend v0"
-  obtain P where "vmc_path G P v0 p \<sigma>"
-    using v(1) \<sigma>(2) strategy_conforming_path_exists_single by blast
-  then interpret vmc_path G P v0 p \<sigma> .
-  have "lset P \<inter> W \<noteq> {}"
-    using \<sigma>(1) v(2) strategy_attracts_via_lset unfolding strategy_attracts_def by auto
-  moreover have "lset P = {v0}" using `deadend v0` P_deadend_v0_LCons by simp
-  ultimately show False using v(2) by simp
-qed
+  assumes "v \<in> V" "v \<in> A - W" "strategy_attracts p \<sigma> A W"
+  shows "\<not>deadend v"
+  using assms strategy_attracts_via_no_deadends unfolding strategy_attracts_def by blast
 
 lemma strategy_attracts_irrelevant_override:
   assumes "strategy_attracts p \<sigma> A W" "strategy p \<sigma>" "strategy p \<sigma>'"
@@ -228,76 +278,8 @@ proof (rule strategy_attractsI, rule ccontr)
     by (metis override_on_apply_in)
 qed
 
-(*
-lemma strategy_attracts_irrelevant_updates:
-  assumes "strategy_attracts p \<sigma> A W" "v \<notin> A" "v\<rightarrow>w" "strategy p \<sigma>"
-  shows "strategy_attracts p (\<sigma>(v := w)) A W"
-proof-
-  let ?\<sigma> = "\<sigma>(v := w)"
-  have "?\<sigma> = override_on ?\<sigma> \<sigma> (A - W)"
-    by (rule ext) (simp add: assms(2) Diff_subset override_on_def)
-  thus ?thesis using strategy_attracts_irrelevant_override
-    by (metis (no_types) assms(1) assms(3) assms(4) valid_strategy_updates)
-qed
-*)
-
-(* strategy_avoids *)
-
-lemma strategy_avoids_trivial [simp]: "strategy_avoids p \<sigma> {} W"
-  unfolding strategy_avoids_def by simp
-
-(* strategy_attracts_via *)
-
-lemma attractor_strategy_on_extends:
-  "\<lbrakk> strategy_attracts_via p \<sigma> v0 A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A' W"
-  unfolding strategy_attracts_via_def by blast
-
-lemma strategy_attracts_via_trivial: "v0 \<in> W \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A W"
-proof (rule strategy_attracts_viaI)
-  fix P assume "v0 \<in> W" "vmc_path G P v0 p \<sigma>"
-  then interpret vmc_path G P v0 p \<sigma> by blast
-  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-    by (rule exI[of _ 0]) (simp add: `v0 \<in> W` lset_ltake)
-qed
-
 lemma strategy_attracts_trivial [simp]: "strategy_attracts p \<sigma> W W"
   by (simp add: strategy_attracts_def strategy_attracts_via_trivial)
-
-lemma strategy_attracts_via_successor:
-  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
-    and v0: "v0 \<in> A - W"
-    and w0: "v0\<rightarrow>w0" "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
-  shows "strategy_attracts_via p \<sigma> w0 A W"
-proof (rule strategy_attracts_viaI)
-  fix P assume "vmc_path G P w0 p \<sigma>"
-  then interpret vmc_path G P w0 p \<sigma> .
-  def [simp]: P' \<equiv> "LCons v0 P"
-  then interpret P': vmc_path G P' v0 p \<sigma>
-    using extension_valid_maximal_conforming w0 by blast
-  obtain n where
-    n: "enat (Suc n) < llength P'" "P' $ Suc n \<in> W" "lset (ltake (enat (Suc n)) P') \<subseteq> A"
-    using \<sigma>(2) P'.strategy_attracts_via_SucE v0 by blast
-  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-    apply (rule exI[of _ n])
-    using n enat_Suc_ltl[of n P'] P'.P_lnth_Suc lset_ltake_ltl[of n P'] by auto
-qed
-
-lemma strategy_attracts_VVp:
-  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
-    and v: "v0 \<in> A - W" "v0 \<in> VV p" "\<not>deadend v0"
-  shows "\<sigma> v0 \<in> A \<union> W"
-proof-
-  have "v0\<rightarrow>\<sigma> v0" using \<sigma>(1)[unfolded strategy_def] v(2,3) by blast
-  hence "strategy_attracts_via p \<sigma> (\<sigma> v0) A W"
-    using strategy_attracts_via_successor \<sigma> v(1) by blast
-  thus ?thesis using strategy_attracts_via_v0 `v0\<rightarrow>\<sigma> v0` \<sigma>(1) by blast
-qed
-
-lemma strategy_attracts_VVpstar:
-  assumes "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
-    and "v0 \<in> A - W" "v0 \<notin> VV p" "w0 \<in> V - A - W"
-  shows "\<not>v0 \<rightarrow> w0"
-  by (metis assms strategy_attracts_not_outside strategy_attracts_via_successor)
 
 (* If a \<sigma>-conforming path P hits an attractor A, it will visit W. *)
 lemma (in vmc_path) attracted_path:
@@ -330,7 +312,7 @@ proof-
   show ?thesis proof (cases)
     assume "enat (Suc n) = llength P"
     hence "deadend (P $ n)" using suc_n_deadend by blast
-    hence "P $ n \<in> W" using strategy_attracts_no_deadends[OF \<sigma>'(2) \<sigma>'(1) `P $ n \<in> V`] n(2) by blast
+    hence "P $ n \<in> W" using strategy_attracts_no_deadends[OF `P $ n \<in> V` _ \<sigma>'(2)] n(2) by blast
     hence "lset P \<inter> W \<noteq> {}" using n(1) by (meson disjoint_iff_not_equal in_lset_conv_lnth)
     thus ?thesis using vmc_path by blast
   next
@@ -357,34 +339,6 @@ proof-
     qed
     thus ?thesis using vmc_path by blast
   qed
-qed
-
-(* Winning strategies *)
-
-lemma strategy_extends_VVp:
-  assumes v0: "v0 \<in> VV p" "\<not>deadend v0"
-  and \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
-  shows "winning_strategy p \<sigma> (\<sigma> v0)"
-proof (unfold winning_strategy_def, intro allI impI)
-  fix P assume "vmc_path G P (\<sigma> v0) p \<sigma>"
-  then interpret vmc_path G P "\<sigma> v0" p \<sigma> .
-  have "v0\<rightarrow>\<sigma> v0" using v0 \<sigma>(1) strategy_def by blast
-  hence "winning_path p (LCons v0 P)"
-    using \<sigma>(2) extension_valid_maximal_conforming winning_strategy_def by blast
-  thus "winning_path p P" using winning_path_ltl[of p "LCons v0 P"] by simp
-qed
-
-lemma strategy_extends_VVpstar:
-  assumes v0: "v0 \<in> VV p**" "v0\<rightarrow>w0"
-  and \<sigma>: "winning_strategy p \<sigma> v0"
-  shows "winning_strategy p \<sigma> w0"
-proof (unfold winning_strategy_def, intro allI impI)
-  fix P assume "vmc_path G P w0 p \<sigma>"
-  then interpret vmc_path G P w0 p \<sigma> .
-  have "winning_path p (LCons v0 P)"
-    using extension_valid_maximal_conforming VV_impl1 \<sigma> v0 winning_strategy_def
-    by auto
-  thus "winning_path p P" using winning_path_ltl[of p "LCons v0 P"] by auto
 qed
 
 end -- "context ParityGame"

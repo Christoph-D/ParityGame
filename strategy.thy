@@ -33,10 +33,6 @@ lemma (in vmc2_path) vmc2_path [simp]: "vmc2_path G P v0 p \<sigma> \<sigma>'" b
 
 context ParityGame begin
 
-(* A strategy is winning for player p from v0 if every maximal \<sigma>-path starting in v0 is winning. *)
-definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
-  "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. vmc_path G P v0 p \<sigma> \<longrightarrow> winning_path p P"
-
 (* An arbitrary strategy.  Useful to define other strategies. *)
 definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
