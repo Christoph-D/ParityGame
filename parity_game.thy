@@ -434,16 +434,6 @@ proof-
   thus ?thesis using path_inf_priorities_def by auto
 qed
 
-lemma path_inf_priorities_has_minimum:
-  assumes "valid_path P" "\<not>lfinite P"
-  obtains a where "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)"
-  proof -
-    have "\<exists>a. a \<in> path_inf_priorities P" using assms path_inf_priorities_is_nonempty by blast
-    then obtain a where "a \<in> path_inf_priorities P" "(\<And>z. z < a \<Longrightarrow> z \<notin> path_inf_priorities P)"
-      by (metis less_eq less_than_def wf_less_than wfE_min)
-    thus ?thesis by (metis leI that)
-  qed
-
 lemma in_set_ldropn: "x \<in> lset (ldropn (Suc n) xs) \<Longrightarrow> x \<in> lset (ldropn n xs)"
   by (simp add: in_lset_ltlD ldrop_eSuc_ltl ltl_ldropn)
 
@@ -491,8 +481,10 @@ next
     thus ?thesis by (simp add: "1" "2")
   next
     assume infinite: "\<not>lfinite P"
-    then obtain a where "a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b)" using assms path_inf_priorities_has_minimum by blast
-    hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P" using infinite winning_path_def by (metis `\<not>lnull P` le_antisym)
+    then obtain a where "a \<in> path_inf_priorities P" "\<And>b. b < a \<Longrightarrow> b \<notin> path_inf_priorities P"
+      using ex_least_nat_le[of "\<lambda>a. a \<in> path_inf_priorities P"] path_inf_priorities_is_nonempty assms by blast
+    hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P"
+      unfolding infinite winning_path_def using `\<not>lnull P` infinite by (metis le_antisym not_le)
     thus ?thesis using winning_priority_for_one_player by blast
   qed
 qed
