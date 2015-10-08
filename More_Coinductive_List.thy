@@ -111,6 +111,9 @@ proof (cases)
   thus ?thesis using lset_LCons[of v0 "ltake (enat n) (ltl xs)"] by blast
 qed (simp add: lnull_def)
 
+lemma lprefix_llength: "\<lbrakk> lprefix P P'; i < llength P \<rbrakk> \<Longrightarrow> i < llength P'"
+  using less_le_trans lprefix_llength_le by blast
+
 notation lnth (infix "$" 61)
 
 end

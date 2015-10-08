@@ -37,28 +37,6 @@ context ParityGame begin
 definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. vmc_path G P v0 p \<sigma> \<longrightarrow> winning_path p P"
 
-abbreviation path_prefix :: "'a Path \<Rightarrow> 'a Path \<Rightarrow> bool" where "path_prefix \<equiv> lprefix"
-
-lemma path_prefix_length: "\<lbrakk> path_prefix P P'; i < llength P \<rbrakk> \<Longrightarrow> i < llength P'"
-  by (metis dual_order.strict_trans lstrict_prefix_def lstrict_prefix_llength_less)
-lemma path_prefix_included: "\<lbrakk> path_prefix P P'; enat i < llength P \<rbrakk> \<Longrightarrow> P $ i = P' $ i"
-  using lprefix_lnthD by blast
-lemma path_prefix_infinite: "\<lbrakk> path_prefix P P'; \<not>lfinite P \<rbrakk> \<Longrightarrow> P $ i = P' $ i"
-  by (simp add: not_lfinite_lprefix_conv_eq)
-lemma path_prefix_valid:
-  assumes "valid_path P'" "path_prefix P P'"
-  shows "valid_path P"
-proof (subst valid_path_equiv, intro conjI)
-  show "lset P \<subseteq> V" by (meson assms(1) assms(2) dual_order.trans lprefix_lsetD valid_path_in_V)
-  show "\<forall>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v \<rightarrow> w" proof (clarify)
-    fix i v w assume *: "enat (Suc i) < llength P"
-    hence "enat (Suc i) < llength P'" using assms(2) path_prefix_length by blast
-    thus "P $ i \<rightarrow> (P $ Suc i)"
-      using "*" assms(1) assms(2) dual_order.strict_trans path_prefix_included valid_path_edges
-      by fastforce
-  qed
-qed
-
 (* An arbitrary strategy.  Useful to define other strategies. *)
 definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
@@ -80,11 +58,6 @@ lemma valid_strategy_updates_set:
 lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> \<sigma> v \<in> V"
   unfolding strategy_def using valid_edge_set by auto
 
-lemma one_step_path_exists:
-  assumes "v0 \<in> V"
-  shows "\<exists>P. valid_path P \<and> lfinite P \<and> path_conforms_with_strategy p P \<sigma> \<and> \<not>lnull P \<and> P $ 0 = v0"
-  by (meson assms lfinite_code(1) lfinite_code(2) llist.disc(2) lnth_0 path_conforms_with_strategy.intros(2) valid_path_base')
-
 lemma path_conforms_with_strategy_ltl [intro]:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ltl P) \<sigma>"
   by (drule path_conforms_with_strategy.cases) (simp_all add: path_conforms_with_strategy.intros(1))
@@ -94,7 +67,7 @@ lemma path_conforms_with_strategy_drop:
   by (simp add: path_conforms_with_strategy_ltl ltl_ldrop[of "\<lambda>P. path_conforms_with_strategy p P \<sigma>"])
 
 lemma path_conforms_with_strategy_prefix:
-  "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_prefix P' P \<Longrightarrow> path_conforms_with_strategy p P' \<sigma>"
+  "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> lprefix P' P \<Longrightarrow> path_conforms_with_strategy p P' \<sigma>"
 proof (coinduction arbitrary: P P')
   case (path_conforms_with_strategy P P')
   thus ?case proof (cases rule: path_conforms_with_strategy.cases)
@@ -134,27 +107,27 @@ using assms proof (coinduction arbitrary: P)
   let ?\<sigma> = "\<sigma>(v := w)"
   case (path_conforms_with_strategy P)
   thus ?case proof (cases rule: path_conforms_with_strategy.cases)
-    case path_conforms_LNil thus ?thesis by simp
-  next
-    case path_conforms_LCons_LNil thus ?thesis by auto
-  next
     case (path_conforms_VVp v' w Ps)
     have "w = ?\<sigma> v'" proof-
-      from `valid_path P` have "\<not>deadend v'" using local.path_conforms_VVp(1) valid_path_cons_simp by blast
+      from `valid_path P` have "\<not>deadend v'"
+        using local.path_conforms_VVp(1) valid_path_cons_simp by blast
       with assms(2) have "v' \<noteq> v" using local.path_conforms_VVp(2) by blast
       thus "w = ?\<sigma> v'" by (simp add: local.path_conforms_VVp(3))
     qed
-    moreover have "\<exists>P. LCons w Ps = P \<and> path_conforms_with_strategy p P \<sigma> \<and> (deadend v \<or> v \<notin> VV p) \<and> valid_path P" proof-
-      have "valid_path (LCons w Ps)" using local.path_conforms_VVp(1) path_conforms_with_strategy(3) valid_path_ltl' by blast
+    moreover
+      have "\<exists>P. LCons w Ps = P \<and> path_conforms_with_strategy p P \<sigma> \<and> (deadend v \<or> v \<notin> VV p) \<and> valid_path P"
+    proof-
+      have "valid_path (LCons w Ps)"
+        using local.path_conforms_VVp(1) path_conforms_with_strategy(3) valid_path_ltl' by blast
       thus ?thesis using local.path_conforms_VVp(4) path_conforms_with_strategy(2) by blast
     qed
-    ultimately show ?thesis using local.path_conforms_VVp(1) local.path_conforms_VVp(2) by blast
+    ultimately show ?thesis using local.path_conforms_VVp(1,2) by blast
   next
     case (path_conforms_VVpstar v' Ps)
     have "\<exists>P. path_conforms_with_strategy p Ps \<sigma> \<and> (deadend v \<or> v \<notin> VV p) \<and> valid_path Ps"
-      using local.path_conforms_VVpstar(1) local.path_conforms_VVpstar(3) path_conforms_with_strategy(2) path_conforms_with_strategy(3) valid_path_ltl' by blast
-    thus ?thesis by (simp add: local.path_conforms_VVpstar(1) local.path_conforms_VVpstar(2))
-  qed
+      using local.path_conforms_VVpstar(1,3) path_conforms_with_strategy(2,3) valid_path_ltl' by blast
+    thus ?thesis by (simp add: local.path_conforms_VVpstar(1,2))
+  qed simp_all
 qed
 
 lemma path_conforms_with_strategy_irrelevant_updates:
@@ -163,17 +136,10 @@ lemma path_conforms_with_strategy_irrelevant_updates:
 using assms proof (coinduction arbitrary: P)
   case (path_conforms_with_strategy P)
   thus ?case proof (cases rule: path_conforms_with_strategy.cases)
-    case path_conforms_LNil thus ?thesis by simp
-  next
-    case path_conforms_LCons_LNil thus ?thesis by auto
-  next
     case (path_conforms_VVp v' w Ps)
-    have "w = \<sigma>' v'" using local.path_conforms_VVp(1) local.path_conforms_VVp(3) path_conforms_with_strategy(2) by auto
-    thus ?thesis using local.path_conforms_VVp(1) local.path_conforms_VVp(4) path_conforms_with_strategy(2) by auto
-  next
-    case (path_conforms_VVpstar v' Ps)
-    thus ?thesis by (simp add: path_conforms_with_strategy(2))
-  qed
+    have "w = \<sigma>' v'" using local.path_conforms_VVp(1,3) path_conforms_with_strategy(2) by auto
+    thus ?thesis using local.path_conforms_VVp(1,4) path_conforms_with_strategy(2) by auto
+  qed simp_all
 qed
 
 lemma path_conforms_with_strategy_irrelevant':
@@ -312,8 +278,6 @@ corollary greedy_path_deadend_v: "greedy_conforming_path p \<sigma> \<sigma>' v0
   using greedy_path_deadend_v0 greedy_path_lhd by metis
 corollary greedy_path_deadend_v': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil \<Longrightarrow> deadend v"
   using greedy_path_deadend_v by blast
-(* corollary greedy_path_deadend': "greedy_conforming_path p \<sigma> v0 = LCons v LNil \<Longrightarrow> deadend v"
-  using greedy_path_deadend greedy_path_lhd by blast *)
 
 lemma greedy_path_ltl:
   assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P"
@@ -599,7 +563,7 @@ proof-
       moreover have "\<sigma>' (llast ?A) = lhd ?B" using `llast ?A = P $ n` by simp
       moreover have "path_conforms_with_strategy p ?A \<sigma>'" proof-
         have *: "vmc_path G P v0 p \<sigma>" by unfold_locales
-        have "path_prefix ?A P" by simp
+        have "lprefix ?A P" by simp
         moreover from * n n_min
           have "path_conforms_with_strategy p ?A \<sigma>'"
         proof (induct n arbitrary: P v0)

@@ -70,13 +70,11 @@ lemma attractor_step_mono: "mono (attractor_step p W)"
 proof (unfold mono_def; intro allI impI)
   fix S T :: "'a set" assume "S \<subseteq> T"
   show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" proof
-    fix v assume v_assm: "v \<in> W \<union> S \<union> directly_attracted p S"
+    fix v assume v: "v \<in> W \<union> S \<union> directly_attracted p S"
     show "v \<in> W \<union> T \<union> directly_attracted p T" proof (cases)
-      assume "v \<in> W \<or> v \<in> T" thus ?thesis by simp
-    next
       assume "\<not>(v \<in> W \<or> v \<in> T)"
       hence v_assm2: "v \<notin> W \<and> v \<notin> T" by simp
-      hence v_S_attracted: "v \<in> directly_attracted p S" using v_assm `S \<subseteq> T` by blast
+      hence v_S_attracted: "v \<in> directly_attracted p S" using v `S \<subseteq> T` by blast
       hence "\<not>deadend v" using directly_attracted_def by blast
       have "v \<in> V - T" using v_S_attracted by (simp add: v_assm2 directly_attracted_def)
       hence "v \<in> directly_attracted p T" proof (cases rule: VV_cases[of v p], simp)
@@ -93,7 +91,7 @@ proof (unfold mono_def; intro allI impI)
         thus ?thesis using `v \<in> V - T` `v \<in> VV p**` `v \<notin> VV p` `\<not>deadend v` directly_attracted_def by blast
       qed
       thus ?thesis by simp
-    qed
+    qed simp
   qed
 qed
 
@@ -104,8 +102,8 @@ lemma attractor_unfolding: "attractor p W = attractor_step p W (attractor p W)"
 lemma attractor_lowerbound: "attractor_step p W S \<subseteq> S \<Longrightarrow> attractor p W \<subseteq> S"
   unfolding attractor_def using attractor_step_mono by (simp add: lfp_lowerbound)
 
-lemma attractor_set_induction [case_names base step union]:
-  assumes base: "W \<subseteq> V" -- "This assumption might be unnecessary."
+lemma attractor_set_induction [consumes 1, case_names step union]:
+  assumes "W \<subseteq> V" -- "This assumption might be unnecessary."
     and step: "\<And>S. S \<subseteq> V \<Longrightarrow> P S \<Longrightarrow> P (attractor_step p W S)"
     and union: "\<And>M. \<forall>S \<in> M. S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)"
   shows "P (attractor p W)"
@@ -115,7 +113,7 @@ proof-
   let ?A = "lfp ?f"
   let ?B = "lfp (attractor_step p W)"
   have f_mono: "mono ?f" using mono_restriction_is_mono[of "attractor_step p W"] attractor_step_mono by simp
-  have P_A: "?P ?A" proof (rule lfp_ordinal_induct_set, simp add: f_mono)
+  have P_A: "?P ?A" proof (rule lfp_ordinal_induct_set)
     show "\<And>S. ?P S \<Longrightarrow> ?P (W \<union> (S \<inter> V) \<union> directly_attracted p (S \<inter> V))"
       by (metis assms(1) attractor_step_bounded_by_V inf.absorb1 inf_le2 local.step)
     show "\<And>M. \<forall>S \<in> M. ?P S \<Longrightarrow> ?P (\<Union>M)" proof-
@@ -128,15 +126,14 @@ proof-
       have "\<Union>?M = (\<Union>M) \<inter> V" by blast
       thus "?P (\<Union>M)" using * by simp
     qed
-  qed
+  qed (simp add: f_mono)
 
   have *: "W \<union> (V \<inter> V) \<union> directly_attracted p (V \<inter> V) \<subseteq> V" using `W \<subseteq> V` attractor_step_bounded_by_V by auto
-  have "?A \<subseteq> V" using * by (simp add: lfp_lowerbound)
-  have "?B \<subseteq> V" using * by (simp add: lfp_lowerbound)
+  have "?A \<subseteq> V" "?B \<subseteq> V" using * by (simp_all add: lfp_lowerbound)
 
   have "?A = ?f ?A" using f_mono lfp_unfold by blast
   hence "?A = W \<union> (?A \<inter> V) \<union> directly_attracted p (?A \<inter> V)" using `?A \<subseteq> V` by simp
-  hence *: "attractor_step p W ?A \<subseteq> ?A" using `?A  \<subseteq> V` inf.absorb1 by fastforce
+  hence *: "attractor_step p W ?A \<subseteq> ?A" using `?A \<subseteq> V` inf.absorb1 by fastforce
 
   have "?B = attractor_step p W ?B" using attractor_step_mono lfp_unfold by blast
   hence "?f ?B \<subseteq> ?B" using `?B \<subseteq> V` by (metis (no_types, lifting) equalityD2 le_iff_inf)
@@ -201,61 +198,53 @@ proof
   qed
   show "attractor p W \<subseteq> attractor_inductive p W" proof-
     def P \<equiv> "\<lambda>S. S \<subseteq> attractor_inductive p W"
-    have "P (attractor p W)" proof (induct rule: attractor_set_induction, simp add: `W \<subseteq> V`)
-      show "\<And>S. S \<subseteq> V \<Longrightarrow> P S \<Longrightarrow> P (W \<union> S \<union> directly_attracted p S)" proof-
-        fix S assume "S \<subseteq> V" "P S"
-        hence "S \<subseteq> attractor_inductive p W" using P_def by simp
-        have "W \<union> S \<union> directly_attracted p S \<subseteq> attractor_inductive p W" proof
-          fix v assume "v \<in> W \<union> S \<union> directly_attracted p S"
-          moreover
-          { assume "v \<in> W" hence "v \<in> attractor_inductive p W" by blast }
-          moreover
-          { assume "v \<in> S" hence "v \<in> attractor_inductive p W" by (meson `S \<subseteq> attractor_inductive p W` set_rev_mp) }
-          moreover
-          { assume v_attracted: "v \<in> directly_attracted p S"
-            hence "v \<in> V" using `S \<subseteq> V` attractor_step_bounded_by_V by blast
-            hence "v \<in> attractor_inductive p W" proof (cases rule: VV_cases)
-              assume "v \<in> VV p"
-              hence "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using v_attracted directly_attracted_def by blast
-              hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W" using `S \<subseteq> attractor_inductive p W` by blast
-              thus ?thesis by (simp add: `v \<in> VV p` attractor_inductive.VVp)
-            next
-              assume "v \<in> VV p**"
-              hence *: "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> S" using v_attracted directly_attracted_def by blast
-              have "\<not>deadend v" using v_attracted directly_attracted_def by blast
-              show ?thesis proof (rule ccontr)
-                assume "v \<notin> attractor_inductive p W"
-                hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> attractor_inductive p W" by (metis attractor_inductive.VVpstar `v \<in> VV p**` `\<not>deadend v`)
-                hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> S" using `S \<subseteq> attractor_inductive p W` by (meson subsetCE)
-                thus False using * by blast
-              qed
+    from `W \<subseteq> V` have "P (attractor p W)" proof (induct rule: attractor_set_induction)
+      case (step S)
+      hence "S \<subseteq> attractor_inductive p W" using P_def by simp
+      have "W \<union> S \<union> directly_attracted p S \<subseteq> attractor_inductive p W" proof
+        fix v assume "v \<in> W \<union> S \<union> directly_attracted p S"
+        moreover
+        { assume "v \<in> W" hence "v \<in> attractor_inductive p W" by blast }
+        moreover
+        { assume "v \<in> S" hence "v \<in> attractor_inductive p W" by (meson `S \<subseteq> attractor_inductive p W` set_rev_mp) }
+        moreover
+        { assume v_attracted: "v \<in> directly_attracted p S"
+          hence "v \<in> V" using `S \<subseteq> V` attractor_step_bounded_by_V by blast
+          hence "v \<in> attractor_inductive p W" proof (cases rule: VV_cases)
+            assume "v \<in> VV p"
+            hence "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using v_attracted directly_attracted_def by blast
+            hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W" using `S \<subseteq> attractor_inductive p W` by blast
+            thus ?thesis by (simp add: `v \<in> VV p` attractor_inductive.VVp)
+          next
+            assume "v \<in> VV p**"
+            hence *: "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> S" using v_attracted directly_attracted_def by blast
+            have "\<not>deadend v" using v_attracted directly_attracted_def by blast
+            show ?thesis proof (rule ccontr)
+              assume "v \<notin> attractor_inductive p W"
+              hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> attractor_inductive p W" by (metis attractor_inductive.VVpstar `v \<in> VV p**` `\<not>deadend v`)
+              hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> S" using `S \<subseteq> attractor_inductive p W` by (meson subsetCE)
+              thus False using * by blast
             qed
-          }
-          ultimately show "v \<in> attractor_inductive p W" by (meson UnE)
-        qed
-        thus "P (W \<union> S \<union> directly_attracted p S)" using P_def by simp
+          qed
+        }
+        ultimately show "v \<in> attractor_inductive p W" by (meson UnE)
       qed
-      show "\<And>M. \<forall>S\<in>M. S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)" by (simp add: P_def Sup_least)
+      thus "P (W \<union> S \<union> directly_attracted p S)" using P_def by simp
+    next
+      case (union M) thus ?case by (simp add: P_def Sup_least)
     qed
     thus ?thesis using P_def by simp
   qed
 qed
 
 lemma attractor_is_superset [simp]: "W \<subseteq> attractor_inductive p W" by blast
-lemma attractor_inductive_outside: "\<lbrakk> v \<notin> attractor_inductive p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor_inductive p W"
+lemma attractor_inductive_outside:
+  "\<lbrakk> v \<notin> attractor_inductive p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor_inductive p W"
   by (metis attractor_inductive.VVp)
 
 lemma attractor_inductive_contains_no_deadends:
   "v \<in> attractor_inductive p W \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
-proof (induct rule: attractor_inductive.induct)
-  fix v assume "v \<in> W" thus "v \<in> W \<or> \<not>deadend v" by simp
-next
-  fix v assume "v \<in> VV p" and "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<and> (w \<in> W \<or> \<not>deadend w)"
-  thus "v \<in> W \<or> \<not>deadend v" using local.valid_edge_set by auto
-next
-  fix v assume "\<not>deadend v"
-  thus "v \<in> W \<or> \<not>deadend v" by simp
-qed
+  by (induct rule: attractor_inductive.induct) auto
 
 lemma attractor_contains_no_deadends: "\<lbrakk> W \<subseteq> V; v \<in> attractor p W \<rbrakk> \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
   using attractor_inductive_contains_no_deadends attractor_inductive_is_attractor by auto

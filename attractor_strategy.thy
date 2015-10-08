@@ -115,9 +115,7 @@ theorem attractor_has_strategy_single:
   assumes "W \<subseteq> V"
     and v0_def: "v0 \<in> attractor p W" (is "_ \<in> ?A")
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 ?A W"
-using v0_def proof (induct arbitrary: v0 rule: attractor_set_induction)
-  case base thus ?case using `W \<subseteq> V` .
-next
+using `W \<subseteq> V` v0_def proof (induct arbitrary: v0 rule: attractor_set_induction)
   case (step S)
   have "v0 \<in> W \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 {} W"
     using strategy_attracts_via_trivial valid_arbitrary_strategy by blast
