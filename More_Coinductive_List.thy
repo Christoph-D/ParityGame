@@ -124,6 +124,24 @@ lemma lnth_lmap_ldropn_Suc:
   "enat (Suc n) < llength xs \<Longrightarrow> lnth (lmap f (ldropn n xs)) (Suc 0) = lnth (lmap f xs) (Suc n)"
   by (metis (no_types, lifting) Suc_llength ldropn_ltl leD llist.map_disc_iff lnth_lmap_ldropn lnth_ltl lnull_ldropn ltl_ldropn ltl_lmap)
 
+lemma llist_nth_set: "\<lbrakk> \<not>lfinite x; lnth x i = y \<rbrakk> \<Longrightarrow> y \<in> lset x" using llist_set_nth by blast
+lemma index_infinite_set:
+  "\<lbrakk> \<not>lfinite x; lnth x i = y; \<And>i. lnth x i = y \<Longrightarrow> (\<exists>j > i. lnth x j = y) \<rbrakk> \<Longrightarrow> y \<in> lset (ldropn n x)"
+proof (induct n arbitrary: x i)
+  case 0 thus ?case using llist_nth_set by fastforce
+next
+  case (Suc n)
+  obtain a xs where x: "x = LCons a xs" by (meson Suc.prems(1) lnull_imp_lfinite not_lnull_conv)
+  obtain j where j: "j > i" "lnth x j = y" using Suc.prems(2,3) by blast
+  have "lnth xs (j - 1) = y" by (metis lnth_LCons' j(1,2) not_less0 x)
+  moreover have "\<And>i. lnth xs i = y \<Longrightarrow> \<exists>j>i. lnth xs j = y" proof-
+    fix i assume "lnth xs i = y"
+    hence "lnth x (Suc i) = y" by (simp add: x)
+    thus "\<exists>j>i. lnth xs j = y" by (metis Suc.prems(3) Suc_lessE lnth_Suc_LCons x)
+  qed
+  ultimately show ?case using Suc.hyps Suc.prems(1) x by auto
+qed
+
 notation lnth (infix "$" 61)
 
 end
