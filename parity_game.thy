@@ -4,8 +4,6 @@ imports
   "Coinductive/Coinductive_List"
 begin
 
-lemma option_the_simp [simp]: "x = Some y \<Longrightarrow> the x = y" by simp
-lemma option_the_simp2 [simp]: "x \<noteq> None \<Longrightarrow> \<exists>y. x = Some y" by simp
 lemma fun_iter_induct: "P x \<Longrightarrow> (\<And>x. P x \<Longrightarrow> P (f x)) \<Longrightarrow> P ((f^^n) x)" by (induct n) simp_all
 lemma llist_set_nth: "\<lbrakk> \<not>lfinite x; lset x \<subseteq> X \<rbrakk> \<Longrightarrow> lnth x i \<in> X"
   by (metis contra_subsetD inf_llist_lnth lset_inf_llist rangeI)
