@@ -92,28 +92,28 @@ proof-
 qed
 
 (* Maps a path to its strategies. *)
-definition \<sigma>_map where "\<sigma>_map P \<equiv> \<lambda>n. choose (P $ n)"
+definition "path_strategies \<equiv> lmap choose"
 
-lemma \<sigma>_map_in_Strategies:
+lemma path_strategies_in_Strategies:
+  assumes "lset P \<subseteq> S"
+  shows "lset (path_strategies P) \<subseteq> Strategies"
+  using path_strategies_def assms choose_in_Strategies by auto
+
+lemma path_strategies_good:
   assumes "lset P \<subseteq> S" "enat n < llength P"
-  shows "\<sigma>_map P n \<in> Strategies"
-  using \<sigma>_map_def assms choose_in_Strategies lset_lnth by fastforce
+  shows "path_strategies P $ n \<in> good (P $ n)"
+  by (simp add: path_strategies_def assms choose_good lset_lnth)
 
-lemma \<sigma>_map_good:
+lemma path_strategies_strategy:
   assumes "lset P \<subseteq> S" "enat n < llength P"
-  shows "\<sigma>_map P n \<in> good (P $ n)"
-  by (simp add: \<sigma>_map_def assms choose_good lset_lnth)
-
-lemma \<sigma>_map_strategy:
-  assumes "lset P \<subseteq> S" "enat n < llength P"
-  shows "strategy p (\<sigma>_map P n)"
-  using \<sigma>_map_good assms good_strategies by blast
+  shows "strategy p (path_strategies P $ n)"
+  using path_strategies_good assms good_strategies by blast
 
 
-lemma \<sigma>_map_monotone_Suc:
+lemma path_strategies_monotone_Suc:
   assumes P: "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
     "enat (Suc n) < llength P"
-  shows "(\<sigma>_map P (Suc n), \<sigma>_map P n) \<in> r"
+  shows "(path_strategies P $ Suc n, path_strategies P $ n) \<in> r"
 proof-
   def P' \<equiv> "ldropn n P"
   hence "enat (Suc 0) < llength P'" using P(4)
@@ -141,52 +141,60 @@ proof-
     thus ?thesis using * r_total choose_in_Strategies[OF `v \<in> S`] choose_in_Strategies[OF `w \<in> S`]
       by (metis (lifting) Linear_order_in_diff_Id r_wo well_order_on_Field well_order_on_def)
   qed
-  hence "(\<sigma>_map P' (Suc 0), \<sigma>_map P' 0) \<in> r" unfolding \<sigma>_map_def using vw by simp
-  thus ?thesis by (metis P'_def \<sigma>_map_def assms(4) ldropn_Suc_conv_ldropn ldropn_eq_LConsD lnth_0 lnth_Suc_LCons vw)
+  hence "(path_strategies P' $ Suc 0, path_strategies P' $ 0) \<in> r"
+    unfolding path_strategies_def using vw by simp
+  thus ?thesis unfolding path_strategies_def
+    using lnth_lmap_ldropn[OF Suc_llength[OF P(4)], of choose]
+          lnth_lmap_ldropn_Suc[OF P(4), of choose]
+    by (simp add: P'_def)
 qed
 
-lemma \<sigma>_map_monotone:
+lemma path_strategies_monotone:
   assumes P: "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
     "n < m" "enat m < llength P"
-  shows "(\<sigma>_map P m, \<sigma>_map P n) \<in> r"
+  shows "(path_strategies P $ m, path_strategies P $ n) \<in> r"
 using assms proof (induct "m - n" arbitrary: n m, simp)
   case (Suc d)
   show ?case proof (cases)
     assume "d = 0"
-    thus ?thesis using \<sigma>_map_monotone_Suc[OF P(1) P(2) P(3)]
-      by (metis (no_types) Suc.hyps(2) Suc.prems(4) Suc.prems(5) Suc_diff_Suc Suc_inject Suc_leI diff_is_0_eq diffs0_imp_equal)
+    thus ?thesis using path_strategies_monotone_Suc[OF P(1,2,3)]
+      by (metis (no_types) Suc.hyps(2) Suc.prems(4,5) Suc_diff_Suc Suc_inject Suc_leI diff_is_0_eq diffs0_imp_equal)
   next
     assume "d \<noteq> 0"
     have "m \<noteq> 0" using Suc.hyps(2) by linarith
     then obtain m' where m': "Suc m' = m" by (metis nat.exhaust)
     hence "d = m' - n" using Suc.hyps(2) by presburger
     moreover hence "n < m'" using `d \<noteq> 0` by presburger 
-    ultimately have "(\<sigma>_map P m', \<sigma>_map P n) \<in> r"
-      using Suc.hyps(1)[of m' n, OF _ P(1) P(2) P(3)] Suc.prems(5) dual_order.strict_trans enat_ord_simps(2) m'
+    ultimately have "(path_strategies P $ m', path_strategies P $ n) \<in> r"
+      using Suc.hyps(1)[of m' n, OF _ P(1,2,3)] Suc.prems(5) dual_order.strict_trans enat_ord_simps(2) m'
       by blast
     thus ?thesis
-      using m' \<sigma>_map_monotone_Suc[OF P(1) P(2) P(3)] by (metis (no_types) Suc.prems(5) r_trans trans_def)
+      using m' path_strategies_monotone_Suc[OF P(1,2,3)] by (metis (no_types) Suc.prems(5) r_trans trans_def)
   qed
 qed
 
-lemma \<sigma>_map_eventually_constant:
+lemma path_strategies_eventually_constant:
   assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
-  shows "\<exists>n. \<forall>m \<ge> n. \<sigma>_map P n = \<sigma>_map P m"
+  shows "\<exists>n. \<forall>m \<ge> n. path_strategies P $ n = path_strategies P $ m"
 proof-
-  def \<sigma>_set \<equiv> "\<sigma>_map P ` UNIV"
-  have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" using \<sigma>_set_def by blast
+  def \<sigma>_set \<equiv> "lset (path_strategies P)"
+  have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" unfolding \<sigma>_set_def path_strategies_def
+    by (metis assms(1) image_eqI llist.set_map llist_nth_set)
   then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set"
     using wfE_min[of "r - Id" _ \<sigma>_set] by auto
-  then obtain n where n: "\<sigma>_map P n = \<sigma>'" using \<sigma>_set_def by auto
+  obtain n where n: "path_strategies P $ n = \<sigma>'"
+    using \<sigma>'(1) path_set_at[of \<sigma>'] unfolding \<sigma>_set_def by blast
   {
     fix m assume "n \<le> m"
-    have "\<sigma>_map P n = \<sigma>_map P m" proof (rule ccontr)
-      assume *: "\<sigma>_map P n \<noteq> \<sigma>_map P m"
+    have "path_strategies P $ n = path_strategies P $ m" proof (rule ccontr)
+      assume *: "path_strategies P $ n \<noteq> path_strategies P $ m"
       with `n \<le> m` have "n < m" using le_imp_less_or_eq by blast
-      with \<sigma>_map_monotone have "(\<sigma>_map P m, \<sigma>_map P n) \<in> r" using assms by (simp add: infinite_small_llength)
-      with * have "(\<sigma>_map P m, \<sigma>_map P n) \<in> r - Id" by simp
-      with \<sigma>'(2) n have "\<sigma>_map P m \<notin> \<sigma>_set" by blast
-      thus False unfolding \<sigma>_set_def by blast
+      with path_strategies_monotone have "(path_strategies P $ m, path_strategies P $ n) \<in> r"
+        using assms by (simp add: infinite_small_llength)
+      with * have "(path_strategies P $ m, path_strategies P $ n) \<in> r - Id" by simp
+      with \<sigma>'(2) n have "path_strategies P $ m \<notin> \<sigma>_set" by blast
+      thus False unfolding \<sigma>_set_def
+        by (metis (mono_tags, lifting) assms(1) lfinite_lmap llist_nth_set path_strategies_def)
     qed
   }
   thus ?thesis by blast
@@ -194,18 +202,20 @@ qed
 
 lemma path_eventually_conforms_to_\<sigma>_map_n:
   assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
-  shows "\<exists>n. path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
+  shows "\<exists>n. path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
 proof-
-  obtain n where n: "\<And>m. n \<le> m \<Longrightarrow> \<sigma>_map P n = \<sigma>_map P m" using \<sigma>_map_eventually_constant assms by blast
+  obtain n where n: "\<And>m. n \<le> m \<Longrightarrow> path_strategies P $ n = path_strategies P $ m"
+    using path_strategies_eventually_constant assms by blast
   let ?\<sigma> = well_ordered_strategy
   def P' \<equiv> "ldropn n P"
   { fix v assume "v \<in> lset P'"
     hence "v \<in> S" using `lset P \<subseteq> S` P'_def in_lset_ldropnD by fastforce
     from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" by (meson in_lset_conv_lnth)
-    hence "P $ m + n = P' $ m" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
+    hence "P $ m + n = v" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
     moreover have "?\<sigma> v = choose v v" unfolding well_ordered_strategy_def using `v \<in> S` by auto
-    ultimately have "?\<sigma> v = \<sigma>_map P (m + n) v" unfolding \<sigma>_map_def using m(2) by auto
-    hence "?\<sigma> v = \<sigma>_map P n v" using n[of "m + n"] by simp
+    ultimately have "?\<sigma> v = (path_strategies P $ m + n) v"
+      unfolding path_strategies_def using infinite_small_llength[OF assms(1)] by simp
+    hence "?\<sigma> v = (path_strategies P $ n) v" using n[of "m + n"] by simp
   }
   moreover have "path_conforms_with_strategy p P' well_ordered_strategy"
     unfolding P'_def by (simp add: assms(4) path_conforms_with_strategy_drop)
@@ -259,8 +269,6 @@ proof-
   interpret WellOrderedStrategies G "S - W" p good r proof
     show "S - W \<subseteq> V" using `S \<subseteq> V` by blast
   next
-    show "well_order_on ?G r" using r .
-  next
     show "\<And>v. v \<in> S - W \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex by blast
   next
     show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
@@ -269,7 +277,7 @@ proof-
     hence \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v S W" unfolding good_def by simp_all
     hence "strategy_attracts_via p \<sigma> w S W" using strategy_attracts_via_successor v by blast
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
-  qed
+  qed (insert r)
 
   def [simp]: \<sigma> \<equiv> "well_ordered_strategy"
 
@@ -334,10 +342,10 @@ proof-
         ultimately show False using S_W_no_deadends by blast
       qed
 
-      obtain n where n: "path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
+      obtain n where n: "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
         using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S - W` P_valid P_conforms[unfolded \<sigma>_def]]
           by blast
-      def [simp]: \<sigma>' \<equiv> "\<sigma>_map P n"
+      def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
       interpret vmc_path G P' "lhd P'" p \<sigma>' proof
         show "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
@@ -346,10 +354,12 @@ proof-
         show "path_conforms_with_strategy p P' \<sigma>'" using n by simp
       qed simp
       have "strategy p \<sigma>'" unfolding \<sigma>'_def
-        using \<sigma>_map_strategy `lset P \<subseteq> S - W` `\<not>lfinite P` infinite_small_llength by blast
+        using path_strategies_strategy `lset P \<subseteq> S - W` `\<not>lfinite P` infinite_small_llength
+        by blast
       moreover have "strategy_attracts_via p \<sigma>' (lhd P') S W" proof-
         have "P $ n \<in> S - W" using `lset P \<subseteq> S - W` `\<not>lfinite P` llist_set_nth by blast
-        hence "\<sigma>' \<in> good (P $ n)" using \<sigma>_map_good by (simp add: \<sigma>_map_def choose_good)
+        hence "\<sigma>' \<in> good (P $ n)"
+          using path_strategies_good \<sigma>'_def `\<not>lfinite P` `lset P \<subseteq> S - W` by blast
         hence "strategy_attracts_via p \<sigma>' (P $ n) S W" unfolding good_def by blast
         thus ?thesis unfolding P'_def using P_0 by (simp add: `\<not>lfinite P` infinite_small_llength)
       qed
@@ -374,10 +384,6 @@ proof-
     using no_winning_strategy_on_deadends strategies_ex by blast
 
   interpret WellOrderedStrategies G S p good r proof
-    show "S \<subseteq> V" using `S \<subseteq> V` .
-  next
-    show "well_order_on ?G r" using r .
-  next
     show "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex `S \<subseteq> V` by blast
   next
     show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
@@ -394,7 +400,7 @@ proof-
       thus ?thesis using strategy_extends_VVpstar \<sigma> `v\<rightarrow>w` by blast
     qed
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
-  qed
+  qed (insert `S \<subseteq> V` r)
 
   have S_closed: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> w \<in> S" proof-
     fix v w \<sigma> assume "v \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
@@ -446,10 +452,10 @@ proof-
         ultimately show False using no_VVp_deadends by blast
       qed
 
-      obtain n where n: "path_conforms_with_strategy p (ldropn n P) (\<sigma>_map P n)"
+      obtain n where n: "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
         using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S` P_valid P_conforms[unfolded \<sigma>_def]]
           by blast
-      def [simp]: \<sigma>' \<equiv> "\<sigma>_map P n"
+      def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
       interpret P': vmc_path G P' "lhd P'" p \<sigma>' proof
         show "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
@@ -458,10 +464,11 @@ proof-
         show "path_conforms_with_strategy p P' \<sigma>'" using n by simp
       qed simp
       have "strategy p \<sigma>'" unfolding \<sigma>'_def
-        using \<sigma>_map_strategy `lset P \<subseteq> S` `\<not>lfinite P` by blast
+        using path_strategies_strategy `lset P \<subseteq> S` `\<not>lfinite P` by blast
       moreover have "winning_strategy p \<sigma>' (lhd P')" proof-
         have "P $ n \<in> S" using `lset P \<subseteq> S` `\<not>lfinite P` llist_set_nth by blast
-        hence "\<sigma>' \<in> good (P $ n)" using \<sigma>_map_good by (simp add: \<sigma>_map_def choose_good)
+        hence "\<sigma>' \<in> good (P $ n)"
+          using path_strategies_good choose_good \<sigma>'_def `\<not>lfinite P` `lset P \<subseteq> S` by blast
         hence "winning_strategy p \<sigma>' (P $ n)" unfolding good_def by blast
         thus ?thesis
           unfolding P'_def using P_0 `\<not>lfinite P` by (simp add: infinite_small_llength lhd_ldropn)

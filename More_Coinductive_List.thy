@@ -114,6 +114,16 @@ qed (simp add: lnull_def)
 lemma lprefix_llength: "\<lbrakk> lprefix P P'; i < llength P \<rbrakk> \<Longrightarrow> i < llength P'"
   using less_le_trans lprefix_llength_le by blast
 
+lemma Suc_llength: "enat (Suc n) < llength xs \<Longrightarrow> enat n < llength xs"
+  using dual_order.strict_trans enat_ord_simps(2) by blast
+
+lemma lnth_lmap_ldropn:
+  "enat n < llength xs \<Longrightarrow> lnth (lmap f (ldropn n xs)) 0 = lnth (lmap f xs) n"
+  by (simp add: lhd_ldropn lnth_0_conv_lhd)
+lemma lnth_lmap_ldropn_Suc:
+  "enat (Suc n) < llength xs \<Longrightarrow> lnth (lmap f (ldropn n xs)) (Suc 0) = lnth (lmap f xs) (Suc n)"
+  by (metis (no_types, lifting) Suc_llength ldropn_ltl leD llist.map_disc_iff lnth_lmap_ldropn lnth_ltl lnull_ldropn ltl_ldropn ltl_lmap)
+
 notation lnth (infix "$" 61)
 
 end
