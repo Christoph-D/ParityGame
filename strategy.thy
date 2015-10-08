@@ -16,13 +16,16 @@ coinductive (in ParityGame) path_conforms_with_strategy
   :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
 path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
 | path_conforms_LCons_LNil: "path_conforms_with_strategy p (LCons v LNil) \<sigma>"
-| path_conforms_VVp: "\<lbrakk> v \<in> VV p; w = \<sigma> v; path_conforms_with_strategy p (LCons w Ps) \<sigma> \<rbrakk> \<Longrightarrow> path_conforms_with_strategy p (LCons v (LCons w Ps)) \<sigma>"
-| path_conforms_VVpstar: "\<lbrakk> v \<notin> VV p; path_conforms_with_strategy p Ps \<sigma> \<rbrakk> \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
+| path_conforms_VVp: "\<lbrakk> v \<in> VV p; w = \<sigma> v; path_conforms_with_strategy p (LCons w Ps) \<sigma> \<rbrakk>
+  \<Longrightarrow> path_conforms_with_strategy p (LCons v (LCons w Ps)) \<sigma>"
+| path_conforms_VVpstar: "\<lbrakk> v \<notin> VV p; path_conforms_with_strategy p Ps \<sigma> \<rbrakk>
+  \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
 
 (* A valid maximal path that conforms to a strategy *)
 locale vmc_path = vm_path +
   fixes p \<sigma> assumes P_conforms [simp]: "path_conforms_with_strategy p P \<sigma>"
 lemma (in vmc_path) vmc_path [simp]: "vmc_path G P v0 p \<sigma>" by unfold_locales
+
 (* A valid maximal path that conforms to two strategies *)
 locale vmc2_path = comp: vmc_path G P v0 "p**" \<sigma>' + vmc_path G P v0 p \<sigma>
   for G P v0 p \<sigma> \<sigma>'
@@ -481,7 +484,7 @@ lemma (in vmc_path) vmc_path_llength_no_deadend:
   shows "vmc_path_no_deadend G P v0 p \<sigma>"
   using assms P_0 P_no_deadends
   by (unfold_locales)
-     (metis P_len_Suc enat_ltl_Suc ldropn_Suc_conv_ldropn ldropn_lnull llist.distinct(1) lnull_0_llength)
+     (metis enat_Suc_ltl enat_ltl_Suc ldropn_Suc_conv_ldropn ldropn_lnull llist.distinct(1) lnull_0_llength)
 
 lemma (in vmc_path) vmc_path_lnull_ltl_no_deadend:
   assumes "\<not>lnull (ltl P)"
@@ -609,7 +612,7 @@ proof-
           case (Suc n P v0)
           interpret vmc_path_no_deadend G P v0 p \<sigma>
             using Suc.prems(2) vmc_path.vmc_path_llength_no_deadend[OF Suc.prems(1)] by blast
-          have "enat (Suc n) < llength (ltl P)" using P_len_Suc Suc.prems(2) by blast
+          have "enat (Suc n) < llength (ltl P)" using enat_Suc_ltl Suc.prems(2) by blast
           moreover have "ltl P $ n \<in> VV p" using P_lnth_Suc Suc.prems(3) by auto
           moreover have "\<not>deadend (ltl P $ n)" using P_lnth_Suc Suc.prems(4) by auto
           moreover have "\<sigma>' (ltl P $ n) \<noteq> ltl P $ Suc n" using P_lnth_Suc Suc.prems(5) by auto

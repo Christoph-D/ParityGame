@@ -279,7 +279,7 @@ proof (rule strategy_attracts_viaI)
     using \<sigma>(2) P'.strategy_attracts_via_SucE v0 by blast
   show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
     apply (rule exI[of _ n])
-    using n P'.P_len_Suc P'.P_lnth_Suc P'.P_lset by auto
+    using n enat_Suc_ltl[of n P'] P'.P_lnth_Suc lset_ltake_ltl[of n P'] by auto
 qed
 
 lemma strategy_attracts_VVp:

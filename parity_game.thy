@@ -392,14 +392,15 @@ lemma path_priorities_equiv: assumes "\<not>lfinite P" shows "path_priorities P 
 qed
 
 lemma llist_nth_set: "\<lbrakk> \<not>lfinite x; x $ i = y \<rbrakk> \<Longrightarrow> y \<in> lset x" using llist_set_nth by blast
-lemma index_infinite_set: "\<lbrakk> \<not>lfinite x; x $ i = y; \<And>i. x $ i = y \<Longrightarrow> (\<exists>j > i. x $ j = y) \<rbrakk> \<Longrightarrow> y \<in> lset (ldropn n x)"
+lemma index_infinite_set:
+  "\<lbrakk> \<not>lfinite x; x $ i = y; \<And>i. x $ i = y \<Longrightarrow> (\<exists>j > i. x $ j = y) \<rbrakk> \<Longrightarrow> y \<in> lset (ldropn n x)"
 proof (induct n arbitrary: x i)
   case 0 thus ?case using llist_nth_set by fastforce
 next
   case (Suc n)
   obtain a xs where x: "x = LCons a xs" by (meson Suc.prems(1) lnull_imp_lfinite not_lnull_conv)
-  obtain j where j: "j > i" "x $ j = y" using Suc.prems(2) Suc.prems(3) by blast
-  have "xs $ j - 1 = y" by (metis LCons_suc_is_P2 j(1) j(2) not_less0 x)
+  obtain j where j: "j > i" "x $ j = y" using Suc.prems(2,3) by blast
+  have "xs $ j - 1 = y" by (metis lnth_LCons' j(1,2) not_less0 x)
   moreover have "\<And>i. xs $ i = y \<Longrightarrow> \<exists>j>i. xs $ j = y" proof-
     fix i assume "xs $ i = y"
     hence "x $ Suc i = y" by (simp add: x)
@@ -431,17 +432,15 @@ proof-
   ultimately have "\<forall>n. k \<in> lset (ldropn n (lmap \<omega> P))"
     using index_infinite_set[of "lmap \<omega> P" n0 k] assms(2) lfinite_lmap
     by blast
-  thus ?thesis using path_inf_priorities_def by auto
+  thus ?thesis using path_inf_priorities_def by blast
 qed
-
-lemma in_set_ldropn: "x \<in> lset (ldropn (Suc n) xs) \<Longrightarrow> x \<in> lset (ldropn n xs)"
-  by (simp add: in_lset_ltlD ldrop_eSuc_ltl ltl_ldropn)
 
 lemma path_inf_priorities_LCons: "path_inf_priorities P = path_inf_priorities (LCons v P)" (is "?A = ?B")
 proof
   show "?A \<subseteq> ?B" proof
     fix a assume "a \<in> ?A"
-    hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> (LCons v P)))" using path_inf_priorities_def in_set_ldropn[of a _ "lmap \<omega> (LCons v P)"] by auto
+    hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> (LCons v P)))"
+      using path_inf_priorities_def in_set_ldropn[of a _ "lmap \<omega> (LCons v P)"] by auto
     thus "a \<in> ?B" using path_inf_priorities_def by blast
   qed
 next
@@ -453,7 +452,7 @@ next
   qed
 qed
 corollary path_inf_priorities_ltl: "path_inf_priorities P = path_inf_priorities (ltl P)"
-  by (metis llist.exhaust ltl_simps(1) ltl_simps(2) path_inf_priorities_LCons)
+  by (metis llist.exhaust ltl_simps(1,2) path_inf_priorities_LCons)
 
 (* True iff the path is winning for the given player. *)
 definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" where
@@ -474,7 +473,8 @@ next
     have 1: "winning_path p P \<longleftrightarrow> llast P \<in> VV p**" by (simp add: `\<not>lnull P` local.finite winning_path_def)
     have 2: "winning_path p** P \<longleftrightarrow> llast P \<in> VV p" by (simp add: `\<not>lnull P` local.finite winning_path_def)
     have "llast P \<in> V" proof-
-      obtain n where n: "llength P = enat (Suc n)" by (metis `\<not>lnull P` lfinite_llength_enat llength_eq_0 local.finite nat.exhaust zero_enat_def)
+      obtain n where "llength P = enat (Suc n)"
+        by (metis `\<not>lnull P` lfinite_llength_enat llength_eq_0 local.finite nat.exhaust zero_enat_def)
       hence "P $ n = llast P \<and> enat n < llength P" by (simp add: eSuc_enat llast_conv_lnth)
       thus ?thesis using assms valid_path_finite_in_V' by force
     qed
@@ -482,7 +482,8 @@ next
   next
     assume infinite: "\<not>lfinite P"
     then obtain a where "a \<in> path_inf_priorities P" "\<And>b. b < a \<Longrightarrow> b \<notin> path_inf_priorities P"
-      using ex_least_nat_le[of "\<lambda>a. a \<in> path_inf_priorities P"] path_inf_priorities_is_nonempty assms by blast
+      using assms ex_least_nat_le[of "\<lambda>a. a \<in> path_inf_priorities P"] path_inf_priorities_is_nonempty
+      by blast
     hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P"
       unfolding infinite winning_path_def using `\<not>lnull P` infinite by (metis le_antisym not_le)
     thus ?thesis using winning_priority_for_one_player by blast
@@ -558,6 +559,7 @@ qed
 
 end -- "locale ParityGame"
 
+(* A locale for valid maximal paths, because we need them often. *)
 locale vm_path = ParityGame +
   fixes P v0
   assumes P_not_null [simp]: "\<not>lnull P"
@@ -571,27 +573,12 @@ lemma (in ParityGame) vm_pathI:
   shows "vm_path G P v0"
   using assms by unfold_locales blast
 
-lemma (in ParityGame) vm_pathI0:
-  assumes "\<not>lnull P" "valid_path P" "maximal_path P"
-  shows "vm_path G P (P $ 0)"
-  using assms vm_pathI by (simp add: lnth_0_conv_lhd)
-
 context vm_path begin
 lemma P_LCons: "P = LCons v0 (ltl P)" using lhd_LCons_ltl[OF P_not_null] by simp
 
 lemma P_len [simp]: "enat 0 < llength P" by (simp add: lnull_0_llength)
 lemma P_0 [simp]: "P $ 0 = v0" by (simp add: lnth_0_conv_lhd)
-lemma P_len_Suc: "enat (Suc n) < llength P \<Longrightarrow> enat n < llength (ltl P)"
-  using enat_Suc_ltl by auto
 lemma P_lnth_Suc: "P $ Suc n = ltl P $ n" by (simp add: lnth_ltl)
-lemma P_lset: "lset (ltake (enat n) (ltl P)) \<subseteq> lset (ltake (enat (Suc n)) P)"
-proof-
-  have "ltake (eSuc (enat n)) P = LCons v0 (ltake (enat n) (ltl P))"
-    by (metis assms P_LCons ltake_eSuc_LCons)
-  hence "lset (ltake (enat (Suc n)) P) = lset (LCons v0 (ltake (enat n) (ltl P)))"
-    by (simp add: eSuc_enat)
-  thus ?thesis using lset_LCons[of v0 "ltake (enat n) (ltl P)"] by blast
-qed
 lemma P_no_deadends: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend (P $ n)"
   using valid_path_no_deadends by simp
 lemma P_no_deadend_v0: "\<not>lnull (ltl P) \<Longrightarrow> \<not>deadend v0"
@@ -617,9 +604,9 @@ lemma Pdrop_maximal [simp]: "maximal_path (ldropn n P)" using maximal_drop by au
 lemma prefix_valid [simp]: "valid_path (ltake n P)"
   using valid_path_prefix[of P] by auto
 
-lemma extension_valid [simp]: "v'\<rightarrow>v0 \<Longrightarrow> valid_path (LCons v' P)"
+lemma extension_valid [simp]: "v \<rightarrow> v0 \<Longrightarrow> valid_path (LCons v P)"
   by (simp add: valid_path_cons')
-lemma extension_maximal [simp]: "maximal_path (LCons v' P)"
+lemma extension_maximal [simp]: "maximal_path (LCons v P)"
   by (simp add: maximal_path_cons)
 lemma lappend_maximal [simp]: "maximal_path (lappend P' P)"
   by (simp add: maximal_path_lappend)

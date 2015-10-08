@@ -89,15 +89,27 @@ lemma llast_ltake:
   shows "llast (ltake (enat (Suc n)) xs) = lnth xs n" (is "llast ?A = _")
   unfolding llast_def using llength_ltake'[OF assms] by (auto simp add: lnth_ltake)
 
-lemma infinite_no_deadend: "\<not>lfinite P \<Longrightarrow> \<not>lnull P" by auto
-lemma LCons_suc_is_P2: "i \<noteq> 0 \<Longrightarrow> lnth (LCons v P) i = lnth P (i - 1)" by (simp add: lnth_LCons')
-lemma ltl_inf: "\<not>lfinite P \<Longrightarrow> lnth P (Suc i) = lnth (ltl P) i"
+lemma infinite_no_deadend: "\<not>lfinite xs \<Longrightarrow> \<not>lnull xs" by auto
+lemma ltl_inf: "\<not>lfinite xs \<Longrightarrow> lnth xs (Suc i) = lnth (ltl xs) i"
   by (simp add: infinite_no_deadend lnth_ltl)
-lemma path_set_at: "v \<in> lset P \<Longrightarrow> \<exists>n. lnth P n = v"
+lemma path_set_at: "v \<in> lset xs \<Longrightarrow> \<exists>n. lnth xs n = v"
   by (induct rule: llist.set_induct, meson lnth_0, meson lnth_Suc_LCons)
-lemma lfinite_drop: "lfinite P \<Longrightarrow> \<exists>n. ldrop n P = LNil" by auto
-lemma lfinite_drop_set: "lfinite P \<Longrightarrow> \<exists>n. v \<notin> lset (ldrop n P)"
+lemma lfinite_drop: "lfinite xs \<Longrightarrow> \<exists>n. ldrop n xs = LNil" by auto
+lemma lfinite_drop_set: "lfinite xs \<Longrightarrow> \<exists>n. v \<notin> lset (ldrop n xs)"
   by (metis ldrop_inf lmember_code(1) lset_lmember)
+lemma in_set_ldropn: "x \<in> lset (ldropn (Suc n) xs) \<Longrightarrow> x \<in> lset (ldropn n xs)"
+  by (simp add: in_lset_ltlD ldrop_eSuc_ltl ltl_ldropn)
+
+lemma lset_ltake_ltl: "lset (ltake (enat n) (ltl xs)) \<subseteq> lset (ltake (enat (Suc n)) xs)"
+proof (cases)
+  assume "\<not>lnull xs"
+  then obtain v0 where "xs = LCons v0 (ltl xs)" by (metis lhd_LCons_ltl)
+  hence "ltake (eSuc (enat n)) xs = LCons v0 (ltake (enat n) (ltl xs))"
+    by (metis assms ltake_eSuc_LCons)
+  hence "lset (ltake (enat (Suc n)) xs) = lset (LCons v0 (ltake (enat n) (ltl xs)))"
+    by (simp add: eSuc_enat)
+  thus ?thesis using lset_LCons[of v0 "ltake (enat n) (ltl xs)"] by blast
+qed (simp add: lnull_def)
 
 notation lnth (infix "$" 61)
 
