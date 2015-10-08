@@ -29,6 +29,7 @@ lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<
 
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 
+(* A path is valid if it starts in V and walks along edges. *)
 coinductive valid_path :: "'a Path \<Rightarrow> bool" where
   valid_path_base: "valid_path LNil"
 | valid_path_base': "v \<in> V \<Longrightarrow> valid_path (LCons v LNil)"
