@@ -12,8 +12,7 @@ lemma strategy_attracts_extends_VVp:
     and v0: "v0 \<in> VV p" "v0 \<in> directly_attracted p S" "v0 \<notin> S"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 (insert v0 S) W"
 proof-
-  from v0(1) v0(2) obtain w where "v0\<rightarrow>w" "w \<in> S" using directly_attracted_def by blast
-  hence "\<not>deadend v0" using edges_are_in_V by blast
+  from v0(1,2) obtain w where "v0\<rightarrow>w" "w \<in> S" using directly_attracted_def by blast
   from `w \<in> S` \<sigma>(2) have "strategy_attracts_via p \<sigma> w S W" unfolding strategy_attracts_def by blast
   let ?\<sigma> = "\<sigma>(v0 := w)" (* Extend \<sigma> to the new node. *)
   have "strategy p ?\<sigma>" using \<sigma>(1) `v0\<rightarrow>w` valid_strategy_updates by blast
@@ -21,7 +20,8 @@ proof-
     { fix P
       assume "vmc_path G P v0 p ?\<sigma>"
       then interpret vmc_path G P v0 p ?\<sigma> .
-      interpret vmc_path_no_deadend G P v0 p ?\<sigma> using `\<not>deadend v0` by unfold_locales
+      have "\<not>deadend v0" using `v0\<rightarrow>w` by blast
+      then interpret vmc_path_no_deadend G P v0 p ?\<sigma> by unfold_locales
 
       def [simp]: P'' \<equiv> "ltl P"
       have "lhd P'' = w" using v0(1) v0_conforms w0_def by auto

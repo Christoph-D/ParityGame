@@ -157,12 +157,11 @@ proof (rule ccontr)
   (* A strategy for p** which tries to take this edge. *)
   def \<sigma>' \<equiv> "\<sigma>_arbitrary(v := w)"
   hence "strategy p** \<sigma>'" using `v\<rightarrow>w` by (simp add: valid_strategy_updates)
-  moreover have "v \<in> V" using `v\<rightarrow>w` edges_are_in_V by blast
-  ultimately obtain P where P: "vmc2_path G P v p \<sigma> \<sigma>'"
-    using strategy_conforming_path_exists \<sigma>(2) by blast
+  then obtain P where P: "vmc2_path G P v p \<sigma> \<sigma>'"
+    using `v\<rightarrow>w` strategy_conforming_path_exists \<sigma>(2) by blast
   then interpret vmc2_path G P v p \<sigma> \<sigma>' .
-  have "\<not>deadend v" using `v\<rightarrow>w` edges_are_in_V by blast
-  then interpret vmc2_path_no_deadend G P v p \<sigma> \<sigma>' by (unfold_locales)
+  have "\<not>deadend v" using `v\<rightarrow>w` by blast
+  then interpret vmc2_path_no_deadend G P v p \<sigma> \<sigma>' by unfold_locales
   have "w = w0" using contra \<sigma>'_def v0_conforms comp.v0_conforms by (cases "v \<in> VV p") auto
   hence "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
     using strategy_attracts_invalid_path[of P v w "ltl (ltl P)"] v(2) v(3) P_LCons' by simp
@@ -195,7 +194,7 @@ proof (rule strategy_attractsI, rule ccontr)
   assume "v \<in> A"
   hence "P $ 0 \<in> A" using `v \<in> A` by simp
   moreover assume contra: "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
-  ultimately have "P $ 0 \<in> A - W" by (meson DiffI P_len not_less0 parity_game.lset_ltake)
+  ultimately have "P $ 0 \<in> A - W" by (meson DiffI P_len not_less0 lset_ltake)
   have "\<not>lset P \<subseteq> A - W" proof
     assume "lset P \<subseteq> A - W"
     hence "\<And>v. v \<in> lset P \<Longrightarrow> override_on \<sigma>' \<sigma> (A - W) v = \<sigma> v" by auto
@@ -218,7 +217,7 @@ proof (rule strategy_attractsI, rule ccontr)
   hence "P $ n' \<in> A - W" using n_min by blast
   moreover have "P $ n' \<rightarrow> P $ Suc n'" using P_valid n(1) n' valid_path_edges by blast
   moreover have "P $ Suc n' \<notin> A \<union> W" proof-
-    have "P $ n \<notin> W" using contra n(1) n_min by (meson Diff_subset parity_game.lset_ltake subsetCE)
+    have "P $ n \<notin> W" using contra n(1) n_min by (meson Diff_subset lset_ltake subsetCE)
     thus ?thesis using n(1) n' by blast
   qed
   ultimately have "P $ n' \<in> VV p \<and> \<sigma> (P $ n') \<noteq> P $ Suc n'"
@@ -258,7 +257,7 @@ proof (rule strategy_attracts_viaI)
   fix P assume "v0 \<in> W" "vmc_path G P v0 p \<sigma>"
   then interpret vmc_path G P v0 p \<sigma> by blast
   show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-    by (rule exI[of _ 0]) (simp add: `v0 \<in> W` parity_game.lset_ltake)
+    by (rule exI[of _ 0]) (simp add: `v0 \<in> W` lset_ltake)
 qed
 
 lemma strategy_attracts_trivial [simp]: "strategy_attracts p \<sigma> W W"
@@ -288,10 +287,10 @@ lemma strategy_attracts_VVp:
     and v: "v0 \<in> A - W" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 \<in> A \<union> W"
 proof-
-  have "v0\<rightarrow>\<sigma> v0" using \<sigma>(1)[unfolded strategy_def] v(2) v(3) by blast
+  have "v0\<rightarrow>\<sigma> v0" using \<sigma>(1)[unfolded strategy_def] v(2,3) by blast
   hence "strategy_attracts_via p \<sigma> (\<sigma> v0) A W"
     using strategy_attracts_via_successor \<sigma> v(1) by blast
-  thus ?thesis using strategy_attracts_via_v0 `v0\<rightarrow>\<sigma> v0` \<sigma>(1) edges_are_in_V by blast
+  thus ?thesis using strategy_attracts_via_v0 `v0\<rightarrow>\<sigma> v0` \<sigma>(1) by blast
 qed
 
 lemma strategy_attracts_VVpstar:

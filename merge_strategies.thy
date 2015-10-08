@@ -374,7 +374,6 @@ proof-
       ultimately show ?thesis using strategy_extends_VVp \<sigma> by blast
     next
       assume "v \<notin> VV p"
-      hence "v \<in> VV p**" using edges_are_in_V v(2) by auto
       thus ?thesis using strategy_extends_VVpstar \<sigma> `v\<rightarrow>w` by blast
     qed
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
@@ -383,7 +382,7 @@ proof-
   have S_closed: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> w \<in> S" proof-
     fix v w \<sigma> assume "v \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
     hence "\<sigma> \<in> good w" using strategies_continue by blast
-    thus "w \<in> S" using strategies_continue edges_are_in_V good_def strategies_ex `v\<rightarrow>w` by auto
+    thus "w \<in> S" using strategies_continue good_def strategies_ex `v\<rightarrow>w` by blast
   qed
 
   def [simp]: \<sigma> \<equiv> "well_ordered_strategy"

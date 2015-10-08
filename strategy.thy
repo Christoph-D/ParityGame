@@ -358,9 +358,9 @@ proof-
     moreover from P' `\<not>deadend v0` assms(2) assms(3) `v0 \<in> V`
       have 2: "v0\<rightarrow>lhd P'"
       unfolding strategy_def using greedy_path_ltl_VVp greedy_path_ltl_VVpstar by (cases "v0 \<in> VV p") auto
-    moreover hence "lhd P' \<in> V" using edges_are_in_V by auto
-    moreover have "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
-      by (metis P' calculation(1) calculation(3) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
+    moreover hence "lhd P' \<in> V" by blast
+    moreover hence "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
+      by (metis P' calculation(1) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
     (* The conjunction of all the above *)
     ultimately
       have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V)"
@@ -369,14 +369,12 @@ proof-
 
   show "valid_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
     case (valid_path v0)
-    from `v0 \<in> V` assms(2) assms(3) edges_are_in_V
-      show ?case using coinduction_helper[of v0] greedy_path_lhd by metis
+    from `v0 \<in> V` assms(2,3) show ?case using coinduction_helper[of v0] greedy_path_lhd by blast
   qed
 
   show "maximal_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
     case (maximal_path v0)
-    from `v0 \<in> V` assms(2) assms(3) edges_are_in_V
-      show ?case using coinduction_helper[of v0] greedy_path_deadend_v' by blast
+    from `v0 \<in> V` assms(2,3) show ?case using coinduction_helper[of v0] greedy_path_deadend_v' by blast
   qed
 
   {
@@ -392,7 +390,7 @@ proof-
             using coinduction_helper by blast
           with `v0 \<in> VV p''` p'' have "\<sigma>'' v0 = lhd P'"
             using greedy_path_ltl_VVp greedy_path_ltl_VVpstar by blast
-          with `v0 \<in> VV p''` P'(1) P'(2) P'(5) have ?path_conforms_VVp
+          with `v0 \<in> VV p''` P'(1,2,5) have ?path_conforms_VVp
             using greedy_conforming_path.code path_conforms_with_strategy(1) by fastforce
         }
         thus ?thesis by auto

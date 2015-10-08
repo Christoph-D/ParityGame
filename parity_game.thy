@@ -25,7 +25,7 @@ locale Digraph =
 begin
 lemma Digraph [simp]: "Digraph G" by unfold_locales
 
-lemma edges_are_in_V: "v\<rightarrow>w \<Longrightarrow> v \<in> V \<and> w \<in> V" using valid_edge_set by blast
+lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<rightarrow>w \<Longrightarrow> w \<in> V" using valid_edge_set by blast+
 
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 lemma deadend_no_edge: "\<lbrakk> \<not>P \<Longrightarrow> v\<rightarrow>w ; deadend v \<rbrakk> \<Longrightarrow> P" using edges_are_in_V by blast
@@ -37,13 +37,14 @@ coinductive valid_path :: "'a Path \<Rightarrow> bool" where
 
 inductive_simps valid_path_cons_simp: "valid_path (LCons x xs)"
 
-lemma valid_path_cons': "\<lbrakk> v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)" using edges_are_in_V valid_path_cons by auto
+lemma valid_path_cons': "\<lbrakk> v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)"
+  using valid_path_cons by auto
 lemma valid_path_ltl': "valid_path (LCons v Ps) \<Longrightarrow> valid_path Ps" using valid_path.simps by blast
 lemma valid_path_ltl: "valid_path P \<Longrightarrow> valid_path (ltl P)" by (metis llist.exhaust_sel ltl_simps(1) valid_path_ltl')
 lemma valid_path_drop: "valid_path P \<Longrightarrow> valid_path (ldropn n P)" by (simp add: valid_path_ltl ltl_ldrop)
 
 lemma valid_path_in_V: assumes "valid_path P" shows "lset P \<subseteq> V" proof
-  fix x assume "x \<in> lset P" thus "x \<in> V" using assms by (induct rule: llist.set_induct) (auto intro: valid_path.cases edges_are_in_V)
+  fix x assume "x \<in> lset P" thus "x \<in> V" using assms by (induct rule: llist.set_induct) (auto intro: valid_path.cases)
 qed
 lemma valid_path_in_V': "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> P $ i \<in> V" by (simp add: llist_set_nth valid_path_in_V)
 lemma valid_path_finite_in_V': "\<lbrakk> valid_path P; enat i < llength P \<rbrakk> \<Longrightarrow> P $ i \<in> V"
@@ -79,7 +80,6 @@ proof (coinduction arbitrary: P rule: valid_path.coinduct)
       moreover have "P $ 0 = v \<and> P $ (Suc 0) = w" by (simp add: v w lnth_0_conv_lhd)
       ultimately show ?thesis using valid_path(2) by blast
     qed
-    moreover hence "v \<in> V \<and> w \<in> V" using edges_are_in_V by blast
     moreover have "lset Ps \<subseteq> V" using v(1) valid_path(1) by auto
     moreover have "\<And>i v w. \<lbrakk> enat (Suc i) < llength Ps; Ps $ i = v; Ps $ Suc i = w \<rbrakk> \<Longrightarrow> v \<rightarrow> w" proof-
       fix i v w assume asm: "enat (Suc i) < llength Ps" "Ps $ i = v" "Ps $ Suc i = w"
@@ -90,14 +90,14 @@ proof (coinduction arbitrary: P rule: valid_path.coinduct)
     qed
     ultimately have "\<exists>v w Ps. P = LCons v Ps \<and> v \<in> V \<and> w \<in> V \<and> v \<rightarrow> w \<and>
       ((\<exists>P. Ps = P \<and> lset P \<subseteq> V \<and> (\<forall>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v \<rightarrow> w)) \<or> valid_path Ps) \<and> \<not> lnull Ps \<and> lhd Ps = w"
-      using v w by simp
+      using v w by blast
   }
   thus ?case by blast
 qed
 lemma valid_path_equiv: "valid_path P \<longleftrightarrow> lset P \<subseteq> V \<and> (\<forall>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v\<rightarrow>w)" using valid_path_impl1 valid_path_impl2 by blast
 
 lemma valid_path_no_deadends: "\<lbrakk> valid_path P; enat (Suc i) < llength P; P $ Suc i = w \<rbrakk> \<Longrightarrow> \<not>deadend (P $ i)"
-  using edges_are_in_V valid_path_equiv by blast
+  using valid_path_equiv by blast
 lemma valid_path_ends_on_deadend: "\<lbrakk> valid_path P; enat i < llength P; deadend (P $ i) \<rbrakk> \<Longrightarrow> enat (Suc i) = llength P"
   by (meson Suc_ile_eq antisym_conv le_less_linear valid_path_no_deadends)
 
@@ -147,7 +147,8 @@ qed
 lemma valid_path_supergame:
   assumes "valid_path P" and G': "Digraph G'" "V \<subseteq> V\<^bsub>G'\<^esub>" "E \<subseteq> E\<^bsub>G'\<^esub>"
   shows "Digraph.valid_path G' P"
-using assms(1) assms(3) proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`, case_names IH])
+using assms(1,3)
+proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`, case_names IH])
   case (IH P)
   show ?case proof (cases)
     assume "P = LNil" thus ?thesis by simp
@@ -156,12 +157,13 @@ using assms(1) assms(3) proof (coinduction arbitrary: P rule: Digraph.valid_path
     then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
     show ?thesis proof (cases)
       assume "P' = LNil"
-      thus ?thesis using IH valid_path_cons_simp P' by blast
+      thus ?thesis using IH valid_path_cons_simp P' by auto
     next
       assume "P' \<noteq> LNil"
       then obtain w Ps where *: "P = LCons v (LCons w Ps)" using P' llist.exhaust by auto
       hence "v \<in> V\<^bsub>G'\<^esub>" using IH valid_path_cons_simp by blast
-      moreover have "w \<in> V\<^bsub>G'\<^esub>" using IH valid_path_ltl valid_path_cons_simp by (metis "*" subsetCE valid_path_ltl')
+      moreover have "w \<in> V\<^bsub>G'\<^esub>" using IH valid_path_ltl valid_path_cons_simp
+        by (metis "*" subsetCE valid_path_ltl')
       moreover have "v \<rightarrow>\<^bsub>G'\<^esub> w" using IH(1) `E \<subseteq> E\<^bsub>G'\<^esub>` * valid_path_edges' by blast
       ultimately show ?thesis using * IH(1) assms(3) valid_path_cons_simp by auto
     qed
@@ -173,9 +175,12 @@ maximal_path_base: "maximal_path LNil"
 | maximal_path_base': "deadend v \<Longrightarrow> maximal_path (LCons v LNil)"
 | maximal_path_cons: "\<not>lnull Ps \<Longrightarrow> maximal_path Ps \<Longrightarrow> maximal_path (LCons v Ps)"
 
-lemma maximal_no_deadend: "maximal_path (LCons v Ps) \<Longrightarrow> \<not>deadend v \<Longrightarrow> \<not>lnull Ps" by (metis lhd_LCons llist.distinct(1) ltl_simps(2) maximal_path.simps)
-lemma maximal_ltl: "maximal_path P \<Longrightarrow> maximal_path (ltl P)" by (metis ltl_simps(1) ltl_simps(2) maximal_path.simps)
-lemma maximal_drop: "maximal_path P \<Longrightarrow> maximal_path (ldropn n P)" by (simp add: maximal_ltl ltl_ldrop)
+lemma maximal_no_deadend: "maximal_path (LCons v Ps) \<Longrightarrow> \<not>deadend v \<Longrightarrow> \<not>lnull Ps"
+  by (metis lhd_LCons llist.distinct(1) ltl_simps(2) maximal_path.simps)
+lemma maximal_ltl: "maximal_path P \<Longrightarrow> maximal_path (ltl P)"
+  by (metis ltl_simps(1) ltl_simps(2) maximal_path.simps)
+lemma maximal_drop: "maximal_path P \<Longrightarrow> maximal_path (ldropn n P)"
+  by (simp add: maximal_ltl ltl_ldrop)
 lemma maximal_path_impl1:
   assumes "maximal_path P" "enat n < llength P" "\<not>deadend (P $ n)"
   shows "enat (Suc n) < llength P"
@@ -608,7 +613,7 @@ qed
 lemma P_no_deadends: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend (P $ n)"
   using valid_path_no_deadends by simp
 lemma P_no_deadend_v0: "\<not>lnull (ltl P) \<Longrightarrow> \<not>deadend v0"
-  by (metis P_LCons P_valid edges_are_in_V not_lnull_conv valid_path_edges')
+  by (metis P_LCons P_valid edges_are_in_V(2) not_lnull_conv valid_path_edges')
 lemma P_no_deadend_v0_llength: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend v0"
   by (metis P_0 P_len P_valid enat_ord_simps(2) not_less_eq valid_path_ends_on_deadend zero_less_Suc)
 lemma P_ends_on_deadend: "enat n < llength P \<Longrightarrow> deadend (P $ n) \<Longrightarrow> enat (Suc n) = llength P"

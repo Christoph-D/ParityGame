@@ -88,7 +88,7 @@ lemma strategy_extends_backwards_VVpstar:
 proof-
   { fix P assume "vmc_path G P v0 p** \<sigma>"
     then interpret vmc_path G P v0 "p**" \<sigma> .
-    have "\<not>deadend v0" using `v0\<rightarrow>w` edges_are_in_V by blast
+    have "\<not>deadend v0" using `v0\<rightarrow>w` by blast
     then interpret vmc_path_no_deadend G P v0 "p**" \<sigma> by unfold_locales
     have "winning_path p** (ltl P)"
       using \<sigma>(2)[unfolded winning_strategy_def] v0(1) v0(2) v0_conforms vmc_path_ltl by presburger
@@ -160,7 +160,7 @@ proof-
               hence False using `v \<in> V'` V'_def by blast
             }
             hence "w \<notin> attractor p K" by blast
-            hence "w \<in> W1" using not_in_V' V_decomp `v\<rightarrow>w` edges_are_in_V by blast
+            hence "w \<in> W1" using not_in_V' V_decomp `v\<rightarrow>w` by blast
           }
           (* All successors of v point to W1, so v \<in> W1 *)
           hence "winning_strategy p** \<sigma>W1 v" using strategy_extends_backwards_VVp[of v p \<sigma>W1] \<sigma>W1 `v \<in> VV p` by blast
@@ -168,7 +168,7 @@ proof-
         }
         moreover {
           assume "v \<notin> VV p"
-          hence "v \<in> VV p**" using `\<not>deadend v` edges_are_in_V by auto
+          hence "v \<in> VV p**" using `\<not>deadend v` by blast
           {
             fix w assume "v\<rightarrow>w"
             {
@@ -185,7 +185,7 @@ proof-
               hence False using `v \<in> V'` V'_def U_def by blast
             }
             hence "w \<notin> W1" by blast
-            hence "w \<in> attractor p K" using not_in_V' V_decomp `v\<rightarrow>w` edges_are_in_V by blast
+            hence "w \<in> attractor p K" using not_in_V' V_decomp `v\<rightarrow>w` by blast
           }
           (* All successors of v point to attractor p K, so v \<in> attractor p K *)
           hence "v \<in> attractor p K" using `v \<in> VV p**` attractor_set_VVpstar `\<not>deadend v` by blast
@@ -321,8 +321,7 @@ proof-
                 ultimately have "P $ n' \<rightarrow>\<^bsub>G'\<^esub> \<sigma> (P $ n')"
                   using \<sigma>(1)[unfolded ParityGame.strategy_def[OF `ParityGame G'`]] `P $ n' \<in> VV p**` by blast
                 hence "P $ n' \<rightarrow>\<^bsub>G'\<^esub> P $ n" using * n' by simp
-                hence "P $ n \<in> V'"
-                  using `V\<^bsub>G'\<^esub> = V'` Digraph.edges_are_in_V[OF `Digraph G'`] by blast
+                hence "P $ n \<in> V'" using `V\<^bsub>G'\<^esub> = V'` by blast
                 thus False using n(2) by blast
               qed
             qed (* lset P \<subseteq> V' *)
@@ -406,7 +405,7 @@ proof-
           assume "\<not>(\<exists>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1))"
           hence "\<And>w. v\<rightarrow>w \<Longrightarrow> winning_strategy p** \<sigma>W1 w" using \<sigma>W1(2) by blast
           hence "winning_strategy p** \<sigma>W1 v" using strategy_extends_backwards_VVp \<sigma>W1(1) `v \<in> VV p` by blast
-          hence "v \<in> W1" unfolding W1_def using \<sigma>W1(1) edges_are_in_V `\<not>deadend v` by blast
+          hence "v \<in> W1" unfolding W1_def using \<sigma>W1(1) `\<not>deadend v` by blast
           thus False using `v \<notin> W1` by blast
         qed
       qed
@@ -708,8 +707,8 @@ proof-
           fix w
           assume "v\<rightarrow>w"
              and "\<not>(w \<in> attractor Even (?deadends Even**) \<or> w \<in> attractor Odd (?deadends Odd**))"
-          hence "w \<in> V'" unfolding V'_def using edges_are_in_V A_def by auto
-          hence "w \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v\<rightarrow>w` edges_are_in_V by auto
+          hence "w \<in> V'" unfolding V'_def using A_def by blast
+          hence "w \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v\<rightarrow>w` by auto
           hence "v \<rightarrow>\<^bsub>G'\<^esub> w" using `v\<rightarrow>w` `v \<in> V\<^bsub>G'\<^esub>` unfolding G'_def subgame_def by auto
           thus False using `G'.deadend v` using `w \<in> V\<^bsub>G'\<^esub>` by blast
         qed
@@ -757,7 +756,7 @@ proof-
         next
           assume "v \<notin> V'"
           hence "\<sigma>' v = \<sigma>_attr v"
-            unfolding \<sigma>'_def V'_def A_def by (cases p) (insert edges_are_in_V v(2), auto)
+            unfolding \<sigma>'_def V'_def A_def by (cases p) (insert v(2), auto)
           thus ?thesis using v \<sigma>_attr(1)[unfolded strategy_def] by auto
         qed
       }
@@ -814,8 +813,7 @@ proof-
                     hence "v0 \<in> G'.VV p" unfolding G'_def using subgame_VV `v0 \<in> V'` by blast
                     moreover have "v0 \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` `v0 \<in> V'` by simp
                     moreover hence "\<not>G'.deadend v0" using V'_no_deadends by blast
-                    ultimately have "\<sigma> v0 \<in> V\<^bsub>G'\<^esub>"
-                      using \<sigma>(1)[unfolded G'.strategy_def] G'.edges_are_in_V by blast
+                    ultimately have "\<sigma> v0 \<in> V\<^bsub>G'\<^esub>" using \<sigma>(1)[unfolded G'.strategy_def] by blast
                     hence "\<sigma>' v0 \<in> V'" by (simp add: \<sigma>'_is_\<sigma>_on_V' step.prems(2) `V\<^bsub>G'\<^esub> = V'`)
                     moreover have "\<sigma>' v0 = P.w0" using `v0 \<in> VV p` P.v0_conforms by blast
                     ultimately have "P.w0 \<in> V'" by simp
