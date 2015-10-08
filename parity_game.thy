@@ -45,7 +45,6 @@ lemma valid_path_drop: "valid_path P \<Longrightarrow> valid_path (ldropn n P)" 
 lemma valid_path_in_V: assumes "valid_path P" shows "lset P \<subseteq> V" proof
   fix x assume "x \<in> lset P" thus "x \<in> V" using assms by (induct rule: llist.set_induct) (auto intro: valid_path.cases)
 qed
-lemma valid_path_in_V': "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> P $ i \<in> V" by (simp add: llist_set_nth valid_path_in_V)
 lemma valid_path_finite_in_V': "\<lbrakk> valid_path P; enat i < llength P \<rbrakk> \<Longrightarrow> P $ i \<in> V"
   by (metis (no_types, lifting) ldropn_Suc_conv_ldropn llist.distinct(1) llist.inject valid_path.cases valid_path_drop)
 
@@ -409,7 +408,7 @@ next
 qed
 
 lemma path_priorities_in_\<omega>V: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> path_priorities P i \<in> \<omega> ` V"
-  using assms path_priorities_def valid_path_in_V' by auto
+  unfolding path_priorities_def using llist_set_nth[of P V i] valid_path_in_V by blast
 
 lemma LCons_extends:
   assumes "\<exists>i. P $ i = w"
