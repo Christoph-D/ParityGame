@@ -8,24 +8,35 @@ begin
 locale WellOrderedStrategies = ParityGame +
   fixes S :: "'a set"
     and p :: Player
-    and good :: "'a \<Rightarrow> 'a Strategy set"
+    and good :: "'a \<Rightarrow> 'a Strategy set" (* The set of good strategies on a node v *)
     and r :: "('a Strategy \<times> 'a Strategy) set"
   assumes S_V: "S \<subseteq> V"
+    (* r is a wellorder on the set of all strategies which are good somewhere. *)
     and r_wo: "well_order_on {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v} r"
+    (* Every node has a good strategy. *)
     and good_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v"
+    (* good strategies are well-formed strategies. *)
     and good_strategies: "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>"
+    (* A good strategy on v is also good on possible successors of v. *)
     and strategies_continue: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> \<sigma> \<in> good w"
 begin
 
+(* The set of all strategies which are good somewhere. *)
 abbreviation "Strategies \<equiv> {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
 
-definition choose' where
-  "choose' v \<sigma> \<equiv> \<sigma> \<in> good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> good v)"
+definition minimal_good_strategy where
+  "minimal_good_strategy v \<sigma> \<equiv> \<sigma> \<in> good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> good v)"
+
+(* Among the good strategies on v, choose the minimum. *)
 definition choose where
-  "choose v \<equiv> THE \<sigma>. choose' v \<sigma>"
+  "choose v \<equiv> THE \<sigma>. minimal_good_strategy v \<sigma>"
+
+(* Define a strategy which uses the minimum strategy on all nodes of S.
+   Of course, we need to prove that this is a well-formed strategy. *)
 definition well_ordered_strategy where
   "well_ordered_strategy \<equiv> override_on \<sigma>_arbitrary (\<lambda>v. choose v v) S"
 
+(* Show some simple properties of the binary relation r on the set Strategies. *)
 lemma r_refl [simp]: "refl_on Strategies r"
   using r_wo unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
 lemma r_total [simp]: "total_on Strategies r"
@@ -35,23 +46,28 @@ lemma r_trans [simp]: "trans r"
 lemma r_wf [simp]: "wf (r - Id)"
   using well_order_on_def r_wo by blast
 
+(* Choose always chooses a minimal good strategy on S. *)
 lemma choose_works:
   assumes "v \<in> S"
-  shows "choose' v (choose v)"
+  shows "minimal_good_strategy v (choose v)"
 proof-
   have wf: "wf (r - Id)" using well_order_on_def r_wo by blast
-  obtain \<sigma> where \<sigma>1: "choose' v \<sigma>" unfolding choose'_def by (meson good_ex[OF `v \<in> S`] wf wf_eq_minimal)
-  hence \<sigma>: "\<sigma> \<in> good v" "\<And>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<Longrightarrow> \<sigma>' \<notin> good v" unfolding choose'_def by auto
-  { fix \<sigma>' assume "choose' v \<sigma>'"
-    hence \<sigma>': "\<sigma>' \<in> good v" "\<And>\<sigma>. (\<sigma>, \<sigma>') \<in> r - Id \<Longrightarrow> \<sigma> \<notin> good v" unfolding choose'_def by auto
+  obtain \<sigma> where \<sigma>1: "minimal_good_strategy v \<sigma>"
+    unfolding minimal_good_strategy_def by (meson good_ex[OF `v \<in> S`] wf wf_eq_minimal)
+  hence \<sigma>: "\<sigma> \<in> good v" "\<And>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<Longrightarrow> \<sigma>' \<notin> good v"
+    unfolding minimal_good_strategy_def by auto
+  { fix \<sigma>' assume "minimal_good_strategy v \<sigma>'"
+    hence \<sigma>': "\<sigma>' \<in> good v" "\<And>\<sigma>. (\<sigma>, \<sigma>') \<in> r - Id \<Longrightarrow> \<sigma> \<notin> good v"
+      unfolding minimal_good_strategy_def by auto
     have "(\<sigma>, \<sigma>') \<notin> r - Id" using \<sigma>(1) \<sigma>'(2) by blast
     moreover have "(\<sigma>', \<sigma>) \<notin> r - Id" using \<sigma>(2) \<sigma>'(1) by auto
     moreover have "\<sigma> \<in> Strategies" using \<sigma>(1) `v \<in> S` by auto
     moreover have "\<sigma>' \<in> Strategies" using \<sigma>'(1) `v \<in> S` by auto
-    ultimately have "\<sigma>' = \<sigma>" using r_wo Linear_order_in_diff_Id well_order_on_Field well_order_on_def by fastforce
+    ultimately have "\<sigma>' = \<sigma>"
+      using r_wo Linear_order_in_diff_Id well_order_on_Field well_order_on_def by fastforce
   }
-  with \<sigma>1 have "\<exists>!\<sigma>. choose' v \<sigma>" by blast
-  thus ?thesis using theI'[of "choose' v", folded choose_def] by blast
+  with \<sigma>1 have "\<exists>!\<sigma>. minimal_good_strategy v \<sigma>" by blast
+  thus ?thesis using theI'[of "minimal_good_strategy v", folded choose_def] by blast
 qed
 
 corollary
@@ -59,7 +75,7 @@ corollary
   shows choose_good: "choose v \<in> good v"
     and choose_minimal: "\<And>\<sigma>'. (\<sigma>', choose v) \<in> r - Id \<Longrightarrow> \<sigma>' \<notin> good v"
     and choose_strategy: "strategy p (choose v)"
-  using choose_works[OF assms, unfolded choose'_def] good_strategies by blast+
+  using choose_works[OF assms, unfolded minimal_good_strategy_def] good_strategies by blast+
 
 corollary choose_in_Strategies: "v \<in> S \<Longrightarrow> choose v \<in> Strategies" using assms choose_good by blast
 
@@ -68,7 +84,8 @@ proof-
   {
     fix v assume "v \<in> S" "v \<in> VV p" "\<not>deadend v"
     moreover have "strategy p (choose v)"
-      using choose_works[OF `v \<in> S`, unfolded choose'_def, THEN conjunct1] good_strategies by blast
+      using choose_works[OF `v \<in> S`, unfolded minimal_good_strategy_def, THEN conjunct1] good_strategies
+      by blast
     ultimately have "v\<rightarrow>(\<lambda>v. choose v v) v" using strategy_def by blast
   }
   thus ?thesis unfolding well_ordered_strategy_def using valid_strategy_updates_set by force
