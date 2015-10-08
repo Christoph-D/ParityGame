@@ -228,16 +228,4 @@ qed
 
 end -- "context ParityGame"
 
-(* ML_val {*
-(*proof body with digest*)
-val body = Proofterm.strip_thm (Thm.proof_body_of @{thm obtain_min});
-(*proof term only*)
-val prf = Proofterm.proof_of body;
-Pretty.writeln (Proof_Syntax.pretty_proof @{context} prf);
-(*all theorems used in the graph of nested proofs*)
-val all_thms =
-Proofterm.fold_body_thms
-(fn (name, _, _) => insert (op =) name) [body] [];
-*} *)
-
 end

@@ -210,7 +210,7 @@ proof (rule strategy_attractsI, rule ccontr)
   hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> A - W" by (meson lset_subset)
   then obtain n where n: "enat n < llength P \<and> P $ n \<notin> A - W"
     "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> A - W)"
-    using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> A - W"] by blast
+    using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> A - W"] by blast
   hence n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> A - W"
     using dual_order.strict_trans enat_ord_simps(2) by blast
   have "n \<noteq> 0" using `P $ 0 \<in> A - W` n(1) by meson

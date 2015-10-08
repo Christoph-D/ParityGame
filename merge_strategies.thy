@@ -269,8 +269,10 @@ proof-
       have "lset P \<subseteq> S - W" proof (rule ccontr)
         assume "\<not>lset P \<subseteq> S - W"
         hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> S - W" by (meson lset_subset)
-        then obtain n where n: "enat n < llength P" "P $ n \<notin> S - W" "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> S - W)"
-          using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S - W"] by metis
+        then obtain n where n:
+          "enat n < llength P" "P $ n \<notin> S - W"
+          "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> S - W)"
+          using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S - W"] by blast
         from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W" using dual_order.strict_trans enat_ord_simps(2) by blast
         hence "lset (ltake (enat n) P) \<subseteq> S - W" using lset_ltake by blast
         hence "P $ n \<notin> W" using contra n(1) by blast

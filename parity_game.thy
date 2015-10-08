@@ -6,12 +6,9 @@ begin
 
 lemma option_the_simp [simp]: "x = Some y \<Longrightarrow> the x = y" by simp
 lemma option_the_simp2 [simp]: "x \<noteq> None \<Longrightarrow> \<exists>y. x = Some y" by simp
-lemma obtain_min:
-  assumes "\<exists>n :: nat. P n"
-  obtains n where "P n" "\<And>i. i < n \<Longrightarrow> \<not>P i"
-  using assms ex_least_nat_le by blast
 lemma fun_iter_induct: "P x \<Longrightarrow> (\<And>x. P x \<Longrightarrow> P (f x)) \<Longrightarrow> P ((f^^n) x)" by (induct n) simp_all
-lemma llist_set_nth: "\<lbrakk> \<not>lfinite x; lset x \<subseteq> X \<rbrakk> \<Longrightarrow> lnth x i \<in> X" by (metis contra_subsetD inf_llist_lnth lset_inf_llist rangeI)
+lemma llist_set_nth: "\<lbrakk> \<not>lfinite x; lset x \<subseteq> X \<rbrakk> \<Longrightarrow> lnth x i \<in> X"
+  by (metis contra_subsetD inf_llist_lnth lset_inf_llist rangeI)
 lemma enat_Suc_ltl: assumes "enat (Suc i) < llength xs" shows "enat i < llength (ltl xs)" proof-
   from assms have "eSuc (enat i) < llength xs" by (simp add: eSuc_enat)
   hence "enat i < epred (llength xs)" using eSuc_le_iff ileI1 by fastforce

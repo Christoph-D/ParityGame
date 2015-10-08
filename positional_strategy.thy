@@ -263,7 +263,7 @@ proof-
               hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> V'" by (simp add: lset_subset)
               then obtain n where n: "enat n < llength P" "P $ n \<notin> V'"
                 "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> V')"
-                using obtain_min[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> V'"] by metis
+                using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> V'"] by blast
               have n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> V'"
                 using n(1) n(3) dual_order.strict_trans enat_ord_simps(2) by blast
               have "n \<noteq> 0" using n(2) `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> = V'` by (metis P_0)
@@ -472,7 +472,7 @@ proof-
                     n: "enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
                        "\<And>i. i < n \<Longrightarrow>
                         \<not>(enat i < llength P' \<and> P' $ i \<in> K \<and> lset (ltake (enat i) P') \<subseteq> attractor p K)"
-                    using obtain_min[of
+                    using ex_least_nat_le[of
                       "\<lambda>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"]
                     by blast
                   hence n_min: "\<And>i. i < n \<Longrightarrow> P' $ i \<notin> K" proof-

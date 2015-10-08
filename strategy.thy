@@ -541,7 +541,7 @@ proof-
     ultimately show ?thesis unfolding fail_def using n(2) v(3) by blast
   qed
   then obtain n where "fail P n" and n_min: "\<And>m. m < n \<Longrightarrow> \<not>fail P m"
-    using obtain_min[of "\<lambda>n. fail P n"] by blast
+    using ex_least_nat_le[of "\<lambda>n. fail P n"] by blast
   hence n: "enat (Suc n) < llength P" "P $ n \<in> VV p" "\<not>deadend (P $ n)" "\<sigma>' (P $ n) \<noteq> P $ Suc n"
     unfolding fail_def by blast+
   def P' \<equiv> "lappend (ltake (enat (Suc n)) P) (greedy_conforming_path p \<sigma>' \<sigma>_arbitrary (\<sigma>' (P $ n)))"

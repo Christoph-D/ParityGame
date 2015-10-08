@@ -264,7 +264,7 @@ end -- "context ParityGame"
 
 (* ML_val {*
 (*proof body with digest*)
-val body = Proofterm.strip_thm (Thm.proof_body_of @{thm obtain_min});
+val body = Proofterm.strip_thm (Thm.proof_body_of @{thm llist_set_nth});
 (*proof term only*)
 val prf = Proofterm.proof_of body;
 Pretty.writeln (Proof_Syntax.pretty_proof @{context} prf);
