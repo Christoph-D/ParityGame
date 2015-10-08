@@ -13,9 +13,6 @@ type_synonym 'a Path = "'a llist"
 definition path_inf :: "'a Path \<Rightarrow> 'a set" where
   "path_inf P \<equiv> {v. \<forall>i. v \<in> lset (ldropn i P)}"
 
-
-(* abbreviation path_dom :: "'a Path \<Rightarrow> nat set" where "path_dom P \<equiv> {i. enat i < llength P}" *)
-
 record 'a Graph =
   verts :: "'a set" ("V\<index>")
   arcs :: "'a Edge set" ("E\<index>")
@@ -24,9 +21,7 @@ abbreviation is_arc :: "('a, 'b) Graph_scheme \<Rightarrow> 'a \<Rightarrow> 'a 
 
 locale Digraph =
   fixes G (structure)
-  assumes (* finite_vertex_set: "finite V"
-    and *) non_empty_vertex_set: "V \<noteq> {}"
-    and valid_edge_set: "E \<subseteq> V \<times> V"
+  assumes non_empty_vertex_set: "V \<noteq> {}" and valid_edge_set: "E \<subseteq> V \<times> V"
 begin
 lemma Digraph [simp]: "Digraph G" by unfold_locales
 
