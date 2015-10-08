@@ -28,7 +28,6 @@ lemma Digraph [simp]: "Digraph G" by unfold_locales
 lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<rightarrow>w \<Longrightarrow> w \<in> V" using valid_edge_set by blast+
 
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
-lemma deadend_no_edge: "\<lbrakk> \<not>P \<Longrightarrow> v\<rightarrow>w ; deadend v \<rbrakk> \<Longrightarrow> P" using edges_are_in_V by blast
 
 coinductive valid_path :: "'a Path \<Rightarrow> bool" where
   valid_path_base: "valid_path LNil"
