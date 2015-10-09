@@ -228,23 +228,22 @@ using assms proof (coinduction arbitrary: P)
 qed
 
 lemma subgame_path_conforms_with_strategy:
-  assumes V': "V' \<inter> V \<noteq> {}" "V' \<subseteq> V" and P: "path_conforms_with_strategy p P \<sigma>" "lset P \<subseteq> V'"
+  assumes V': "V' \<subseteq> V" and P: "path_conforms_with_strategy p P \<sigma>" "lset P \<subseteq> V'"
   shows "ParityGame.path_conforms_with_strategy (subgame V') p P \<sigma>"
 proof-
-  have *: "ParityGame (subgame V')" using assms(1) subgame_ParityGame by blast
-  have "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) V'(2) by auto
+  have "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) V' by auto
   with P(1) show ?thesis
-    by (coinduction arbitrary: P rule: ParityGame.path_conforms_with_strategy.coinduct[OF "*"])
+    by (coinduction arbitrary: P rule: ParityGame.path_conforms_with_strategy.coinduct[OF subgame_ParityGame])
        (cases rule: path_conforms_with_strategy.cases, auto)
 qed
 
 lemma (in vmc_path) subgame_path_vmc_path:
-  assumes V': "V' \<inter> V \<noteq> {}" "V' \<subseteq> V" and P: "lset P \<subseteq> V'"
+  assumes V': "V' \<subseteq> V" and P: "lset P \<subseteq> V'"
   shows "vmc_path (subgame V') P v0 p \<sigma>"
 proof-
-  interpret G': ParityGame "subgame V'" using subgame_ParityGame V'(1) by blast
+  interpret G': ParityGame "subgame V'" using subgame_ParityGame by blast
   show ?thesis proof
-    show "G'.valid_path P" using subgame_valid_path V'(1) P_valid P by blast
+    show "G'.valid_path P" using subgame_valid_path P_valid P by blast
     show "G'.maximal_path P" using subgame_maximal_path V' P_maximal P by blast
     show "G'.path_conforms_with_strategy p P \<sigma>"
       using subgame_path_conforms_with_strategy V' P_conforms P by blast

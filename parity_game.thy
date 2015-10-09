@@ -21,7 +21,7 @@ abbreviation is_arc :: "('a, 'b) Graph_scheme \<Rightarrow> 'a \<Rightarrow> 'a 
 
 locale Digraph =
   fixes G (structure)
-  assumes non_empty_vertex_set: "V \<noteq> {}" and valid_edge_set: "E \<subseteq> V \<times> V"
+  assumes valid_edge_set: "E \<subseteq> V \<times> V"
 begin
 lemma Digraph [simp]: "Digraph G" by unfold_locales
 
@@ -353,19 +353,16 @@ qed
 lemma subgame_\<omega>_subset [simp]: "\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub> \<subseteq> \<omega> ` V" by (simp add: image_mono subgame_\<omega>)
 
 lemma subgame_Digraph:
-  assumes "V' \<inter> V \<noteq> {}"
   shows "Digraph (subgame V')"
 proof (unfold_locales)
-  show "V\<^bsub>subgame V'\<^esub> \<noteq> {}" unfolding subgame_def using assms by simp
   show "E\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using valid_edge_set by auto
 qed
 
 lemma subgame_ParityGame:
-  assumes "V' \<inter> V \<noteq> {}"
   shows "ParityGame (subgame V')"
 proof (unfold_locales)
-  show "V\<^bsub>subgame V'\<^esub> \<noteq> {}" "E\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>"
-    using subgame_Digraph[unfolded Digraph_def, OF assms] by auto
+  show "E\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>"
+    using subgame_Digraph[unfolded Digraph_def, OF assms] .
   show "V0\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using valid_player0_set by auto
   show "finite (\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub>)" by simp
 qed
@@ -374,14 +371,13 @@ lemma subgame_deadend [simp]: "\<not>Digraph.deadend (subgame V') v \<Longrighta
   by (meson subgame_E subgame_V subsetCE)
 
 lemma subgame_valid_path:
-  assumes "V' \<inter> V \<noteq> {}" and P: "valid_path P" "lset P \<subseteq> V'"
+  assumes P: "valid_path P" "lset P \<subseteq> V'"
   shows "Digraph.valid_path (subgame V') P"
 proof-
-  have *: "Digraph (subgame V')" using assms(1) subgame_Digraph by blast
   have "lset P \<subseteq> V" using P(1) valid_path_in_V by blast
   hence "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) by auto
   with P(1) show ?thesis
-  proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF "*", case_names IH])
+  proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF subgame_Digraph, case_names IH])
     case IH
     thus ?case proof (cases rule: valid_path.cases)
       case (valid_path_cons v w Ps)
@@ -394,13 +390,12 @@ proof-
 qed
 
 lemma subgame_maximal_path:
-  assumes V': "V' \<inter> V \<noteq> {}" "V' \<subseteq> V" and P: "maximal_path P" "lset P \<subseteq> V'"
+  assumes V': "V' \<subseteq> V" and P: "maximal_path P" "lset P \<subseteq> V'"
   shows "Digraph.maximal_path (subgame V') P"
 proof-
-  have *: "Digraph (subgame V')" using assms(1) subgame_Digraph by blast
-  have "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) V'(2) by auto
-  with P(1) assms(2) show ?thesis
-    by (coinduction arbitrary: P rule: Digraph.maximal_path.coinduct[OF "*"])
+  have "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) V' by auto
+  with P(1) V' show ?thesis
+    by (coinduction arbitrary: P rule: Digraph.maximal_path.coinduct[OF subgame_Digraph])
        (cases rule: maximal_path.cases, auto)
 qed
 
