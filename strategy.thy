@@ -281,12 +281,12 @@ lemma greedy_path_ltl_VVpstar:
 theorem greedy_conforming_path_properties [simp]:
   assumes "v0 \<in> V" "strategy p \<sigma>" "strategy p** \<sigma>'"
   shows
-    "\<not>lnull (greedy_conforming_path p \<sigma> \<sigma>' v0)"
-    "greedy_conforming_path p \<sigma> \<sigma>' v0 $ 0 = v0"
-    "valid_path (greedy_conforming_path p \<sigma> \<sigma>' v0)"
-    "maximal_path (greedy_conforming_path p \<sigma> \<sigma>' v0)"
-    "path_conforms_with_strategy p (greedy_conforming_path p \<sigma> \<sigma>' v0) \<sigma>"
-    "path_conforms_with_strategy p** (greedy_conforming_path p \<sigma> \<sigma>' v0) \<sigma>'"
+        greedy_path_not_null:  "\<not>lnull (greedy_conforming_path p \<sigma> \<sigma>' v0)"
+    and greedy_path_v0:        "greedy_conforming_path p \<sigma> \<sigma>' v0 $ 0 = v0"
+    and greedy_path_valid:     "valid_path (greedy_conforming_path p \<sigma> \<sigma>' v0)"
+    and greedy_path_maximal:   "maximal_path (greedy_conforming_path p \<sigma> \<sigma>' v0)"
+    and greedy_path_conforms:  "path_conforms_with_strategy p (greedy_conforming_path p \<sigma> \<sigma>' v0) \<sigma>"
+    and greedy_path_conforms': "path_conforms_with_strategy p** (greedy_conforming_path p \<sigma> \<sigma>' v0) \<sigma>'"
 proof-
   def [simp]: P \<equiv> "greedy_conforming_path p \<sigma> \<sigma>' v0"
 

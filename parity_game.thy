@@ -166,8 +166,6 @@ using assms(1,3)
 proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`, case_names IH])
   case (IH P)
   show ?case proof (cases)
-    assume "P = LNil" thus ?thesis by simp
-  next
     assume "P \<noteq> LNil"
     then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
     show ?thesis proof (cases)
@@ -182,7 +180,7 @@ proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'
       moreover have "v \<rightarrow>\<^bsub>G'\<^esub> w" using IH(1) `E \<subseteq> E\<^bsub>G'\<^esub>` * valid_path_edges' by blast
       ultimately show ?thesis using * IH(1) assms(3) valid_path_cons_simp by auto
     qed
-  qed
+  qed simp
 qed
 
 coinductive maximal_path where

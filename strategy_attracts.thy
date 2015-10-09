@@ -178,8 +178,6 @@ lemma (in vmc_path) strategy_attracts_lset:
   using assms(1)[unfolded strategy_attracts_def] assms(2) strategy_attracts_via_lset(1)[of A W]
   by blast
 
-(* strategy_attracts *)
-
 lemma strategy_attracts_empty [simp]: "strategy_attracts p \<sigma> {} W"
   using strategy_attractsI by blast
 
