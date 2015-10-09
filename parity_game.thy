@@ -286,6 +286,23 @@ proof (rule ccontr)
   with i show False by simp
 qed
 
+lemma maximal_ends_on_deadend':
+  "\<lbrakk> lfinite P; deadend (llast P) \<rbrakk> \<Longrightarrow> maximal_path P"
+proof (coinduction arbitrary: P rule: maximal_path.coinduct)
+  case (maximal_path P)
+  show ?case proof (cases)
+    assume "P \<noteq> LNil"
+    then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
+    show ?thesis proof (cases)
+      assume "P' = LNil"
+      thus ?thesis using P' maximal_path(2) by auto
+    next
+      assume "P' \<noteq> LNil"
+      thus ?thesis by (metis P' lfinite_LCons llast_LCons llist.collapse(1) maximal_path(1,2))
+    qed
+  qed simp
+qed
+
 lemma infinite_path_is_maximal: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> maximal_path P"
   apply (coinduction arbitrary: P rule: maximal_path.coinduct)
   apply (cases rule: valid_path.cases, simp)
