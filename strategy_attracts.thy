@@ -275,8 +275,7 @@ proof (rule strategy_attractsI, rule ccontr)
     using strategy_attracts_does_not_leave[of p \<sigma> A W "P $ n'" "P $ Suc n'"]
           assms(1,2) by blast
   thus False
-    using P_valid P_conforms n(1) n' path_conforms_with_strategy_conforms `P $ n' \<in> A - W`
-    by (metis override_on_apply_in)
+    using n(1) n' vmc_path_conforms `P $ n' \<in> A - W` by (metis override_on_apply_in)
 qed
 
 lemma strategy_attracts_trivial [simp]: "strategy_attracts p \<sigma> W W"

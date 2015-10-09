@@ -78,14 +78,16 @@ proof (coinduction arbitrary: P P')
       case True thus ?thesis by auto
     next
       case False
-      hence "\<exists>Q. P' = LCons v (LCons w Q)" by (metis local.path_conforms_VVp(1) lprefix_LCons_conv path_conforms_with_strategy(2))
-      thus ?thesis using local.path_conforms_VVp(1) local.path_conforms_VVp(3) local.path_conforms_VVp(4) path_conforms_with_strategy(2) by force
+      hence "\<exists>Q. P' = LCons v (LCons w Q)"
+        by (metis local.path_conforms_VVp(1) lprefix_LCons_conv path_conforms_with_strategy(2))
+      thus ?thesis using local.path_conforms_VVp(1,3,4) path_conforms_with_strategy(2) by force
     qed
   next
     case (path_conforms_VVpstar v)
     thus ?thesis proof (cases "P' = LNil", simp)
       case False
-      hence "\<exists>Q. P' = LCons v Q" using local.path_conforms_VVpstar(1) lprefix_LCons_conv path_conforms_with_strategy(2) by fastforce
+      hence "\<exists>Q. P' = LCons v Q"
+        using local.path_conforms_VVpstar(1) lprefix_LCons_conv path_conforms_with_strategy(2) by fastforce
       thus ?thesis using local.path_conforms_VVpstar path_conforms_with_strategy(2) by auto
     qed
   qed
@@ -151,26 +153,6 @@ lemma path_conforms_with_strategy_irrelevant_deadend':
 lemma path_conforms_with_strategy_start:
   "path_conforms_with_strategy p (LCons v (LCons w P)) \<sigma> \<Longrightarrow> v \<in> VV p \<Longrightarrow> \<sigma> v = w"
   by (drule path_conforms_with_strategy.cases) simp_all
-
-lemma path_conforms_with_strategy_conforms:
-  assumes "valid_path P" "path_conforms_with_strategy p P \<sigma>" "enat (Suc n) < llength P" "P $ n \<in> VV p"
-  shows "\<sigma> (P $ n) = P $ Suc n"
-proof-
-  def P' \<equiv> "ldropn n P"
-  have "valid_path P'" by (simp add: P'_def assms(1) valid_path_drop)
-  have "path_conforms_with_strategy p P' \<sigma>" by (simp add: P'_def assms(2) path_conforms_with_strategy_drop)
-  from assms(3) have "\<not>lnull P'" using P'_def less_le_trans by fastforce
-  moreover from assms(3) have "\<not>lnull (ltl P')" by (metis P'_def enat_Suc_ltl leD lnull_ldropn ltl_ldropn)
-  ultimately obtain v w P'' where P'': "P' = LCons v (LCons w P'')" by (metis lhd_LCons_ltl)
-  from assms(3) have "enat n < llength P" using dual_order.strict_trans enat_ord_simps(2) by blast
-  with assms(4) have "v \<in> VV p" by (metis P'' P'_def ldropn_Suc_conv_ldropn llist.inject)
-  hence "\<sigma> v = w" using P'' `path_conforms_with_strategy p P' \<sigma>` path_conforms_with_strategy_start by blast
-  thus ?thesis by (metis P'' P'_def `enat n < llength P` assms(3) ldropn_Suc_conv_ldropn llist.inject)
-qed
-corollary (in vmc_path) vmc_path_conforms:
-  assumes "enat (Suc n) < llength P" "P $ n \<in> VV p"
-  shows "\<sigma> (P $ n) = P $ Suc n"
-  using assms path_conforms_with_strategy_conforms P_valid P_conforms by blast
 
 lemma path_conforms_with_strategy_lappend:
   assumes
@@ -425,6 +407,7 @@ lemma P_LCons': "P = LCons v0 (LCons w0 (ltl (ltl P)))" using P_LCons Ptl_LCons 
 lemma v0_edge_w0 [simp]: "v0\<rightarrow>w0" using P_valid P_LCons' by (metis valid_path_edges')
 
 lemma Ptl_0: "ltl P $ 0 = lhd (ltl P)" by (simp add: lhd_conv_lnth)
+lemma P_Suc_0: "P $ Suc 0 = w0" by (simp add: P_lnth_Suc Ptl_0 w0_def)
 lemma Ptl_edge [simp]: "v0 \<rightarrow> lhd (ltl P)" by (metis P_LCons' P_valid valid_path_edges' w0_def)
 
 lemma v0_conforms: "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
@@ -433,7 +416,6 @@ lemma v0_conforms: "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
 lemma w0_V [simp]: "w0 \<in> V" by (metis Ptl_LCons Ptl_valid valid_path_cons_simp)
 lemma w0_lset_P [simp]: "w0 \<in> lset P" by (metis P_LCons' lset_intros(1) lset_intros(2))
 lemma w0_VV: "w0 \<in> VV p \<or> w0 \<in> VV p**" by simp
-lemma w0_lnth: "P $ Suc 0 = w0" by (simp add: P_lnth_Suc Ptl_0 w0_def)
 
 lemma vmc_path_ltl [simp]: "vmc_path G (ltl P) w0 p \<sigma>" by (unfold_locales) (simp_all add: w0_def)
 end
@@ -477,6 +459,18 @@ proof (unfold_locales)
               lhd_lappend llist.expand lnull_ltlI order_refl)
 qed
 
+lemma (in vmc_path) vmc_path_conforms:
+  assumes "enat (Suc n) < llength P" "P $ n \<in> VV p"
+  shows "\<sigma> (P $ n) = P $ Suc n"
+proof-
+  def P' \<equiv> "ldropn n P"
+  then interpret P': vmc_path G P' "P $ n" p \<sigma> using vmc_path_ldropn assms(1) Suc_llength by blast
+  have "\<not>deadend (P $ n)" using assms(1) P_no_deadends by blast
+  then interpret P': vmc_path_no_deadend G P' "P $ n" p \<sigma> by unfold_locales
+  have "\<sigma> (P $ n) = P'.w0" using P'.v0_conforms assms(2) by blast
+  thus ?thesis using P'_def P'.P_Suc_0 assms(1) by simp
+qed
+
 lemma (in vmc_path) path_conforms_with_strategy_update_path:
   assumes \<sigma>: "strategy p \<sigma>" and \<sigma>': "strategy p \<sigma>'"
     (* P is influenced by changing \<sigma> to \<sigma>'. *)
@@ -506,7 +500,7 @@ proof-
     unfolding fail_def by blast+
   def P' \<equiv> "lappend (ltake (enat (Suc n)) P) (greedy_conforming_path p \<sigma>' \<sigma>_arbitrary (\<sigma>' (P $ n)))"
     (is "lappend ?A ?B")
-  have "\<sigma>' (P $ n) \<in> V" using \<sigma>' n(2) n(3) valid_strategy_in_V by blast
+  have "\<sigma>' (P $ n) \<in> V" using \<sigma>' n(2,3) valid_strategy_in_V by blast
   then interpret PB: vmc_path G ?B "\<sigma>' (P $ n)" p \<sigma>'
     by unfold_locales (simp_all add: \<sigma>')
 
@@ -520,7 +514,7 @@ proof-
     ultimately show ?thesis using lnth_lappend1[of n ?A ?B] by (simp add: lnth_ltake)
   qed
 
-  have "\<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)" using n(1) n(2) n(4) vmc_path_conforms by auto
+  have "\<sigma> (P $ n) \<noteq> \<sigma>' (P $ n)" using n(1,2,4) vmc_path_conforms by auto
   moreover have "enat (Suc n) < llength P'"
     unfolding P'_def using `llength ?A = enat (Suc n)` by simp
   moreover have "ltake (enat (Suc n)) P' = ltake (enat (Suc n)) P"
@@ -637,7 +631,7 @@ proof-
       ultimately show ?thesis unfolding P'_def using path_conforms_with_strategy_lappend by blast
     qed
   qed
-  ultimately show ?thesis using n by blast
+  ultimately show ?thesis using n(1,2,3) by blast
 qed
 
 end

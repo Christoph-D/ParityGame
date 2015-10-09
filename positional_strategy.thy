@@ -383,7 +383,7 @@ proof-
                   have "v \<notin> K" using * by blast
                   hence "n \<noteq> 0" using n(1) by (metis P_0)
                   have "w0 \<notin> K" using `w0 \<in> W1` K_def U_def by blast
-                  hence "Suc 0 \<noteq> n" using n(1) w0_lnth by auto
+                  hence "Suc 0 \<noteq> n" using n(1) P_Suc_0 by auto
                   hence "Suc (Suc 0) \<le> n" using `n \<noteq> 0` by presburger
                   hence "lset (ltake (enat (Suc (Suc 0))) P') \<subseteq> attractor p K"
                     using n by (meson enat_ord_simps(1) lprefix_lset' subset_trans)
@@ -392,7 +392,7 @@ proof-
                   hence "ltake (eSuc (eSuc 0)) P' $ Suc 0 \<in> attractor p K"
                     by (metis Ptl_not_null enat_ltl_Suc i0_less llength_eq_0 lset_lnth
                               ltake.disc(2) ltake_ltl zero_enat_def zero_ne_eSuc)
-                  hence "w0 \<in> attractor p K" using w0_lnth
+                  hence "w0 \<in> attractor p K" using P_Suc_0
                     by (metis P_not_null Ptl_not_null lnth_0_conv_lhd lnth_ltl ltake.disc(2)
                               ltake.simps(3) ltake_ltl zero_ne_eSuc)
                   thus False using `w0 \<in> W1` `attractor p K \<inter> W1 = {}` by blast

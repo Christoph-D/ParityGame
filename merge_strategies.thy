@@ -52,7 +52,7 @@ proof-
         hence "P $ n \<notin> W" using contra n(1) by blast
         moreover have "P $ n \<notin> V - S - W" proof
           assume "P $ n \<in> V - S - W"
-          hence "n \<noteq> 0" using `v0 \<in> S` n(2) by force
+          hence "n \<noteq> 0" using `v0 \<in> S` n(2) P_0 by force
           then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
           hence "P $ n' \<in> S - W" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W` by blast
           def [simp]: P' \<equiv> "ldropn n' P"
@@ -68,7 +68,7 @@ proof-
             moreover have "well_ordered_strategy (P $ n') = P $ n" proof-
               have "enat (Suc n') < llength P" using n' n(1) by simp
               hence "well_ordered_strategy (P $ n') = P $ Suc n'"
-                using P_conforms P_valid `P $ n' \<in> VV p` path_conforms_with_strategy_conforms by blast
+                using `P $ n' \<in> VV p` vmc_path_conforms by blast
               thus ?thesis using n' by simp
             qed
             ultimately show False using `P $ n \<in> V - S - W` by auto
