@@ -1,4 +1,4 @@
-(* Theorems about attractor strategies. *)
+(* This theory proves that every attractor set has an attractor strategy. *)
 theory attractor_strategy
 imports
   Main
@@ -71,11 +71,11 @@ proof-
   thus ?thesis unfolding strategy_attracts_via_def by blast
 qed
 
-theorem attractor_has_strategy_single:
+lemma attractor_has_strategy_single:
   assumes "W \<subseteq> V"
     and v0_def: "v0 \<in> attractor p W" (is "_ \<in> ?A")
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 ?A W"
-using `W \<subseteq> V` v0_def proof (induct arbitrary: v0 rule: attractor_set_induction)
+using assms proof (induct arbitrary: v0 rule: attractor_set_induction)
   case (step S)
   have "v0 \<in> W \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v0 {} W"
     using strategy_attracts_via_trivial valid_arbitrary_strategy by blast
@@ -100,7 +100,8 @@ next
   thus ?case by (meson Union_upper attractor_strategy_on_extends union.hyps)
 qed
 
-corollary attractor_has_strategy:
+(* The main theorem: Every attractor set has an attractor strategy. *)
+theorem attractor_has_strategy:
   assumes "W \<subseteq> V"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> (attractor p W) W"
 proof-
