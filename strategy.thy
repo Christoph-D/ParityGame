@@ -14,12 +14,12 @@ definition (in ParityGame) strategy :: "Player \<Rightarrow> 'a Strategy \<Right
 This means that P follows \<sigma> on all nodes of player p except maybe the last node on the path. *)
 coinductive (in ParityGame) path_conforms_with_strategy
   :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
-path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
+  path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
 | path_conforms_LCons_LNil: "path_conforms_with_strategy p (LCons v LNil) \<sigma>"
 | path_conforms_VVp: "\<lbrakk> v \<in> VV p; w = \<sigma> v; path_conforms_with_strategy p (LCons w Ps) \<sigma> \<rbrakk>
-  \<Longrightarrow> path_conforms_with_strategy p (LCons v (LCons w Ps)) \<sigma>"
+    \<Longrightarrow> path_conforms_with_strategy p (LCons v (LCons w Ps)) \<sigma>"
 | path_conforms_VVpstar: "\<lbrakk> v \<notin> VV p; path_conforms_with_strategy p Ps \<sigma> \<rbrakk>
-  \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
+    \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
 
 (* A valid maximal path that conforms to a strategy *)
 locale vmc_path = vm_path +

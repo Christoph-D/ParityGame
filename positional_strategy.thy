@@ -176,7 +176,7 @@ proof-
               have n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> V'"
                 using n(1) n(3) dual_order.strict_trans enat_ord_simps(2) by blast
               have "n \<noteq> 0" using n(2) `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> = V'` by (metis P_0)
-              then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
+              then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
               hence "P $ n' \<in> V'" using n_min by blast
               show False proof (cases)
                 assume "P $ n' \<in> VV p"
@@ -560,7 +560,8 @@ theorem positional_strategy_exists_without_deadends:
   by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
      (rule ParityGame.positional_strategy_induction_step, simp_all)
 
-(* Prove a stronger version of the previous theorem: Allow deadends. *)
+(* Prove a stronger version of the previous theorem: Allow deadends.
+   This is the main theorem. *)
 theorem positional_strategy_exists:
   assumes "v0 \<in> V"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0"

@@ -18,7 +18,8 @@ proof-
     have "ldropn n (ltake (enat (Suc n)) P) = ltake (enat (Suc 0)) (ldropn n P)"
       by (simp add: ldropn_ltake)
     moreover hence "ltake (eSuc 0) (ldropn n P) = LCons (P $ n) LNil"
-      by (metis LNil_eq_ltake_iff len1 len2 assms(1) co.enat.distinct(1) dual_order.strict_trans eSuc_enat ldropn_Suc_conv_ldropn lhd_ldropn lhd_ltake ltake_ltl ltl_simps(2) zero_enat_def)
+      by (metis LNil_eq_ltake_iff len1 len2 assms(1) co.enat.distinct(1) dual_order.strict_trans
+                eSuc_enat ldropn_Suc_conv_ldropn lhd_ldropn lhd_ltake ltake_ltl ltl_simps(2) zero_enat_def)
     ultimately show ?thesis by (simp add: eSuc_enat zero_enat_def)
   qed
   ultimately show "ldropn n ?P = P'" using P'.P_LCons by simp
@@ -51,7 +52,7 @@ proof-
   obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
     using strategy_attracts_viaE assms(1) by blast
   have "n \<noteq> 0" using assms(2) n(2) by (metis P_0)
-  thus ?thesis using n nat.exhaust by metis
+  thus ?thesis using n not0_implies_Suc by blast
 qed
 
 lemma (in vmc_path) strategy_attracts_via_lset:
@@ -203,7 +204,7 @@ proof
   qed
   ultimately have "ltake (enat (Suc (Suc 0))) P $ Suc 0 \<in> A" by (simp add: lset_lnth)
   hence "P $ Suc 0 \<in> A" by (simp add: lnth_ltake)
-  thus False using P(1) P(3) by auto
+  thus False using P(1,3) by auto
 qed
 
 (* If A is an attractor set of W and an edge leaves A without going through W, then v belongs to
@@ -263,7 +264,7 @@ proof (rule strategy_attractsI, rule ccontr)
   hence n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> A - W"
     using dual_order.strict_trans enat_ord_simps(2) by blast
   have "n \<noteq> 0" using `P $ 0 \<in> A - W` n(1) by meson
-  then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
+  then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
   hence "P $ n' \<in> A - W" using n_min by blast
   moreover have "P $ n' \<rightarrow> P $ Suc n'" using P_valid n(1) n' valid_path_edges by blast
   moreover have "P $ Suc n' \<notin> A \<union> W" proof-
@@ -272,7 +273,7 @@ proof (rule strategy_attractsI, rule ccontr)
   qed
   ultimately have "P $ n' \<in> VV p \<and> \<sigma> (P $ n') \<noteq> P $ Suc n'"
     using strategy_attracts_does_not_leave[of p \<sigma> A W "P $ n'" "P $ Suc n'"]
-          assms(1) assms(2) by blast
+          assms(1,2) by blast
   thus False
     using P_valid P_conforms n(1) n' path_conforms_with_strategy_conforms `P $ n' \<in> A - W`
     by (metis override_on_apply_in)

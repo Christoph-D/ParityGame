@@ -53,7 +53,7 @@ proof-
         moreover have "P $ n \<notin> V - S - W" proof
           assume "P $ n \<in> V - S - W"
           hence "n \<noteq> 0" using `v0 \<in> S` n(2) by force
-          then obtain n' where n': "Suc n' = n" by (metis nat.exhaust)
+          then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
           hence "P $ n' \<in> S - W" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W` by blast
           def [simp]: P' \<equiv> "ldropn n' P"
           def [simp]: \<sigma>' \<equiv> "choose (P $ n')"

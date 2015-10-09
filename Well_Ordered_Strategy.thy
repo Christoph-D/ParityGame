@@ -117,8 +117,9 @@ proof-
   def P' \<equiv> "ldropn n P"
   hence "enat (Suc 0) < llength P'" using P(4)
     by (metis enat_ltl_Suc ldrop_eSuc_ltl ldropn_Suc_conv_ldropn llist.disc(2) lnull_0_llength ltl_ldropn)
-  then obtain v w Ps where vw: "P' = LCons v (LCons w Ps)" by (metis ldropn_0 ldropn_Suc_conv_ldropn ldropn_lnull lnull_0_llength)
-  moreover have "lset P' \<subseteq> S" using P(1) P'_def lset_ldropn_subset by fastforce
+  then obtain v w Ps where vw: "P' = LCons v (LCons w Ps)"
+    by (metis ldropn_0 ldropn_Suc_conv_ldropn ldropn_lnull lnull_0_llength)
+  moreover have "lset P' \<subseteq> S" unfolding P'_def using P(1) lset_ldropn_subset[of n P] by blast
   ultimately have "v \<in> S" "w \<in> S" by auto
   moreover have "v\<rightarrow>w" using valid_path_edges'[of v w Ps, folded vw] valid_path_drop[OF P(2)] P'_def by blast
   moreover have "choose v \<in> good v" using choose_good `v \<in> S` by blast
@@ -142,10 +143,10 @@ proof-
   qed
   hence "(path_strategies P' $ Suc 0, path_strategies P' $ 0) \<in> r"
     unfolding path_strategies_def using vw by simp
-  thus ?thesis unfolding path_strategies_def
+  thus ?thesis unfolding path_strategies_def P'_def
     using lnth_lmap_ldropn[OF Suc_llength[OF P(4)], of choose]
           lnth_lmap_ldropn_Suc[OF P(4), of choose]
-    by (simp add: P'_def)
+    by simp
 qed
 
 lemma path_strategies_monotone:
@@ -161,7 +162,7 @@ using assms proof (induct "m - n" arbitrary: n m, simp)
   next
     assume "d \<noteq> 0"
     have "m \<noteq> 0" using Suc.hyps(2) by linarith
-    then obtain m' where m': "Suc m' = m" by (metis nat.exhaust)
+    then obtain m' where m': "Suc m' = m" using not0_implies_Suc by blast
     hence "d = m' - n" using Suc.hyps(2) by presburger
     moreover hence "n < m'" using `d \<noteq> 0` by presburger 
     ultimately have "(path_strategies P $ m', path_strategies P $ n) \<in> r"

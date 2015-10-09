@@ -186,7 +186,7 @@ proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'
 qed
 
 coinductive maximal_path where
-maximal_path_base: "maximal_path LNil"
+  maximal_path_base: "maximal_path LNil"
 | maximal_path_base': "deadend v \<Longrightarrow> maximal_path (LCons v LNil)"
 | maximal_path_cons: "\<not>lnull Ps \<Longrightarrow> maximal_path Ps \<Longrightarrow> maximal_path (LCons v Ps)"
 
@@ -471,8 +471,6 @@ lemma paths_are_winning_for_exactly_one_player:
   assumes "valid_path P"
   shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
 proof (cases)
-  assume "lnull P" thus ?thesis using winning_path_def by auto
-next
   assume "\<not>lnull P"
   show ?thesis proof (cases)
     assume finite: "lfinite P"
@@ -480,7 +478,7 @@ next
     have 2: "winning_path p** P \<longleftrightarrow> llast P \<in> VV p" by (simp add: `\<not>lnull P` local.finite winning_path_def)
     have "llast P \<in> V" proof-
       obtain n where "llength P = enat (Suc n)"
-        by (metis `\<not>lnull P` lfinite_llength_enat llength_eq_0 local.finite nat.exhaust zero_enat_def)
+        by (metis `\<not>lnull P` lfinite_llength_enat llength_eq_0 local.finite not0_implies_Suc zero_enat_def)
       hence "P $ n = llast P \<and> enat n < llength P" by (simp add: eSuc_enat llast_conv_lnth)
       thus ?thesis using assms valid_path_finite_in_V' by force
     qed
@@ -494,10 +492,10 @@ next
       unfolding infinite winning_path_def using `\<not>lnull P` infinite by (metis le_antisym not_le)
     thus ?thesis using winning_priority_for_one_player by blast
   qed
-qed
+qed (simp add: winning_path_def)
 
 corollary paths_are_winning_for_one_player: "valid_path P \<Longrightarrow> \<exists>!p. winning_path p P"
-  by (metis (full_types) Player.exhaust assms paths_are_winning_for_exactly_one_player)
+  by (metis (full_types) Player.exhaust paths_are_winning_for_exactly_one_player[of P Even])
 
 lemma winning_path_ltl:
   assumes P: "winning_path p P" "\<not>lnull P" "\<not>lnull (ltl P)"
@@ -508,7 +506,7 @@ proof (cases)
   ultimately show ?thesis using P by (simp add: winning_path_def)
 next
   assume "\<not>lfinite P"
-  thus ?thesis using winning_path_def path_inf_priorities_ltl using P(1) P(2) by auto
+  thus ?thesis using winning_path_def path_inf_priorities_ltl using P(1,2) by auto
 qed
 
 corollary winning_path_drop:
