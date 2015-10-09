@@ -471,6 +471,37 @@ proof-
   thus ?thesis using P'_def P'.P_Suc_0 assms(1) by simp
 qed
 
+(* A valid conforming path can always be extended to a valid maximal conforming path. *)
+lemma (in ParityGame) vc_path_to_vmc_path:
+  assumes \<sigma>: "strategy p \<sigma>"
+    and P: "\<not>lnull P" "valid_path P" "path_conforms_with_strategy p P \<sigma>"
+  shows "\<exists>P'. lprefix P P' \<and> vmc_path G P' (lhd P') p \<sigma>"
+proof (cases)
+  assume "lfinite P \<and> \<not>deadend (llast P)"
+  hence "lfinite P" "\<not>deadend (llast P)" by simp_all
+  def v \<equiv> "if llast P \<in> VV p then \<sigma> (llast P) else \<sigma>_arbitrary (llast P)"
+  have paths_connect: "llast P \<rightarrow> v" unfolding v_def apply (cases "llast P \<in> VV p")
+    using `\<not>deadend (llast P)` \<sigma> valid_arbitrary_strategy[of "p**"] strategy_def by auto
+  hence "llast P \<in> V" "v \<in> V" using edges_are_in_V by blast+
+  def P' \<equiv> "lappend P (greedy_conforming_path p \<sigma> \<sigma>_arbitrary v)"
+    (is "lappend _ ?B")
+  have "llast P \<in> VV p \<Longrightarrow> \<sigma> (llast P) = lhd ?B" using v_def by simp
+  hence "path_conforms_with_strategy p P' \<sigma>"
+    unfolding P'_def
+    using \<sigma> `v \<in> V` path_conforms_with_strategy_lappend[OF `lfinite P` `\<not>lnull P` P(3)]
+    by simp
+  moreover have "maximal_path P'" unfolding P'_def using maximal_path_lappend \<sigma> `v \<in> V` by simp
+  moreover have "valid_path P'" unfolding P'_def
+    using valid_path_lappend[OF `lfinite P` P(2)] \<sigma> `v \<in> V` `lfinite P` paths_connect by simp
+  ultimately have "vmc_path G P' (lhd P') p \<sigma>" using P'_def by unfold_locales simp_all
+  thus ?thesis using lprefix_lappend[of P ?B] P'_def by blast
+next
+  assume "\<not>(lfinite P \<and> \<not>deadend (llast P))"
+  hence "maximal_path P" using maximal_ends_on_deadend' P(2) infinite_path_is_maximal by blast
+  hence "vmc_path G P (lhd P) p \<sigma>" using P by unfold_locales simp_all
+  thus ?thesis by blast
+qed
+
 lemma (in vmc_path) path_conforms_with_strategy_update_path:
   assumes \<sigma>: "strategy p \<sigma>" and \<sigma>': "strategy p \<sigma>'"
     (* P is influenced by changing \<sigma> to \<sigma>'. *)
