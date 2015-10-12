@@ -7,6 +7,45 @@ begin
 
 context ParityGame begin
 
+(*
+lemma (in WellOrderedStrategies) well_ordered_path_lset_induction
+  [consumes 1, case_names base VVp VVpstar]:
+  assumes
+    vmc_path: "vmc_path G P' v0 p well_ordered_strategy"
+    and base: "v0 \<in> S"
+    and VVp: "\<And>n. \<lbrakk> enat n < llength P; P $ n \<in> S; P $ n \<in> VV p \<rbrakk> \<Longrightarrow> choose v v \<in> S"
+    and VVpstar: "\<And>n. \<lbrakk> enat n < llength P; P $ n \<in> S; \<not>deadend (P $ n); P $ n \<notin> VV p \<rbrakk> \<Longrightarrow> P $ Suc n \<in> S"
+  shows "lset P' \<subseteq> S"
+proof
+  fix v assume "v \<in> lset P'"
+  thus "v \<in> S" using assms proof (induct arbitrary: v0 rule: llist_set_induct)
+    case (find P)
+    then interpret vmc_path G P v0 p well_ordered_strategy by blast
+    show ?case by (simp add: find.prems(2))
+  next
+    case (step P v)
+    then interpret vmc_path G P v0 p well_ordered_strategy by blast
+    show ?case proof (cases)
+      assume "lnull (ltl P)"
+      hence "P = LCons v LNil" by (metis llist.disc(2) lset_cases step.hyps(2))
+      thus ?thesis using step.prems(2) P_LCons by blast
+    next
+      assume "\<not>lnull (ltl P)"
+      then interpret vmc_path_no_deadend G P v0 p well_ordered_strategy
+        using vmc_path_lnull_ltl_no_deadend by blast
+      have "v0 \<in> lset P" by simp
+      { assume "v0 \<in> VV p"
+        hence "well_ordered_strategy v0 = w0" using v0_conforms by blast
+        hence "choose v0 v0 = w0" by (simp add: step.prems(2) well_ordered_strategy_def)
+        hence "w0 \<in> S" using step.prems(3)[OF `v0 \<in> lset P` `v0 \<in> S` `v0 \<in> VV p`] by simp
+      }
+      hence "w0 \<in> S" using `v0\<rightarrow>w0` step.prems(4) `v0 \<in> lset P` `v0 \<in> S` by blast
+      thus "v \<in> S" using step.hyps(3)[OF vmc_path_ltl] step.prems(3,4) sorry
+    qed
+  qed
+qed
+*)
+
 lemma merge_attractor_strategies:
   assumes "S \<subseteq> V"
     and strategies_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v S W"
