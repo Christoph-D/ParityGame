@@ -2,7 +2,7 @@
 theory Bonus_Lemmas
 imports
   Main
-  strategy
+  strategy_attracts
 begin
 
 (* A valid conforming path can always be extended to a valid maximal conforming path. *)
@@ -197,6 +197,50 @@ proof-
     qed
   qed
   ultimately show ?thesis using n(1,2,3) by blast
+qed
+
+(* If a path P hits an attractor A of the other player, the other player can force a visit of W. *)
+lemma (in vmc_path) attracted_path_VVpstar:
+  assumes "W \<subseteq> V"
+    and \<sigma>: "strategy p \<sigma>"
+    and \<sigma>': "strategy p** \<sigma>'" "strategy_attracts p** \<sigma>' A W"
+    and P_hits_A: "lset P \<inter> A \<noteq> {}"
+  shows "\<exists>P'. vmc_path G P v0 p \<sigma> \<and> lset P' \<inter> W \<noteq> {}"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> A" using P_hits_A by (meson lset_intersect_lnth)
+
+  have "P $ n \<in> V" by (simp add: n(1) valid_path_finite_in_V')
+
+  show ?thesis proof (cases)
+    assume "enat (Suc n) = llength P"
+    hence "deadend (P $ n)" using suc_n_deadend by blast
+    hence "P $ n \<in> W" using strategy_attracts_no_deadends[OF `P $ n \<in> V` _ \<sigma>'(2)] n(2) by blast
+    hence "lset P \<inter> W \<noteq> {}" using n(1) by (meson disjoint_iff_not_equal in_lset_conv_lnth)
+    thus ?thesis using vmc_path by blast
+  next
+    assume "enat (Suc n) \<noteq> llength P"
+    hence P_len: "enat (Suc n) < llength P"
+      using n(1) P_ends_on_deadend P_maximal maximal_path_impl1 by blast
+    obtain P'' where "vmc2_path G P'' (P $ n) p \<sigma> \<sigma>'"
+      using strategy_conforming_path_exists `P $ n \<in> V` \<sigma> \<sigma>'(1) by blast
+    then interpret P'': vmc2_path G P'' "P $ n" p \<sigma> \<sigma>' .
+    def P2 \<equiv> "lappend (ltake (enat (Suc n)) P) (ltl P'')"
+    then interpret P2:
+      vmc_path G P2 v0 p \<sigma>
+      using valid_maximal_conforming_lappend[of n P''] P_len local.P''.vmc_path by blast
+ 
+    have "lset P2 \<inter> W \<noteq> {}" proof-
+      have "ltake (enat (Suc n)) P $ n \<in> A" using n by (simp add: lnth_ltake)
+      hence "lset P'' \<inter> W \<noteq> {}"
+        using \<sigma>'(2) P''.comp.strategy_attracts_via_lset n strategy_attracts_def by blast
+      moreover have "lset P'' \<subseteq> lset P2"
+        unfolding P2_def
+        using valid_maximal_conforming_lset_lappend[of n P''] valid_maximal_conforming_path_0
+              P''.P_maximal P''.P_not_null P''.P_valid P''.vmc_path P_len by blast
+      ultimately show ?thesis by blast
+    qed
+    thus ?thesis using vmc_path by blast
+  qed
 qed
 
 end
