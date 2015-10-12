@@ -201,10 +201,16 @@ proof-
 qed
 
 lemma path_eventually_conforms_to_\<sigma>_map_n:
-  assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
+  assumes "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
   shows "\<exists>n. path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
-proof-
-  obtain n where n: "\<And>m. n \<le> m \<Longrightarrow> path_strategies P $ n = path_strategies P $ m"
+proof (cases)
+  assume "lfinite P"
+  then obtain n where "llength P = enat n" using lfinite_llength_enat by blast
+  hence "ldropn n P = LNil" by simp
+  thus ?thesis by (metis path_conforms_LNil)
+next
+  assume "\<not>lfinite P"
+  then obtain n where n: "\<And>m. n \<le> m \<Longrightarrow> path_strategies P $ n = path_strategies P $ m"
     using path_strategies_eventually_constant assms by blast
   let ?\<sigma> = well_ordered_strategy
   def P' \<equiv> "ldropn n P"
@@ -214,11 +220,11 @@ proof-
     hence "P $ m + n = v" unfolding P'_def by (simp add: `\<not>lfinite P` infinite_small_llength)
     moreover have "?\<sigma> v = choose v v" unfolding well_ordered_strategy_def using `v \<in> S` by auto
     ultimately have "?\<sigma> v = (path_strategies P $ m + n) v"
-      unfolding path_strategies_def using infinite_small_llength[OF assms(1)] by simp
+      unfolding path_strategies_def using infinite_small_llength[OF `\<not>lfinite P`] by simp
     hence "?\<sigma> v = (path_strategies P $ n) v" using n[of "m + n"] by simp
   }
   moreover have "path_conforms_with_strategy p P' well_ordered_strategy"
-    unfolding P'_def by (simp add: assms(4) path_conforms_with_strategy_drop)
+    unfolding P'_def by (simp add: assms(3) path_conforms_with_strategy_drop)
   ultimately show ?thesis
     using path_conforms_with_strategy_irrelevant_updates P'_def by blast
 qed

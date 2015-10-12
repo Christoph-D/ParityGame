@@ -92,7 +92,7 @@ proof-
       qed
 
       obtain n where n: "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
-        using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S - W` P_valid P_conforms]
+        using path_eventually_conforms_to_\<sigma>_map_n[OF `lset P \<subseteq> S - W` P_valid P_conforms]
           by blast
       def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
@@ -200,7 +200,7 @@ proof-
       qed
 
       obtain n where n: "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
-        using path_eventually_conforms_to_\<sigma>_map_n[OF `\<not>lfinite P` `lset P \<subseteq> S` P_valid P_conforms]
+        using path_eventually_conforms_to_\<sigma>_map_n[OF `lset P \<subseteq> S` P_valid P_conforms]
           by blast
       def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
