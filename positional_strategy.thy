@@ -276,9 +276,8 @@ proof-
         using strategy_conforming_path_exists \<sigma>W1(1) \<sigma>1(1) `v \<in> V` by blast
       then interpret vmc2_path G P v p \<sigma>1 \<sigma>W1 .
       have "strategy_attracts_via p \<sigma>1 v (attractor p K) K" using v(1) \<sigma>1(2) strategy_attracts_def by blast
-      hence "\<exists>n. enat n < llength P \<and> P $ n \<in> K" using strategy_attracts_viaE by blast
-      moreover have "K \<inter> W1 = {}" using K_def U_def by blast
-      ultimately have "\<not>lset P \<subseteq> W1" by (meson disjoint_iff_not_equal lset_lnth)
+      hence "lset P \<inter> K \<noteq> {}" using strategy_attracts_viaE visits_via_visits by blast
+      hence "\<not>lset P \<subseteq> W1" unfolding K_def U_def by blast
       thus False unfolding W1_def using comp.paths_stay_in_winning_region \<sigma>W1 v(2) by auto
     qed
 
@@ -363,7 +362,7 @@ proof-
                 hence "v \<notin> K" using choose_works(2)[OF `v \<in> VV p`] `v \<in> V - W1` `w0 \<in> W1` by auto
                 moreover have "v \<notin> attractor p K - K" proof
                   assume *: "v \<in> attractor p K - K"
-                  hence "\<exists>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
+                  hence "visits_via P' (attractor p K) K"
                     using \<sigma>_attracts strategy_attractsE by blast
                   then obtain n where
                     n: "enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
@@ -371,7 +370,7 @@ proof-
                         \<not>(enat i < llength P' \<and> P' $ i \<in> K \<and> lset (ltake (enat i) P') \<subseteq> attractor p K)"
                     using ex_least_nat_le[of
                       "\<lambda>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"]
-                    by blast
+                    unfolding visits_via_def by blast
                   hence n_min: "\<And>i. i < n \<Longrightarrow> P' $ i \<notin> K" proof-
                     fix i assume "i < n"
                     moreover hence "enat i < llength P'"
@@ -494,7 +493,8 @@ proof-
             interpret vmc_path G "ldropn k P" "P $ k" p \<sigma>
               using vmc_path_ldropn[OF infinite_small_llength[OF `\<not>lfinite P`]] by blast
             assume "P $ k \<in> attractor p K"
-            then obtain n where "ldropn k P $ n \<in> K" using \<sigma>_attracts strategy_attractsE by blast
+            then obtain n where "ldropn k P $ n \<in> K"
+              by (meson G'.visits_via_def \<sigma>_attracts strategy_attractsE)
             hence "P $ n + k \<in> K" using lnth_ldropn infinite_small_llength[OF `\<not>lfinite P`] by simp
             thus "\<exists>n \<ge> k. P $ n \<in> K" using le_add2 by blast
           qed
@@ -565,7 +565,7 @@ proof-
       then interpret vmc_path G P v0 p \<sigma> .
       from \<sigma>(2) v_in_attractor
         obtain i where i_def: "enat i < llength P" "P $ i \<in> ?deadends p**" "lset (ltake (enat i) P) \<subseteq> A"
-        using A_def strategy_attractsE by blast
+        using A_def strategy_attractsE[unfolded visits_via_def] by blast
       have *: "enat (Suc i) = llength P" using P_ends_on_deadend i_def(1) i_def(2) by auto
       have "llast P \<in> VV p**" proof-
         have "eSuc (enat i) = llength P" by (simp add: * eSuc_enat)

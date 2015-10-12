@@ -37,9 +37,8 @@ proof-
     fix v0 assume "v0 \<in> S"
     fix P assume "vmc_path G P v0 p well_ordered_strategy"
     then interpret vmc_path G P v0 p well_ordered_strategy .
-    have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> S" proof (rule ccontr)
-      assume "\<not>?thesis"
-      hence contra: "\<And>n. enat n < llength P \<Longrightarrow> P $ n \<in> W \<Longrightarrow> \<not>lset (ltake (enat n) P) \<subseteq> S" by blast
+    have "visits_via P S W" proof (rule ccontr)
+      assume contra: "\<not>visits_via P S W"
       have "lset P \<subseteq> S - W" proof (rule ccontr)
         assume "\<not>lset P \<subseteq> S - W"
         hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> S - W" by (meson lset_subset)
@@ -49,7 +48,7 @@ proof-
           using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S - W"] by blast
         from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W" using dual_order.strict_trans enat_ord_simps(2) by blast
         hence "lset (ltake (enat n) P) \<subseteq> S - W" using lset_ltake by blast
-        hence "P $ n \<notin> W" using contra n(1) by blast
+        hence "P $ n \<notin> W" using contra[unfolded visits_via_def] n(1) by blast
         moreover have "P $ n \<notin> V - S - W" proof
           assume "P $ n \<in> V - S - W"
           hence "n \<noteq> 0" using `v0 \<in> S` n(2) P_0 by force
@@ -109,14 +108,12 @@ proof-
         hence "strategy_attracts_via p \<sigma>' (P $ n) S W" unfolding good_def by blast
         thus ?thesis unfolding P'_def using P_0 by (simp add: `\<not>lfinite P` infinite_small_llength)
       qed
-      ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
-        using strategy_attracts_viaE by blast
       moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W"
         unfolding P'_def using lset_ldropn_subset[of n P] by blast
-      ultimately show False by (meson Diff_iff lset_lnth)
+      ultimately show False using strategy_attracts_via_lset(2) by blast
     qed
   }
-  thus ?thesis using strategy_attractsI[of S] well_ordered_strategy_valid by auto
+  thus ?thesis using strategy_attractsI[of S] well_ordered_strategy_valid by blast
 qed
 
 lemma merge_winning_strategies:

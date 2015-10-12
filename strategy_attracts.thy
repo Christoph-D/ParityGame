@@ -35,14 +35,40 @@ locale vmc2_path_no_deadend =
 
 context ParityGame begin
 
+(* A path that stays in A until eventually it visits W. *)
+definition "visits_via P A W \<equiv> \<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+
 (* All \<sigma>-paths starting from v0 visit W and until then they stay in A. *)
 definition strategy_attracts_via :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "strategy_attracts_via p \<sigma> v0 A W \<equiv> \<forall>P. vmc_path G P v0 p \<sigma>
-    \<longrightarrow> (\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
+  "strategy_attracts_via p \<sigma> v0 A W \<equiv> \<forall>P. vmc_path G P v0 p \<sigma> \<longrightarrow> visits_via P A W"
+
+lemma visits_via_monotone: "\<lbrakk> visits_via P A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> visits_via P A' W"
+  unfolding visits_via_def by blast
+
+lemma visits_via_visits: "visits_via P A W \<Longrightarrow> lset P \<inter> W \<noteq> {}"
+  unfolding visits_via_def by (meson disjoint_iff_not_equal in_lset_conv_lnth)
+
+lemma (in vmc_path) visits_via_trivial: "v0 \<in> W \<Longrightarrow> visits_via P A W"
+  unfolding visits_via_def apply (rule exI[of _ 0]) using zero_enat_def by auto
+
+lemma visits_via_LCons:
+  assumes "visits_via P A W"
+  shows "visits_via (LCons v0 P) (insert v0 A) W"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
+    using assms unfolding visits_via_def by blast
+  def P' \<equiv> "LCons v0 P"
+  have "enat (Suc n) < llength P'" unfolding P'_def
+    by (metis n(1) ldropn_Suc_LCons ldropn_Suc_conv_ldropn ldropn_eq_LConsD)
+  moreover have "P' $ Suc n \<in> W" unfolding P'_def by (simp add: n(2))
+  moreover have "lset (ltake (enat (Suc n)) P') \<subseteq> insert v0 A"
+    using lset_ltake_Suc'[of "P'" v0 n A] unfolding P'_def by (simp add: n(3))
+  ultimately show ?thesis unfolding visits_via_def P'_def by blast
+qed
 
 lemma (in vmc_path) strategy_attracts_viaE:
   assumes "strategy_attracts_via p \<sigma> v0 A W"
-  shows "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+  shows "visits_via P A W"
   using strategy_attracts_via_def assms vmc_path by blast
 
 lemma (in vmc_path) strategy_attracts_via_SucE:
@@ -50,7 +76,7 @@ lemma (in vmc_path) strategy_attracts_via_SucE:
   shows "\<exists>n. enat (Suc n) < llength P \<and> P $ Suc n \<in> W \<and> lset (ltake (enat (Suc n)) P) \<subseteq> A"
 proof-
   obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
-    using strategy_attracts_viaE assms(1) by blast
+    using strategy_attracts_viaE[unfolded visits_via_def] assms(1) by blast
   have "n \<noteq> 0" using assms(2) n(2) by (metis P_0)
   thus ?thesis using n not0_implies_Suc by blast
 qed
@@ -59,7 +85,7 @@ lemma (in vmc_path) strategy_attracts_via_lset:
   assumes "strategy_attracts_via p \<sigma> v0 A W"
   shows "lset P \<inter> W \<noteq> {}"
     and "\<not>lset P \<subseteq> A - W"
-  by (meson assms strategy_attracts_viaE DiffE lset_lnth disjoint_iff_not_equal in_lset_conv_lnth)+
+  by (meson assms visits_via_def strategy_attracts_viaE DiffE lset_lnth disjoint_iff_not_equal in_lset_conv_lnth)+
 
 lemma strategy_attracts_via_v0:
   assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
@@ -69,7 +95,7 @@ proof-
   obtain P where "vmc_path G P v0 p \<sigma>" using strategy_conforming_path_exists_single assms by blast
   then interpret vmc_path G P v0 p \<sigma> .
   obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
-    using \<sigma>(2) strategy_attracts_via_def vmc_path by blast
+    using \<sigma>(2)[unfolded strategy_attracts_via_def visits_via_def] vmc_path by blast
   show ?thesis proof (cases "n = 0")
     case True thus ?thesis using n(2) by simp
   next
@@ -86,8 +112,7 @@ corollary strategy_attracts_not_outside:
 
 
 lemma strategy_attracts_viaI:
-  assumes "\<And>P. vmc_path G P v0 p \<sigma>
-    \<Longrightarrow> \<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+  assumes "\<And>P. vmc_path G P v0 p \<sigma> \<Longrightarrow> visits_via P A W"
   shows "strategy_attracts_via p \<sigma> v0 A W"
   unfolding strategy_attracts_via_def using assms by blast
 
@@ -102,23 +127,36 @@ proof
     show "maximal_path P" using `deadend v` by (simp add: maximal_path.intros(2))
     show "path_conforms_with_strategy p P \<sigma>" by (simp add: path_conforms_LCons_LNil)
   qed simp_all
-  have "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-    using assms(3) strategy_attracts_viaE by blast
+  have "visits_via P A W" using assms(3) strategy_attracts_viaE by blast
   moreover have "llength P = eSuc 0" by simp
-  ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1))
+  ultimately have "P $ 0 \<in> W" by (simp add: enat_0_iff(1) visits_via_def)
   with `v \<in> A - W` show False by auto
 qed
 
 lemma attractor_strategy_on_extends:
   "\<lbrakk> strategy_attracts_via p \<sigma> v0 A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A' W"
-  unfolding strategy_attracts_via_def by blast
+  unfolding strategy_attracts_via_def using visits_via_monotone by blast
 
 lemma strategy_attracts_via_trivial: "v0 \<in> W \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A W"
 proof (rule strategy_attracts_viaI)
   fix P assume "v0 \<in> W" "vmc_path G P v0 p \<sigma>"
   then interpret vmc_path G P v0 p \<sigma> by blast
-  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-    by (rule exI[of _ 0]) (simp add: `v0 \<in> W` lset_ltake)
+  show "visits_via P A W" using visits_via_trivial using `v0 \<in> W` by blast
+qed
+
+lemma (in vmc_path_no_deadend) visits_via_successor:
+  assumes "visits_via P A W"
+    and v0: "v0 \<notin> W"
+  shows "visits_via (ltl P) A W"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
+    using assms(1)[unfolded visits_via_def] by blast
+  have "n \<noteq> 0" using v0 n(2) DiffE by force
+  then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
+  have "\<exists>n. enat n < llength (ltl P) \<and> (ltl P) $ n \<in> W \<and> lset (ltake (enat n) (ltl P)) \<subseteq> A"
+    apply (rule exI[of _ n'])
+    using n n' enat_Suc_ltl[of n' P] P_lnth_Suc lset_ltake_ltl[of n' P] by auto
+  thus ?thesis using visits_via_def by blast
 qed
 
 lemma strategy_attracts_via_successor:
@@ -132,12 +170,9 @@ proof (rule strategy_attracts_viaI)
   def [simp]: P' \<equiv> "LCons v0 P"
   then interpret P': vmc_path G P' v0 p \<sigma>
     using extension_valid_maximal_conforming w0 by blast
-  obtain n where
-    n: "enat (Suc n) < llength P'" "P' $ Suc n \<in> W" "lset (ltake (enat (Suc n)) P') \<subseteq> A"
-    using \<sigma>(2) P'.strategy_attracts_via_SucE v0 by blast
-  show "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-    apply (rule exI[of _ n])
-    using n enat_Suc_ltl[of n P'] P'.P_lnth_Suc lset_ltake_ltl[of n P'] by auto
+  interpret P': vmc_path_no_deadend G P' v0 p \<sigma> using `v0\<rightarrow>w0` by unfold_locales blast
+  have "visits_via P' A W" using \<sigma>(2) P'.strategy_attracts_viaE by blast
+  thus "visits_via P A W" using P'.visits_via_successor v0 by simp
 qed
 
 lemma strategy_attracts_VVp:
@@ -163,12 +198,11 @@ definition strategy_attracts :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 
 
 lemma (in vmc_path) strategy_attractsE:
   assumes "strategy_attracts p \<sigma> A W" "v0 \<in> A"
-  shows "\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
-  using assms strategy_attracts_viaE strategy_attracts_def by blast
+  shows "visits_via P A W"
+  using assms(1)[unfolded strategy_attracts_def] assms(2) strategy_attracts_viaE by blast
 
 lemma strategy_attractsI:
-  assumes "\<And>P v. \<lbrakk> v \<in> A; vmc_path G P v p \<sigma> \<rbrakk>
-    \<Longrightarrow> \<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
+  assumes "\<And>P v. \<lbrakk> v \<in> A; vmc_path G P v p \<sigma> \<rbrakk> \<Longrightarrow> visits_via P A W"
   shows "strategy_attracts p \<sigma> A W"
   unfolding strategy_attracts_def using strategy_attracts_viaI assms by blast
 
@@ -183,10 +217,11 @@ lemma strategy_attracts_empty [simp]: "strategy_attracts p \<sigma> {} W"
 
 lemma strategy_attracts_invalid_path:
   assumes P: "P = LCons v (LCons w P')" "v \<in> A - W" "w \<notin> A \<union> W"
-  shows "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)" (is "\<not>?A")
+  shows "\<not>visits_via P A W" (is "\<not>?A")
 proof
   assume ?A
-  then obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A" by blast
+  then obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
+    unfolding visits_via_def by blast
   have "n \<noteq> 0" using `v \<in> A - W` n(2) P(1) DiffD2 by force
   moreover have "n \<noteq> Suc 0" using `w \<notin> A \<union> W` n(2) P(1) by auto
   ultimately have "Suc (Suc 0) \<le> n" by presburger
@@ -219,11 +254,10 @@ proof (rule ccontr)
   then obtain P where P: "vmc2_path G P v p \<sigma> \<sigma>'"
     using `v\<rightarrow>w` strategy_conforming_path_exists \<sigma>(2) by blast
   then interpret vmc2_path G P v p \<sigma> \<sigma>' .
-  have "\<not>deadend v" using `v\<rightarrow>w` by blast
-  then interpret vmc2_path_no_deadend G P v p \<sigma> \<sigma>' by unfold_locales
+  interpret vmc2_path_no_deadend G P v p \<sigma> \<sigma>' using `v\<rightarrow>w` by unfold_locales blast
   have "w = w0" using contra \<sigma>'_def v0_conforms comp.v0_conforms by (cases "v \<in> VV p") auto
-  hence "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
-    using strategy_attracts_invalid_path[of P v w "ltl (ltl P)"] v(2) v(3) P_LCons' by simp
+  hence "\<not>visits_via P A W"
+    using strategy_attracts_invalid_path[of P v w "ltl (ltl P)"] v(2,3) P_LCons' by simp
   thus False by (meson DiffE \<sigma>(1) strategy_attractsE v(2))
 qed
 
@@ -242,8 +276,8 @@ proof (rule strategy_attractsI, rule ccontr)
   then interpret vmc_path G P v p ?\<sigma> .
   assume "v \<in> A"
   hence "P $ 0 \<in> A" using `v \<in> A` by simp
-  moreover assume contra: "\<not>(\<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A)"
-  ultimately have "P $ 0 \<in> A - W" by (meson DiffI P_len not_less0 lset_ltake)
+  moreover assume contra: "\<not>visits_via P A W"
+  ultimately have "P $ 0 \<in> A - W" unfolding visits_via_def by (meson DiffI P_len not_less0 lset_ltake)
   have "\<not>lset P \<subseteq> A - W" proof
     assume "lset P \<subseteq> A - W"
     hence "\<And>v. v \<in> lset P \<Longrightarrow> override_on \<sigma>' \<sigma> (A - W) v = \<sigma> v" by auto
@@ -266,7 +300,8 @@ proof (rule strategy_attractsI, rule ccontr)
   hence "P $ n' \<in> A - W" using n_min by blast
   moreover have "P $ n' \<rightarrow> P $ Suc n'" using P_valid n(1) n' valid_path_edges by blast
   moreover have "P $ Suc n' \<notin> A \<union> W" proof-
-    have "P $ n \<notin> W" using contra n(1) n_min by (meson Diff_subset lset_ltake subsetCE)
+    have "P $ n \<notin> W" using contra n(1) n_min unfolding visits_via_def
+      by (meson Diff_subset lset_ltake subsetCE)
     thus ?thesis using n(1) n' by blast
   qed
   ultimately have "P $ n' \<in> VV p \<and> \<sigma> (P $ n') \<noteq> P $ Suc n'"
@@ -289,10 +324,8 @@ proof-
   obtain n where n: "enat n < llength P" "P $ n \<in> A" using P_hits_A by (meson lset_intersect_lnth)
   def P' \<equiv> "ldropn n P"
   interpret vmc_path G P' "P $ n" p \<sigma> unfolding P'_def using vmc_path_ldropn n(1) by blast
-  obtain m where "enat m < llength P'" "P' $ m \<in> W"
-    using \<sigma> n(2) by (meson strategy_attractsE)
-  hence "lset P' \<inter> W \<noteq> {}" by (meson disjoint_iff_not_equal in_lset_conv_lnth)
-  thus ?thesis unfolding P'_def using in_lset_ldropnD[of _ n P] by blast
+  have "visits_via P' A W" using \<sigma> n(2) strategy_attractsE by blast
+  thus ?thesis unfolding P'_def using visits_via_visits in_lset_ldropnD[of _ n P] by blast
 qed
 
 (* If a path P hits an attractor A of the other player, the other player can force a visit of W. *)
