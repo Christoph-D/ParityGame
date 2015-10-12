@@ -229,18 +229,6 @@ next
     using path_conforms_with_strategy_irrelevant_updates P'_def by blast
 qed
 
-lemma path_eventually_conforms_to_fixed_good_strategy:
-  assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
-  shows "\<exists>\<sigma> n. path_conforms_with_strategy p (ldropn n P) \<sigma> \<and> strategy p \<sigma> \<and> \<sigma> \<in> good (P $ n)"
-proof-
-  obtain n where "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
-    using assms(2-) path_eventually_conforms_to_\<sigma>_map_n by blast
-  thus ?thesis
-    using path_strategies_good[OF assms(2) infinite_small_llength[OF assms(1)]]
-          path_strategies_strategy[OF assms(2) infinite_small_llength[OF assms(1)]]
-    by blast
-qed
-
 end -- "WellOrderedStrategies"
 
 end
