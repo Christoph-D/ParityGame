@@ -111,7 +111,8 @@ proof-
       qed
       ultimately obtain m where m: "enat m < llength P'" "P' $ m \<in> W"
         using strategy_attracts_viaE by blast
-      moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W" using lset_ldropn_subset by fastforce
+      moreover from `lset P \<subseteq> S - W` have "lset P' \<subseteq> S - W"
+        unfolding P'_def using lset_ldropn_subset[of n P] by blast
       ultimately show False by (meson Diff_iff lset_lnth)
     qed
   }
