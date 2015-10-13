@@ -1,7 +1,7 @@
 theory More_Coinductive_List
 imports
   Main
-  "Coinductive/Coinductive_List"
+  "../Coinductive/Coinductive_List"
 begin
 
 lemma llist_set_nth: "\<lbrakk> \<not>lfinite x; lset x \<subseteq> X \<rbrakk> \<Longrightarrow> lnth x i \<in> X"
