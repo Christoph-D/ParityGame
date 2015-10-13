@@ -1,4 +1,7 @@
-(* This theory proves that every attractor set has an attractor strategy. *)
+section {* Attractor strategies *}
+
+text {* This theory proves that every attractor set has an attractor strategy. *}
+
 theory attractor_strategy
 imports
   Main
@@ -87,7 +90,10 @@ next
   thus ?case by (meson Union_upper attractor_strategy_on_extends union.hyps)
 qed
 
-(* The main theorem: Every attractor set has an attractor strategy. *)
+subsection {* Existence *}
+
+text {* Prove that every attractor set has an attractor strategy. *}
+
 theorem attractor_has_strategy:
   assumes "W \<subseteq> V"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> (attractor p W) W"

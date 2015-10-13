@@ -1,3 +1,7 @@
+section {* Winning strategies *}
+
+text {* Here we define winning strategies. *}
+
 theory Winning_Strategy
 imports
   Main
@@ -6,7 +10,10 @@ begin
 
 context ParityGame begin
 
-(* A strategy is winning for player p from v0 if every maximal \<sigma>-path starting in v0 is winning. *)
+text {*
+  A strategy is winning for player @{term p} from @{term v0} if every maximal @{term \<sigma>}-path
+  starting in @{term v0} is winning.
+*}
 definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. vmc_path G P v0 p \<sigma> \<longrightarrow> winning_path p P"
 

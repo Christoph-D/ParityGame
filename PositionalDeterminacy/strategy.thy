@@ -1,17 +1,31 @@
+section {* Positional strategies *}
+
 theory strategy
 imports
   Main
   parity_game
 begin
 
+subsection {* Definitions *}
+
+text {* A \emph{strategy} is simply a function from vertices to vertices. *}
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a"
 
-(* A strategy for player p is a function on VV p assigning a successor to each node. *)
+text {*
+  A \emph{valid} strategy for player @{term p} is a function assigning a successor to each node
+  in @{term "VV p"}. *}
 definition (in ParityGame) strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> v\<rightarrow>\<sigma> v"
 
-(* If path_conforms_with_strategy p P \<sigma> is True, then we call P a \<sigma>-path.
-This means that P follows \<sigma> on all nodes of player p except maybe the last node on the path. *)
+
+subsection {* Strategy-conforming paths *}
+
+text {*
+  If @{term "path_conforms_with_strategy p P \<sigma>"} holds, then we call @{term P} a
+  \emph{@{term \<sigma>}-path}.
+  This means that @{term P} follows @{term \<sigma>} on all nodes of player @{term p}
+  except maybe the last node on the path.
+*}
 coinductive (in ParityGame) path_conforms_with_strategy
   :: "Player \<Rightarrow> 'a Path \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   path_conforms_LNil:  "path_conforms_with_strategy p LNil \<sigma>"
@@ -21,19 +35,31 @@ coinductive (in ParityGame) path_conforms_with_strategy
 | path_conforms_VVpstar: "\<lbrakk> v \<notin> VV p; path_conforms_with_strategy p Ps \<sigma> \<rbrakk>
     \<Longrightarrow> path_conforms_with_strategy p (LCons v Ps) \<sigma>"
 
-(* A valid maximal path that conforms to a strategy *)
+text {*
+  Define a locale for valid maximal paths that conform to a given strategy, because we need
+  this concept quite often.
+*}
 locale vmc_path = vm_path +
   fixes p \<sigma> assumes P_conforms [simp]: "path_conforms_with_strategy p P \<sigma>"
 lemma (in vmc_path) vmc_path [simp]: "vmc_path G P v0 p \<sigma>" by unfold_locales
 
-(* A valid maximal path that conforms to two strategies *)
+text {*
+  Similary, define a locale for valid maximal paths that conform to given strategies for both
+  players.
+*}
 locale vmc2_path = comp: vmc_path G P v0 "p**" \<sigma>' + vmc_path G P v0 p \<sigma>
   for G P v0 p \<sigma> \<sigma>'
 lemma (in vmc2_path) vmc2_path [simp]: "vmc2_path G P v0 p \<sigma> \<sigma>'" by unfold_locales
 
+
+subsection {* An arbitrary strategy *}
+
 context ParityGame begin
 
-(* An arbitrary strategy.  Useful to define other strategies. *)
+text {*
+  Define an arbitrary strategy.  This is useful to define other strategies by overriding part of
+  this strategy.
+*}
 definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
 lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof-
@@ -50,6 +76,8 @@ lemma valid_strategy_updates_set:
   assumes "strategy p \<sigma>" "\<And>v. \<lbrakk> v \<in> A; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> v\<rightarrow>\<sigma>' v"
   shows "strategy p (override_on \<sigma> \<sigma>' A)"
   unfolding strategy_def by (metis assms override_on_def strategy_def)
+
+subsection {* Valid strategies *}
 
 lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> \<sigma> v \<in> V"
   unfolding strategy_def using valid_edge_set by auto
@@ -232,7 +260,20 @@ proof-
   qed simp_all
 qed
 
-primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a Path" where
+subsection {* Greedy conforming path *}
+
+text {*
+  Given a starting point and two strategies, there exists a path conforming to both strategies.
+  Here we define this path.  In particular, this also shows that the assumptions of the locales
+  @{text vmc_path} and @{text vmc2_path} are satisfiable.
+
+  We are only interested in proving the existence of such a path, so the definition
+  (i.e., the implementation) and most lemmas are private.
+*}
+
+context begin
+
+private primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> 'a Path" where
   "greedy_conforming_path p \<sigma> \<sigma>' v0 =
     LCons v0 (if deadend v0
       then LNil
@@ -240,45 +281,45 @@ primcorec greedy_conforming_path :: "Player \<Rightarrow> 'a Strategy \<Rightarr
         then greedy_conforming_path p \<sigma> \<sigma>' (\<sigma> v0)
         else greedy_conforming_path p \<sigma> \<sigma>' (\<sigma>' v0))"
 
-lemma greedy_path_LNil [simp]: "greedy_conforming_path p \<sigma> \<sigma>' v0 \<noteq> LNil"
+private lemma greedy_path_LNil: "greedy_conforming_path p \<sigma> \<sigma>' v0 \<noteq> LNil"
   using greedy_conforming_path.disc_iff llist.discI(1) by blast
 
-lemma greedy_path_lhd: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> v = v0"
+private lemma greedy_path_lhd: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> v = v0"
   using greedy_conforming_path.code by auto
 
-lemma greedy_path_deadend_v0: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v0"
-  by (metis (no_types, lifting) greedy_conforming_path.disc_iff greedy_conforming_path.simps(3) llist.disc(1) ltl_simps(2))
-corollary greedy_path_deadend_v0': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil \<Longrightarrow> deadend v0"
-  using greedy_path_deadend_v0 by blast
+private lemma greedy_path_deadend_v0: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v0"
+  by (metis (no_types, lifting) greedy_conforming_path.disc_iff
+      greedy_conforming_path.simps(3) llist.disc(1) ltl_simps(2))
 
-corollary greedy_path_deadend_v: "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v"
+private corollary greedy_path_deadend_v:
+  "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P \<Longrightarrow> P = LNil \<longleftrightarrow> deadend v"
   using greedy_path_deadend_v0 greedy_path_lhd by metis
 corollary greedy_path_deadend_v': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil \<Longrightarrow> deadend v"
   using greedy_path_deadend_v by blast
 
-lemma greedy_path_ltl:
+private lemma greedy_path_ltl:
   assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P"
   shows "P = LNil \<or> P = greedy_conforming_path p \<sigma> \<sigma>' (\<sigma> v0) \<or> P = greedy_conforming_path p \<sigma> \<sigma>' (\<sigma>' v0)"
   apply (insert assms, frule greedy_path_lhd)
   apply (cases "deadend v0", simp add: greedy_conforming_path.code)
   by (metis (no_types, lifting) greedy_conforming_path.sel(2) ltl_simps(2))
 
-lemma greedy_path_ltl_ex:
+private lemma greedy_path_ltl_ex:
   assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v P"
   shows "P = LNil \<or> (\<exists>v. P = greedy_conforming_path p \<sigma> \<sigma>' v)"
   using assms greedy_path_ltl by blast
 
-lemma greedy_path_ltl_VVp:
+private lemma greedy_path_ltl_VVp:
   assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P" "v0 \<in> VV p" "\<not>deadend v0"
   shows "\<sigma> v0 = lhd P"
   using assms greedy_conforming_path.code by auto
 
-lemma greedy_path_ltl_VVpstar:
+private lemma greedy_path_ltl_VVpstar:
   assumes "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P" "v0 \<in> VV p**" "\<not>deadend v0"
   shows "\<sigma>' v0 = lhd P"
   using assms greedy_conforming_path.code by auto
 
-theorem greedy_conforming_path_properties [simp]:
+private lemma greedy_conforming_path_properties:
   assumes "v0 \<in> V" "strategy p \<sigma>" "strategy p** \<sigma>'"
   shows
         greedy_path_not_null:  "\<not>lnull (greedy_conforming_path p \<sigma> \<sigma>' v0)"
@@ -299,15 +340,17 @@ proof-
     obtain P' where P': "?P = LCons v0 P'" by (metis greedy_path_LNil greedy_path_lhd neq_LNil_conv)
     hence "\<not>deadend v0" using asm greedy_path_deadend_v0 `v0 \<in> V` by blast
     from P' have 1: "\<not>lnull P'" using asm llist.collapse(1) `v0 \<in> V` greedy_path_deadend_v0 by blast
-    moreover from P' `\<not>deadend v0` assms(2) assms(3) `v0 \<in> V`
-      have 2: "v0\<rightarrow>lhd P'"
-      unfolding strategy_def using greedy_path_ltl_VVp greedy_path_ltl_VVpstar by (cases "v0 \<in> VV p") auto
+    moreover from P' `\<not>deadend v0` assms(2,3) `v0 \<in> V`
+      have "v0\<rightarrow>lhd P'"
+      unfolding strategy_def using greedy_path_ltl_VVp greedy_path_ltl_VVpstar
+      by (cases "v0 \<in> VV p") auto
     moreover hence "lhd P' \<in> V" by blast
     moreover hence "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
       by (metis P' calculation(1) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
     (* The conjunction of all the above *)
     ultimately
-      have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V)"
+      have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V
+        \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V)"
       using P' by blast
   } note coinduction_helper = this
 
@@ -324,13 +367,15 @@ proof-
   {
     fix p'' \<sigma>'' assume p'': "(p'' = p \<and> \<sigma>'' = \<sigma>) \<or> (p'' = p** \<and> \<sigma>'' = \<sigma>')"
     moreover with assms have "strategy p'' \<sigma>''" by blast
-    hence "path_conforms_with_strategy p'' P \<sigma>''" using `v0 \<in> V` unfolding P_def proof (coinduction arbitrary: v0)
+    hence "path_conforms_with_strategy p'' P \<sigma>''" using `v0 \<in> V` unfolding P_def
+    proof (coinduction arbitrary: v0)
       case (path_conforms_with_strategy v0)
       show ?case proof (cases "v0 \<in> VV p''")
         case True
         { assume "\<not>(\<exists>v. greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v LNil)"
           with `v0 \<in> V` obtain P' where
-            P': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P'" "\<not>lnull P'" "v0\<rightarrow>lhd P'" "lhd P' \<in> V" "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
+            P': "greedy_conforming_path p \<sigma> \<sigma>' v0 = LCons v0 P'" "\<not>lnull P'" "v0\<rightarrow>lhd P'"
+                "lhd P' \<in> V" "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
             using coinduction_helper by blast
           with `v0 \<in> VV p''` p'' have "\<sigma>'' v0 = lhd P'"
             using greedy_path_ltl_VVp greedy_path_ltl_VVpstar by blast
@@ -351,7 +396,7 @@ corollary strategy_conforming_path_exists:
   obtains P where "vmc2_path G P v0 p \<sigma> \<sigma>'"
 proof
   show "vmc2_path G (greedy_conforming_path p \<sigma> \<sigma>' v0) v0 p \<sigma> \<sigma>'"
-    using assms by unfold_locales simp_all
+    using assms by unfold_locales (simp_all add: greedy_conforming_path_properties)
 qed
 
 corollary strategy_conforming_path_exists_single:
@@ -359,8 +404,10 @@ corollary strategy_conforming_path_exists_single:
   obtains P where "vmc_path G P v0 p \<sigma>"
 proof
   show "vmc_path G (greedy_conforming_path p \<sigma> \<sigma>_arbitrary v0) v0 p \<sigma>"
-    using assms by unfold_locales simp_all
+    using assms by unfold_locales (simp_all add: greedy_conforming_path_properties)
 qed
+
+end
 
 end
 
@@ -421,20 +468,22 @@ lemma w0_VV: "w0 \<in> VV p \<or> w0 \<in> VV p**" by simp
 lemma vmc_path_ltl [simp]: "vmc_path G (ltl P) w0 p \<sigma>" by (unfold_locales) (simp_all add: w0_def)
 end
 
-lemma (in vmc_path) vmc_path_llength_no_deadend:
+context vmc_path begin
+
+lemma vmc_path_llength_no_deadend:
   assumes "enat (Suc n) < llength P"
   shows "vmc_path_no_deadend G P v0 p \<sigma>"
   using assms P_0 P_no_deadends
   by (unfold_locales)
      (metis enat_Suc_ltl enat_ltl_Suc ldropn_Suc_conv_ldropn ldropn_lnull llist.distinct(1) lnull_0_llength)
 
-lemma (in vmc_path) vmc_path_lnull_ltl_no_deadend:
+lemma vmc_path_lnull_ltl_no_deadend:
   assumes "\<not>lnull (ltl P)"
   shows "vmc_path_no_deadend G P v0 p \<sigma>"
   using assms P_0 P_no_deadends
   by (unfold_locales) (metis enat_ltl_Suc lnull_0_llength)
 
-lemma (in vmc_path) valid_maximal_conforming_lappend:
+lemma valid_maximal_conforming_lappend:
   assumes "enat (Suc n) < llength P" "vmc_path G P' (P $ n) p \<sigma>"
   shows "vmc_path G (lappend (ltake (enat (Suc n)) P) (ltl P')) v0 p \<sigma>"
 proof (unfold_locales)
@@ -460,7 +509,7 @@ proof (unfold_locales)
               lhd_lappend llist.expand lnull_ltlI order_refl)
 qed
 
-lemma (in vmc_path) vmc_path_conforms:
+lemma vmc_path_conforms:
   assumes "enat (Suc n) < llength P" "P $ n \<in> VV p"
   shows "\<sigma> (P $ n) = P $ Suc n"
 proof-
@@ -471,5 +520,44 @@ proof-
   have "\<sigma> (P $ n) = P'.w0" using P'.v0_conforms assms(2) by blast
   thus ?thesis using P'_def P'.P_Suc_0 assms(1) by simp
 qed
+
+lemma vmc_path_lset_induction [consumes 1, case_names base step]:
+  assumes "Q P"
+    and base: "v0 \<in> S"
+    and step_assumption: "\<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S; Q P \<rbrakk>
+      \<Longrightarrow> Q (ltl P) \<and> lhd (ltl P) \<in> S"
+  shows "lset P \<subseteq> S"
+proof
+  fix v assume "v \<in> lset P"
+  thus "v \<in> S" using vmc_path assms(1,2) proof (induct arbitrary: v0 rule: llist_set_induct)
+    case (find P)
+    then interpret vmc_path G P v0 p \<sigma> by blast
+    show ?case by (simp add: find.prems(3))
+  next
+    case (step P v)
+    then interpret vmc_path G P v0 p \<sigma> by blast
+    show ?case proof (cases)
+      assume "lnull (ltl P)"
+      hence "P = LCons v LNil" by (metis llist.disc(2) lset_cases step.hyps(2))
+      thus ?thesis using step.prems(3) P_LCons by blast
+    next
+      assume "\<not>lnull (ltl P)"
+      then interpret vmc_path_no_deadend G P v0 p \<sigma>
+        using vmc_path_lnull_ltl_no_deadend by blast
+      show "v \<in> S"
+        using step.hyps(3)
+              step_assumption[OF vmc_path_no_deadend `v0 \<in> S` `Q P`, folded w0_def]
+              vmc_path_ltl
+        by blast
+    qed
+  qed
+qed
+
+text {* @{thm vmc_path_lset_induction} without the Q predicate. *}
+corollary vmc_path_lset_induction_simple [case_names base step]:
+  "\<lbrakk> v0 \<in> S; \<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S \<rbrakk> \<Longrightarrow> lhd (ltl P) \<in> S \<rbrakk> \<Longrightarrow> lset P \<subseteq> S"
+  using vmc_path_lset_induction[of "\<lambda>P. True"] by blast
+
+end
 
 end

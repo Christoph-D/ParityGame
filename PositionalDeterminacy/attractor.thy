@@ -1,4 +1,7 @@
-(* Definition of the attractor. *)
+section {* Attractor sets *}
+
+text {* Here we give two definitions of the attractor set and show their equivalence. *}
+
 theory attractor
 imports
   Main
@@ -14,11 +17,11 @@ definition directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a s
 
 abbreviation "attractor_step p W S \<equiv> W \<union> S \<union> directly_attracted p S"
 
-(* The attractor set of a given set of vertices, defined as a least fixed point *)
+text {* The attractor set of a given set of vertices, defined as a least fixed point. *}
 definition attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
   "attractor p W = lfp (attractor_step p W)"
 
-(* The attractor set of a given set of vertices, defined inductively. *)
+text {* The attractor set of a given set of vertices, defined inductively. *}
 inductive_set attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
   for p :: Player and W :: "'a set" where
   Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W" |
@@ -57,7 +60,7 @@ proof-
   qed
 qed
 
-(* attractor_step *)
+subsection {* @{text attractor_step} *}
 
 lemma attractor_step_empty: "attractor_step p {} {} = {}"
   and attractor_step_bounded_by_V: "\<lbrakk> W \<subseteq> V; S \<subseteq> V \<rbrakk> \<Longrightarrow> attractor_step p W S \<subseteq> V"
@@ -95,15 +98,16 @@ proof (unfold mono_def; intro allI impI)
   qed
 qed
 
-(* attractor *)
+subsection {* @{term attractor} *}
 
 lemma attractor_unfolding: "attractor p W = attractor_step p W (attractor p W)"
   unfolding attractor_def using attractor_step_mono lfp_unfold by blast
 lemma attractor_lowerbound: "attractor_step p W S \<subseteq> S \<Longrightarrow> attractor p W \<subseteq> S"
   unfolding attractor_def using attractor_step_mono by (simp add: lfp_lowerbound)
 
+text {* A powerful induction schema for attractor. *}
 lemma attractor_set_induction [consumes 1, case_names step union]:
-  assumes "W \<subseteq> V" -- "This assumption might be unnecessary."
+  assumes "W \<subseteq> V"
     and step: "\<And>S. S \<subseteq> V \<Longrightarrow> P S \<Longrightarrow> P (attractor_step p W S)"
     and union: "\<And>M. \<forall>S \<in> M. S \<subseteq> V \<and> P S \<Longrightarrow> P (\<Union>M)"
   shows "P (attractor p W)"
@@ -149,8 +153,6 @@ qed
 lemma attractor_set_non_empty: "W \<noteq> {} \<Longrightarrow> attractor p W \<noteq> {}"
   and attractor_set_base: "W \<subseteq> attractor p W"
   using attractor_unfolding by auto
-lemma attractor_set_empty: "attractor p {} = {}"
-  by (metis attractor_lowerbound attractor_step_empty bot.extremum_uniqueI subset_refl)
 
 lemma attractor_set_VVp:
   assumes "v \<in> VV p" "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W"
@@ -179,12 +181,12 @@ qed
 
 lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
   using attractor_lowerbound attractor_step_bounded_by_V by auto
-lemma attractor_outside: "\<lbrakk> v \<notin> attractor p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor p W"
-  using attractor_set_VVp by blast
 
-(* attractor_inductive *)
+subsection {* @{term attractor_inductive} *}
 
-(* Show that the inductive definition and the definition via lfp are the same. *)
+text {*
+  We show that the inductive definition and the definition via least fixed point are the same.
+*}
 lemma attractor_inductive_is_attractor:
   assumes "W \<subseteq> V"
   shows "attractor_inductive p W = attractor p W"
@@ -206,14 +208,16 @@ proof
         moreover
         { assume "v \<in> W" hence "v \<in> attractor_inductive p W" by blast }
         moreover
-        { assume "v \<in> S" hence "v \<in> attractor_inductive p W" by (meson `S \<subseteq> attractor_inductive p W` set_rev_mp) }
+        { assume "v \<in> S" hence "v \<in> attractor_inductive p W"
+            by (meson `S \<subseteq> attractor_inductive p W` set_rev_mp) }
         moreover
         { assume v_attracted: "v \<in> directly_attracted p S"
           hence "v \<in> V" using `S \<subseteq> V` attractor_step_bounded_by_V by blast
           hence "v \<in> attractor_inductive p W" proof (cases rule: VV_cases)
             assume "v \<in> VV p"
             hence "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using v_attracted directly_attracted_def by blast
-            hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W" using `S \<subseteq> attractor_inductive p W` by blast
+            hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W"
+              using `S \<subseteq> attractor_inductive p W` by blast
             thus ?thesis by (simp add: `v \<in> VV p` attractor_inductive.VVp)
           next
             assume "v \<in> VV p**"
@@ -221,7 +225,8 @@ proof
             have "\<not>deadend v" using v_attracted directly_attracted_def by blast
             show ?thesis proof (rule ccontr)
               assume "v \<notin> attractor_inductive p W"
-              hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> attractor_inductive p W" by (metis attractor_inductive.VVpstar `v \<in> VV p**` `\<not>deadend v`)
+              hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> attractor_inductive p W"
+                by (metis attractor_inductive.VVpstar `v \<in> VV p**` `\<not>deadend v`)
               hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> S" using `S \<subseteq> attractor_inductive p W` by (meson subsetCE)
               thus False using * by blast
             qed
@@ -237,30 +242,6 @@ proof
   qed
 qed
 
-lemma attractor_is_superset [simp]: "W \<subseteq> attractor_inductive p W" by blast
-lemma attractor_inductive_outside:
-  "\<lbrakk> v \<notin> attractor_inductive p W; v \<in> VV p; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<notin> attractor_inductive p W"
-  by (metis attractor_inductive.VVp)
-
-lemma attractor_inductive_contains_no_deadends:
-  "v \<in> attractor_inductive p W \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
-  by (induct rule: attractor_inductive.induct) auto
-
-lemma attractor_contains_no_deadends: "\<lbrakk> W \<subseteq> V; v \<in> attractor p W \<rbrakk> \<Longrightarrow> v \<in> W \<or> \<not>deadend v"
-  using attractor_inductive_contains_no_deadends attractor_inductive_is_attractor by auto
-
 end -- "context ParityGame"
-
-(* ML_val {*
-(*proof body with digest*)
-val body = Proofterm.strip_thm (Thm.proof_body_of @{thm llist_set_nth});
-(*proof term only*)
-val prf = Proofterm.proof_of body;
-Pretty.writeln (Proof_Syntax.pretty_proof @{context} prf);
-(*all theorems used in the graph of nested proofs*)
-val all_thms =
-Proofterm.fold_body_thms
-(fn (name, _, _) => insert (op =) name) [body] [];
-*} *)
 
 end

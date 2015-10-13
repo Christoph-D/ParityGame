@@ -1,17 +1,26 @@
+section {* Parity Games *}
+
 theory parity_game
 imports
   Main
   More_Coinductive_List
 begin
 
-(* 'a is the vertex type. *)
+subsection {* Basic definitions *}
+
+text {* @{typ "'a"} is the vertex type.  Edges are pairs of vertices. *}
 type_synonym 'a Edge = "'a \<times> 'a"
-(* A path is a possibly infinite list of vertices. *)
+
+text {* A path is a possibly infinite list of vertices. *}
 type_synonym 'a Path = "'a llist"
 
-(* The set of nodes that occur infinitely often on a given path. *)
-definition path_inf :: "'a Path \<Rightarrow> 'a set" where
-  "path_inf P \<equiv> {v. \<forall>i. v \<in> lset (ldropn i P)}"
+subsection {* Graphs *}
+
+text {*
+  We define graphs as a locale over a record.
+  The record contains vertices and edges, the locale adds the assumption that the edges are pairs
+  of vertices.
+*}
 
 record 'a Graph =
   verts :: "'a set" ("V\<index>")
@@ -23,13 +32,22 @@ locale Digraph =
   fixes G (structure)
   assumes valid_edge_set: "E \<subseteq> V \<times> V"
 begin
+text {*
+  When we define a locale, we usually add a simplification lemma of the same name.
+  Otherwise @{term "Digraph G"} would not easily be available in proofs, although here the proof
+  is trivial.
+*}
 lemma Digraph [simp]: "Digraph G" by unfold_locales
 
 lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<rightarrow>w \<Longrightarrow> w \<in> V" using valid_edge_set by blast+
 
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 
-(* A path is valid if it starts in V and walks along edges. *)
+subsection {* Valid paths *}
+
+text {*
+  We say that a path is \emph{valid} if it is empty or if it starts in @{term V} and walks along edges.
+*}
 coinductive valid_path :: "'a Path \<Rightarrow> bool" where
   valid_path_base: "valid_path LNil"
 | valid_path_base': "v \<in> V \<Longrightarrow> valid_path (LCons v LNil)"
@@ -37,9 +55,8 @@ coinductive valid_path :: "'a Path \<Rightarrow> bool" where
 
 inductive_simps valid_path_cons_simp: "valid_path (LCons x xs)"
 
-lemma valid_path_cons': "\<lbrakk> v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)"
-  using valid_path_cons by auto
-lemma valid_path_ltl': "valid_path (LCons v Ps) \<Longrightarrow> valid_path Ps" using valid_path.simps by blast
+lemma valid_path_ltl': "valid_path (LCons v Ps) \<Longrightarrow> valid_path Ps"
+  using valid_path.simps by blast
 lemma valid_path_ltl: "valid_path P \<Longrightarrow> valid_path (ltl P)"
   by (metis llist.exhaust_sel ltl_simps(1) valid_path_ltl')
 lemma valid_path_drop: "valid_path P \<Longrightarrow> valid_path (ldropn n P)"
@@ -49,14 +66,14 @@ lemma valid_path_in_V: assumes "valid_path P" shows "lset P \<subseteq> V" proof
   fix x assume "x \<in> lset P" thus "x \<in> V"
     using assms by (induct rule: llist.set_induct) (auto intro: valid_path.cases)
 qed
-lemma valid_path_finite_in_V': "\<lbrakk> valid_path P; enat i < llength P \<rbrakk> \<Longrightarrow> P $ i \<in> V"
-  using valid_path_in_V lset_lnth by blast
+lemma valid_path_finite_in_V: "\<lbrakk> valid_path P; enat i < llength P \<rbrakk> \<Longrightarrow> P $ i \<in> V"
+  using valid_path_in_V lset_lnth_member by blast
 
 lemma valid_path_edges': "valid_path (LCons v (LCons w Ps)) \<Longrightarrow> v\<rightarrow>w"
   using valid_path.cases by fastforce
 lemma valid_path_edges:
   assumes "valid_path P" "enat (Suc n) < llength P"
-  shows "P $ n \<rightarrow> (P $ Suc n)"
+  shows "P $ n \<rightarrow> P $ Suc n"
 proof-
   def P' \<equiv> "ldropn n P"
   have "enat n < llength P" using assms(2) enat_ord_simps(2) less_trans by blast
@@ -110,7 +127,7 @@ lemma valid_path_equiv:
 
 lemma valid_path_no_deadends:
   "\<lbrakk> valid_path P; enat (Suc i) < llength P; P $ Suc i = w \<rbrakk> \<Longrightarrow> \<not>deadend (P $ i)"
-  using valid_path_equiv by blast
+  using valid_path_impl1 by blast
 lemma valid_path_ends_on_deadend:
   "\<lbrakk> valid_path P; enat i < llength P; deadend (P $ i) \<rbrakk> \<Longrightarrow> enat (Suc i) = llength P"
   by (meson Suc_ile_eq antisym_conv le_less_linear valid_path_no_deadends)
@@ -181,6 +198,12 @@ proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'
   qed simp
 qed
 
+
+subsection {* Maximal paths *}
+
+text {*
+  We say that a path is \emph{maximal} if it is empty or if it ends in a deadend.
+*}
 coinductive maximal_path where
   maximal_path_base: "maximal_path LNil"
 | maximal_path_base': "deadend v \<Longrightarrow> maximal_path (LCons v LNil)"
@@ -192,112 +215,55 @@ lemma maximal_ltl: "maximal_path P \<Longrightarrow> maximal_path (ltl P)"
   by (metis ltl_simps(1) ltl_simps(2) maximal_path.simps)
 lemma maximal_drop: "maximal_path P \<Longrightarrow> maximal_path (ldropn n P)"
   by (simp add: maximal_ltl ltl_ldrop)
-lemma maximal_path_impl1:
-  assumes "maximal_path P" "enat n < llength P" "\<not>deadend (P $ n)"
-  shows "enat (Suc n) < llength P"
-proof-
-  def P' \<equiv> "ldropn n P"
-  hence "\<not>lnull P'" using assms(2) by auto
-  then obtain v Ps where v: "P' = LCons v Ps" by (meson not_lnull_conv)
-  have "P $ n = lhd P'" by (simp add: P'_def assms(2) lhd_ldropn)
-  hence "\<not>deadend v" using assms(3) v by auto
-  hence "\<not>lnull Ps" using P'_def assms(1) maximal_drop maximal_no_deadend v by force
-  moreover have "ldropn (Suc n) P = Ps" by (metis P'_def ldrop_eSuc_ltl ltl_ldropn ltl_simps(2) v)
-  ultimately show ?thesis by (meson le_less_linear lnull_ldropn)
-qed
-lemma maximal_path_impl2:
-  "(\<And>n. enat n < llength P \<and> \<not>deadend (P $ n) \<longrightarrow> enat (Suc n) < llength P) \<Longrightarrow> maximal_path P"
-proof (coinduction arbitrary: P rule: maximal_path.coinduct)
-  case (maximal_path P)
-  show ?case proof (cases "P = LNil \<or> (\<exists>v. P = LCons v LNil \<and> deadend v)", blast)
-    case False
-    then obtain Ps v where P: "P = LCons v Ps" by (meson neq_LNil_conv)
-    hence "\<And>n. enat n < llength Ps \<Longrightarrow> \<not>deadend (Ps $ n) \<Longrightarrow> enat (Suc n) < llength Ps" proof-
-      fix n assume asm: "enat n < llength Ps" "\<not>deadend (Ps $ n)"
-      have "enat (Suc n) < llength P" using P asm(1) eSuc_enat ileI1 by force
-      moreover have "\<not>deadend (P $ Suc n)" using P asm(2) by auto
-      ultimately have "enat (Suc (Suc n)) < llength P" using maximal_path by blast
-      thus "enat (Suc n) < llength Ps"
-        by (metis P asm(1) dual_order.strict_iff_order eSuc_enat ileI1 llength_LCons)
-    qed
-    moreover have "\<not>lnull Ps" proof (rule ccontr, simp)
-      assume "lnull Ps"
-      hence "\<not>deadend (P $ 0)" using False P by auto
-      moreover have "0 < llength P" by (simp add: P)
-      ultimately have "enat (Suc 0) < llength P" by (simp add: maximal_path zero_enat_def)
-      thus False by (simp add: P `lnull Ps` zero_enat_def)
-    qed
-    ultimately show ?thesis using P by blast
-  qed
-qed
-lemma maximal_path_equiv:
-  "maximal_path P \<longleftrightarrow> (\<forall>n. enat n < llength P \<and> \<not>deadend (P $ n) \<longrightarrow> enat (Suc n) < llength P)"
-  using maximal_path_impl1 maximal_path_impl2 by blast
 
 lemma maximal_path_lappend:
   assumes "\<not>lnull P'" "maximal_path P'"
   shows "maximal_path (lappend P P')"
-proof-
-  let ?P = "lappend P P'"
-  { fix n assume "enat n < llength ?P" "\<not>deadend (?P $ n)"
-    have len_sum: "llength ?P = llength P + llength P'" by simp
-    {
-      assume "enat (Suc n) \<le> llength P"
-      moreover from `\<not>lnull P'` have "llength P' \<noteq> 0" by simp
-      ultimately have "enat (Suc n) < llength ?P"
-        by (metis add.right_neutral dual_order.strict_iff_order enat_add1_eq enat_le_plus_same(1)
-                  len_sum less_le_trans)
-    }
-    moreover {
-      assume *: "enat (Suc n) > llength P"
-      then obtain j where j: "llength P = enat j" using enat_iless by fastforce
-      with *
-        have "j \<le> n" by (metis enat_ord_simps(2) leI not_less_eq)
-      with j len_sum `enat n < llength ?P`
-        have "enat (n - j) < llength P'" by (metis enat_add_mono le_add_diff_inverse plus_enat_simps(1))
-      moreover from j `j \<le> n`
-        have "?P $ n = P' $ (n - j)" using lnth_lappend2[of P "j" "n" P'] by fastforce
-      ultimately have "enat (Suc (n - j)) < llength P'"
-        using `\<not>deadend (?P $ n)` `maximal_path P'` by (simp add: maximal_path_impl1)
-      hence "enat (Suc n - j) < llength P'" by (simp add: Suc_diff_le `j \<le> n`)
-      with `j \<le> n` have "enat (Suc n) < enat j + llength P'"
-        by (metis enat_less_enat_plusI2 le_SucI le_add_diff_inverse)
-      with len_sum j have "enat (Suc n) < llength ?P" by simp
-    }
-    ultimately have "enat (Suc n) < llength ?P" using not_le by blast
-  }
-  thus ?thesis using maximal_path_equiv by blast
-qed
+proof (cases)
+  assume "\<not>lnull P"
+  thus ?thesis using assms proof (coinduction arbitrary: P' P rule: maximal_path.coinduct)
+    case (maximal_path P' P)
+    let ?P = "lappend P P'"
+    show ?case proof (cases "?P = LNil \<or> (\<exists>v. ?P = LCons v LNil \<and> deadend v)")
+      case False
+      then obtain Ps v where P: "?P = LCons v Ps" by (meson neq_LNil_conv)
+      hence "Ps = lappend (ltl P) P'" by (simp add: lappend_ltl maximal_path(1))
+      hence "\<exists>Ps1 P'. Ps = lappend Ps1 P' \<and> \<not>lnull P' \<and> maximal_path P'"
+        using maximal_path(2) maximal_path(3) by auto
+      thus ?thesis using P lappend_lnull1 by fastforce
+    qed blast
+  qed
+qed (simp add: assms(2) lappend_lnull1[of P P'])
 
 lemma maximal_ends_on_deadend:
   assumes "maximal_path P" "lfinite P" "\<not>lnull P"
   shows "deadend (llast P)"
-proof (rule ccontr)
-  assume *: "\<not>deadend (llast P)"
-  from `lfinite P` `\<not>lnull P` obtain i where i: "llength P = enat (Suc i)"
+proof-
+  from `lfinite P` `\<not>lnull P` obtain n where n: "llength P = enat (Suc n)"
     by (metis enat_ord_simps(2) gr0_implies_Suc lfinite_llength_enat lnull_0_llength)
-  hence "llength P = eSuc (enat i)" by (simp add: eSuc_enat)
-  hence "llast P = P $ i" using llast_conv_lnth by blast
-  with * have "\<not>deadend (P $ i)" by simp
-  from i have "enat i < llength P" by simp
-  with assms(1) `\<not>deadend (P $ i)` have "enat (Suc i) < llength P" using maximal_path_impl1 by blast
-  with i show False by simp
+  def P' \<equiv> "ldropn n P"
+  hence "maximal_path P'" using assms(1) maximal_drop by blast
+  thus ?thesis proof (cases rule: maximal_path.cases)
+    case (maximal_path_base' v)
+    hence "deadend (llast P')" unfolding P'_def by simp
+    thus ?thesis unfolding P'_def using llast_ldropn[of n P] n
+      by (metis P'_def ldropn_eq_LConsD local.maximal_path_base'(1))
+  next
+    case (maximal_path_cons P'' v)
+    hence "ldropn (Suc n) P = P''" unfolding P'_def by (metis ldrop_eSuc_ltl ltl_ldropn ltl_simps(2))
+    thus ?thesis using n maximal_path_cons(2) by auto
+  qed (simp add: P'_def n ldropn_eq_LNil)
 qed
 
-lemma maximal_ends_on_deadend':
-  "\<lbrakk> lfinite P; deadend (llast P) \<rbrakk> \<Longrightarrow> maximal_path P"
+lemma maximal_ends_on_deadend': "\<lbrakk> lfinite P; deadend (llast P) \<rbrakk> \<Longrightarrow> maximal_path P"
 proof (coinduction arbitrary: P rule: maximal_path.coinduct)
   case (maximal_path P)
   show ?case proof (cases)
     assume "P \<noteq> LNil"
     then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
     show ?thesis proof (cases)
-      assume "P' = LNil"
-      thus ?thesis using P' maximal_path(2) by auto
-    next
-      assume "P' \<noteq> LNil"
-      thus ?thesis by (metis P' lfinite_LCons llast_LCons llist.collapse(1) maximal_path(1,2))
-    qed
+      assume "P' = LNil" thus ?thesis using P' maximal_path(2) by auto
+    qed (metis P' lfinite_LCons llast_LCons llist.collapse(1) maximal_path(1,2))
   qed simp
 qed
 
@@ -307,6 +273,8 @@ lemma infinite_path_is_maximal: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrak
   by simp_all
 
 end -- "locale Digraph"
+
+subsection {* Parity games *}
 
 datatype Player = Even | Odd
 abbreviation other_player :: "Player \<Rightarrow> Player" where "other_player p \<equiv> (if p = Even then Odd else Even)"
@@ -327,6 +295,7 @@ locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) 
 begin
 lemma ParityGame [simp]: "ParityGame G" by unfold_locales
 
+text {* @{text "VV p"} is the set of nodes belonging to player @{term p}. *}
 abbreviation VV :: "Player \<Rightarrow> 'a set" where "VV p \<equiv> (if p = Even then V0 else V - V0)"
 lemma VVp_to_V [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" by (metis (full_types) Diff_subset subsetCE valid_player0_set)
 lemma VV_impl1 [intro]: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**" by auto
@@ -334,10 +303,12 @@ lemma VV_impl2 [intro]: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by au
 lemma VV_equivalence [iff]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
 lemma VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by fastforce
 
-lemma \<omega>_upperbound: "\<exists>n. \<forall>v \<in> V. \<omega>(v) \<le> n" using finite_nat_set_iff_bounded_le priorities_finite by auto
+subsection {* Subgames *}
+
+text {* We define a subgame by restricting the set of vertices to a given subset. *}
 
 definition subgame where
-  "subgame V' \<equiv> G\<lparr> verts := V' \<inter> V, arcs := E \<inter> (V' \<times> V'), priority := \<omega>, player0 := V0 \<inter> V' \<rparr>"
+  "subgame V' \<equiv> G\<lparr> verts := V' \<inter> V, arcs := E \<inter> (V' \<times> V'), player0 := V0 \<inter> V' \<rparr>"
 
 lemma subgame_V [simp]: "V\<^bsub>subgame V'\<^esub> \<subseteq> V"
   and subgame_E [simp]: "E\<^bsub>subgame V'\<^esub> \<subseteq> E"
@@ -424,7 +395,7 @@ lemma path_priorities_equiv: assumes "\<not>lfinite P" shows "path_priorities P 
 qed
 
 lemma path_priorities_in_\<omega>V: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> path_priorities P i \<in> \<omega> ` V"
-  unfolding path_priorities_def using llist_set_nth[of P V i] valid_path_in_V by blast
+  unfolding path_priorities_def using lset_nth_member_inf[of P V i] valid_path_in_V by blast
 
 lemma path_inf_priorities_is_nonempty:
   assumes "valid_path P" "\<not>lfinite P"
@@ -475,22 +446,15 @@ definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" whe
     \<or> (\<not>lnull P \<and> lfinite P \<and> llast P \<in> VV p**)
     \<or> (lnull P \<and> p = Even)"
 
-lemma paths_are_winning_for_exactly_one_player:
+lemma paths_are_winning_for_one_player:
   assumes "valid_path P"
   shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
 proof (cases)
   assume "\<not>lnull P"
   show ?thesis proof (cases)
     assume finite: "lfinite P"
-    have 1: "winning_path p P \<longleftrightarrow> llast P \<in> VV p**" by (simp add: `\<not>lnull P` local.finite winning_path_def)
-    have 2: "winning_path p** P \<longleftrightarrow> llast P \<in> VV p" by (simp add: `\<not>lnull P` local.finite winning_path_def)
-    have "llast P \<in> V" proof-
-      obtain n where "llength P = enat (Suc n)"
-        by (metis `\<not>lnull P` lfinite_llength_enat llength_eq_0 local.finite not0_implies_Suc zero_enat_def)
-      hence "P $ n = llast P \<and> enat n < llength P" by (simp add: eSuc_enat llast_conv_lnth)
-      thus ?thesis using assms valid_path_finite_in_V' by force
-    qed
-    thus ?thesis by (simp add: "1" "2")
+    hence "llast P \<in> V" using assms `\<not>lnull P` lfinite_lset valid_path_in_V by blast
+    thus ?thesis by (simp add: `\<not>lnull P` local.finite winning_path_def)
   next
     assume infinite: "\<not>lfinite P"
     then obtain a where "a \<in> path_inf_priorities P" "\<And>b. b < a \<Longrightarrow> b \<notin> path_inf_priorities P"
@@ -501,9 +465,6 @@ proof (cases)
     thus ?thesis using winning_priority_for_one_player by blast
   qed
 qed (simp add: winning_path_def)
-
-corollary paths_are_winning_for_one_player: "valid_path P \<Longrightarrow> \<exists>!p. winning_path p P"
-  by (metis (full_types) Player.exhaust paths_are_winning_for_exactly_one_player[of P Even])
 
 lemma winning_path_ltl:
   assumes P: "winning_path p P" "\<not>lnull P" "\<not>lnull (ltl P)"
@@ -531,7 +492,7 @@ qed
 corollary winning_path_drop_add:
   assumes "valid_path P" "winning_path p (ldropn n P)" "enat n < llength P"
   shows "winning_path p P"
-  using assms paths_are_winning_for_exactly_one_player valid_path_drop winning_path_drop by blast
+  using assms paths_are_winning_for_one_player valid_path_drop winning_path_drop by blast
 
 lemma winning_path_LCons:
   assumes P: "winning_path p P" "\<not>lnull P"
@@ -575,21 +536,19 @@ qed
 
 end -- "locale ParityGame"
 
-(* A locale for valid maximal paths, because we need them often. *)
+subsection {* Valid maximal paths *}
+
+text {* Define a locale for valid maximal paths, because we need them often. *}
+
 locale vm_path = ParityGame +
   fixes P v0
   assumes P_not_null [simp]: "\<not>lnull P"
       and P_valid    [simp]: "valid_path P"
       and P_maximal  [simp]: "maximal_path P"
       and P_v0       [simp]: "lhd P = v0"
-lemma (in vm_path) vm_path [simp]: "vm_path G P v0" by unfold_locales
+begin
+lemma vm_path [simp]: "vm_path G P v0" by unfold_locales
 
-lemma (in ParityGame) vm_pathI:
-  assumes "\<not>lnull P" "valid_path P" "maximal_path P" "lhd P = v0"
-  shows "vm_path G P v0"
-  using assms by unfold_locales blast
-
-context vm_path begin
 lemma P_LCons: "P = LCons v0 (ltl P)" using lhd_LCons_ltl[OF P_not_null] by simp
 
 lemma P_len [simp]: "enat 0 < llength P" by (simp add: lnull_0_llength)
@@ -601,7 +560,7 @@ lemma P_no_deadend_v0: "\<not>lnull (ltl P) \<Longrightarrow> \<not>deadend v0"
   by (metis P_LCons P_valid edges_are_in_V(2) not_lnull_conv valid_path_edges')
 lemma P_no_deadend_v0_llength: "enat (Suc n) < llength P \<Longrightarrow> \<not>deadend v0"
   by (metis P_0 P_len P_valid enat_ord_simps(2) not_less_eq valid_path_ends_on_deadend zero_less_Suc)
-lemma P_ends_on_deadend: "enat n < llength P \<Longrightarrow> deadend (P $ n) \<Longrightarrow> enat (Suc n) = llength P"
+lemma P_ends_on_deadend: "\<lbrakk> enat n < llength P; deadend (P $ n) \<rbrakk> \<Longrightarrow> enat (Suc n) = llength P"
   using P_valid valid_path_ends_on_deadend by blast
 
 lemma P_lnull_ltl_deadend_v0: "lnull (ltl P) \<Longrightarrow> deadend v0"
@@ -620,8 +579,8 @@ lemma Pdrop_maximal [simp]: "maximal_path (ldropn n P)" using maximal_drop by au
 lemma prefix_valid [simp]: "valid_path (ltake n P)"
   using valid_path_prefix[of P] by auto
 
-lemma extension_valid [simp]: "v \<rightarrow> v0 \<Longrightarrow> valid_path (LCons v P)"
-  by (simp add: valid_path_cons')
+lemma extension_valid [simp]: "v\<rightarrow>v0 \<Longrightarrow> valid_path (LCons v P)"
+  using P_not_null P_v0 P_valid valid_path_cons by blast
 lemma extension_maximal [simp]: "maximal_path (LCons v P)"
   by (simp add: maximal_path_cons)
 lemma lappend_maximal [simp]: "maximal_path (lappend P' P)"
@@ -637,9 +596,6 @@ lemma finite_llast_deadend [simp]: "lfinite P \<Longrightarrow> deadend (llast P
   using P_maximal P_not_null maximal_ends_on_deadend by blast
 lemma finite_llast_V [simp]: "lfinite P \<Longrightarrow> llast P \<in> V"
   using P_not_null lfinite_lset lset_P_V by blast
-
-lemma suc_n_deadend: "enat (Suc n) = llength P \<Longrightarrow> deadend (P $ n)"
-  by (metis P_maximal enat_ord_simps(2) lessI maximal_path_impl1 min.strict_order_iff)
 
 end
 

@@ -1,3 +1,13 @@
+section {* Well-ordered strategy *}
+
+text {*
+  Constructing a uniform strategy from a set of strategies on a set of nodes often works by
+  well-ordering the strategies and then choosing the minimal strategy on each node.
+  The following locale formalizes this idea.
+
+  Later we will use this to construct uniform attractor and winning strategies.
+*}
+
 theory Well_Ordered_Strategy
 imports
   Main
@@ -101,7 +111,7 @@ lemma path_strategies_in_Strategies:
 lemma path_strategies_good:
   assumes "lset P \<subseteq> S" "enat n < llength P"
   shows "path_strategies P $ n \<in> good (P $ n)"
-  by (simp add: path_strategies_def assms choose_good lset_lnth)
+  by (simp add: path_strategies_def assms choose_good lset_lnth_member)
 
 lemma path_strategies_strategy:
   assumes "lset P \<subseteq> S" "enat n < llength P"
@@ -183,7 +193,7 @@ proof-
   then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set"
     using wfE_min[of "r - Id" _ \<sigma>_set] by auto
   obtain n where n: "path_strategies P $ n = \<sigma>'"
-    using \<sigma>'(1) path_set_at[of \<sigma>'] unfolding \<sigma>_set_def by blast
+    using \<sigma>'(1) lset_lnth[of \<sigma>'] unfolding \<sigma>_set_def by blast
   {
     fix m assume "n \<le> m"
     have "path_strategies P $ n = path_strategies P $ m" proof (rule ccontr)

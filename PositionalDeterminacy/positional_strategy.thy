@@ -1,3 +1,5 @@
+section {* Positional determinacy of parity games *}
+
 theory positional_strategy
 imports
   Main
@@ -5,6 +7,15 @@ imports
 begin
 
 context ParityGame begin
+
+subsection {* Induction step for the proof of positional determinacy *}
+
+text {*
+  The proof of positional determinacy is by induction over the size of the finite set
+  @{term "\<omega> ` V"}, the set of priorities.  The following lemma is the induction step.
+
+  For now, we assume there are no deadends in the graph.  Later we will get rid of this assumption.
+*}
 
 lemma positional_strategy_induction_step:
   assumes "v \<in> V"
@@ -223,7 +234,7 @@ proof-
                 attractor because there is an edge, which is a contradiction to P $ n' \<in> V'. *)
                 assume "P $ n \<notin> W1"
                 hence "P $ n \<in> attractor p K"
-                  using V_decomp n(2) P_valid n(1) valid_path_finite_in_V' by blast
+                  using V_decomp n(2) P_valid n(1) valid_path_finite_in_V by blast
                 moreover have "P $ n' \<rightarrow> P $ n" using P_valid n' n(1) valid_path_impl1 by blast
                 ultimately have "P $ n' \<in> attractor p K" using `P $ n' \<in> VV p` attractor_set_VVp by blast
                 thus False using `P $ n' \<in> V'` V'_def by blast
@@ -376,7 +387,7 @@ proof-
                     moreover hence "enat i < llength P'"
                       using n(1) dual_order.strict_trans enat_ord_simps(2) by blast
                     moreover have "lset (ltake (enat i) P') \<subseteq> lset (ltake (enat n) P')"
-                      using `i < n` lprefix_lset' by simp
+                      using `i < n` lset_ltake_prefix by simp
                     ultimately show "P' $ i \<notin> K" using n by blast
                   qed
                   have "v \<notin> K" using * by blast
@@ -385,11 +396,11 @@ proof-
                   hence "Suc 0 \<noteq> n" using n(1) P_Suc_0 by auto
                   hence "Suc (Suc 0) \<le> n" using `n \<noteq> 0` by presburger
                   hence "lset (ltake (enat (Suc (Suc 0))) P') \<subseteq> attractor p K"
-                    using n by (meson enat_ord_simps(1) lprefix_lset' subset_trans)
+                    using n by (meson enat_ord_simps(1) lset_ltake_prefix subset_trans)
                   hence "lset (ltake (eSuc (eSuc 0)) P') \<subseteq> attractor p K"
                     by (simp add: eSuc_enat zero_enat_def)
                   hence "ltake (eSuc (eSuc 0)) P' $ Suc 0 \<in> attractor p K"
-                    by (metis Ptl_not_null enat_ltl_Suc i0_less llength_eq_0 lset_lnth
+                    by (metis Ptl_not_null enat_ltl_Suc i0_less llength_eq_0 lset_lnth_member
                               ltake.disc(2) ltake_ltl zero_enat_def zero_ne_eSuc)
                   hence "w0 \<in> attractor p K" using P_Suc_0
                     by (metis P_not_null Ptl_not_null lnth_0_conv_lhd lnth_ltl ltake.disc(2)
@@ -479,14 +490,14 @@ proof-
           hence *: "\<And>n. \<not>lset (ldropn n P) \<subseteq> V'" by blast
           have *: "\<And>n. \<exists>k \<ge> n. P $ k \<notin> V'" proof-
             fix n
-            obtain k where k: "ldropn n P $ k \<notin> V'" using * by (metis path_set_at subsetI)
+            obtain k where k: "ldropn n P $ k \<notin> V'" using * by (metis lset_lnth subsetI)
             hence "P $ k + n \<notin> V'" using lnth_ldropn[of n k P] infinite_small_llength `\<not>lfinite P` by metis
             thus "\<exists>k \<ge> n. P $ k \<notin> V'" using le_add2 by blast
           qed
           have "\<And>n. \<exists>k \<ge> n. P $ k \<in> attractor p K" proof-
             fix n obtain k where "k \<ge> n" "P $ k \<notin> V'" using * by blast
             thus "\<exists>k \<ge> n. P $ k \<in> attractor p K" using `\<not>lfinite P` `lset P \<subseteq> V - W1`
-              by (metis DiffI U_def V'_def llist_set_nth)
+              by (metis DiffI U_def V'_def lset_nth_member_inf)
           qed
           moreover have "\<And>k. P $ k \<in> attractor p K \<Longrightarrow> \<exists>n \<ge> k. P $ n \<in> K" proof-
             fix k
@@ -543,8 +554,13 @@ theorem positional_strategy_exists_without_deadends:
   by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
      (rule ParityGame.positional_strategy_induction_step, simp_all)
 
-(* Prove a stronger version of the previous theorem: Allow deadends.
-   This is the main theorem. *)
+
+subsection {* Positional determinacy *}
+
+text {*
+  Prove a stronger version of the previous theorem: Allow deadends.
+  This is the main theorem.
+*}
 theorem positional_strategy_exists:
   assumes "v0 \<in> V"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v0"
@@ -669,8 +685,6 @@ proof-
         interpret vmc_path_no_deadend G P v0 p \<sigma>'
           using V'_no_deadends' `v0 \<in> V'` by unfold_locales
         assume contra: "\<not>winning_path p P"
-        have contra': "winning_path p** P"
-          by (simp add: contra paths_are_winning_for_exactly_one_player)
 
         have "lset P \<inter> A p = {}" proof (rule ccontr)
           assume "lset P \<inter> A p \<noteq> {}"
@@ -721,7 +735,7 @@ proof-
                     thus False using `P.w0 \<in> A p**` unfolding V'_def by (cases p) auto
                   qed
                   ultimately have "v0 \<in> A p**"
-                    using A_def `v0\<rightarrow>P.w0` attractor_outside by blast
+                    using A_def `v0\<rightarrow>P.w0` attractor_set_VVp by blast
                   thus False using `v0 \<in> V'` unfolding V'_def by (cases p) auto
                 qed
                 ultimately show "P.w0 \<in> V'" unfolding V'_def using A_def by (cases p) auto
