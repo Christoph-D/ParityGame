@@ -159,10 +159,11 @@ proof-
   ultimately show ?thesis using valid_path_equiv by blast
 qed
 
+text {* A valid path is still valid in a supergame. *}
 lemma valid_path_supergame:
   assumes "valid_path P" and G': "Digraph G'" "V \<subseteq> V\<^bsub>G'\<^esub>" "E \<subseteq> E\<^bsub>G'\<^esub>"
   shows "Digraph.valid_path G' P"
-using assms(1,3)
+using `valid_path P`
 proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'`, case_names IH])
   case (IH P)
   show ?case proof (cases)
@@ -170,15 +171,12 @@ proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF `Digraph G'
     then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
     show ?thesis proof (cases)
       assume "P' = LNil"
-      thus ?thesis using IH valid_path_cons_simp P' by auto
+      thus ?thesis using IH G'(2) valid_path_cons_simp P' by auto
     next
       assume "P' \<noteq> LNil"
       then obtain w Ps where *: "P = LCons v (LCons w Ps)" using P' llist.exhaust by auto
-      hence "v \<in> V\<^bsub>G'\<^esub>" using IH valid_path_cons_simp by blast
-      moreover have "w \<in> V\<^bsub>G'\<^esub>" using IH valid_path_ltl valid_path_cons_simp
-        by (metis "*" subsetCE valid_path_ltl')
-      moreover have "v \<rightarrow>\<^bsub>G'\<^esub> w" using IH(1) `E \<subseteq> E\<^bsub>G'\<^esub>` * valid_path_edges' by blast
-      ultimately show ?thesis using * IH(1) assms(3) valid_path_cons_simp by auto
+      moreover hence "v \<rightarrow>\<^bsub>G'\<^esub> w" using IH G'(3) valid_path_edges' by blast
+      ultimately show ?thesis using IH G'(2) valid_path_cons_simp by auto
     qed
   qed simp
 qed

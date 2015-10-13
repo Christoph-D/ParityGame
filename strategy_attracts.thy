@@ -66,6 +66,21 @@ proof-
   ultimately show ?thesis unfolding visits_via_def P'_def by blast
 qed
 
+lemma (in vmc_path_no_deadend) visits_via_ltl:
+  assumes "visits_via P A W"
+    and v0: "v0 \<notin> W"
+  shows "visits_via (ltl P) A W"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
+    using assms(1)[unfolded visits_via_def] by blast
+  have "n \<noteq> 0" using v0 n(2) DiffE by force
+  then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
+  have "\<exists>n. enat n < llength (ltl P) \<and> (ltl P) $ n \<in> W \<and> lset (ltake (enat n) (ltl P)) \<subseteq> A"
+    apply (rule exI[of _ n'])
+    using n n' enat_Suc_ltl[of n' P] P_lnth_Suc lset_ltake_ltl[of n' P] by auto
+  thus ?thesis using visits_via_def by blast
+qed
+
 lemma (in vmc_path) strategy_attracts_viaE:
   assumes "strategy_attracts_via p \<sigma> v0 A W"
   shows "visits_via P A W"
@@ -144,21 +159,6 @@ proof (rule strategy_attracts_viaI)
   show "visits_via P A W" using visits_via_trivial using `v0 \<in> W` by blast
 qed
 
-lemma (in vmc_path_no_deadend) visits_via_successor:
-  assumes "visits_via P A W"
-    and v0: "v0 \<notin> W"
-  shows "visits_via (ltl P) A W"
-proof-
-  obtain n where n: "enat n < llength P" "P $ n \<in> W" "lset (ltake (enat n) P) \<subseteq> A"
-    using assms(1)[unfolded visits_via_def] by blast
-  have "n \<noteq> 0" using v0 n(2) DiffE by force
-  then obtain n' where n': "Suc n' = n" using nat.exhaust by metis
-  have "\<exists>n. enat n < llength (ltl P) \<and> (ltl P) $ n \<in> W \<and> lset (ltake (enat n) (ltl P)) \<subseteq> A"
-    apply (rule exI[of _ n'])
-    using n n' enat_Suc_ltl[of n' P] P_lnth_Suc lset_ltake_ltl[of n' P] by auto
-  thus ?thesis using visits_via_def by blast
-qed
-
 lemma strategy_attracts_via_successor:
   assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts_via p \<sigma> v0 A W"
     and v0: "v0 \<in> A - W"
@@ -172,7 +172,7 @@ proof (rule strategy_attracts_viaI)
     using extension_valid_maximal_conforming w0 by blast
   interpret P': vmc_path_no_deadend G P' v0 p \<sigma> using `v0\<rightarrow>w0` by unfold_locales blast
   have "visits_via P' A W" using \<sigma>(2) P'.strategy_attracts_viaE by blast
-  thus "visits_via P A W" using P'.visits_via_successor v0 by simp
+  thus "visits_via P A W" using P'.visits_via_ltl v0 by simp
 qed
 
 lemma strategy_attracts_VVp:

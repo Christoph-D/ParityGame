@@ -398,6 +398,7 @@ lemma (in ParityGame) valid_maximal_conforming_path_0:
 locale vmc_path_no_deadend = vmc_path +
   assumes v0_no_deadend [simp]: "\<not>deadend v0"
 begin
+lemma vmc_path_no_deadend [simp]: "vmc_path_no_deadend G P v0 p \<sigma>" by unfold_locales
 definition "w0 \<equiv> lhd (ltl P)"
 
 lemma Ptl_not_null [simp]: "\<not>lnull (ltl P)"

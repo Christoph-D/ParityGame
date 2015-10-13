@@ -7,44 +7,41 @@ begin
 
 context ParityGame begin
 
-(*
-lemma (in WellOrderedStrategies) well_ordered_path_lset_induction
-  [consumes 1, case_names base VVp VVpstar]:
-  assumes
-    vmc_path: "vmc_path G P' v0 p well_ordered_strategy"
+lemma (in vmc_path) path_lset_induction [consumes 1, case_names base step]:
+  assumes "Q P"
     and base: "v0 \<in> S"
-    and VVp: "\<And>n. \<lbrakk> enat n < llength P; P $ n \<in> S; P $ n \<in> VV p \<rbrakk> \<Longrightarrow> choose v v \<in> S"
-    and VVpstar: "\<And>n. \<lbrakk> enat n < llength P; P $ n \<in> S; \<not>deadend (P $ n); P $ n \<notin> VV p \<rbrakk> \<Longrightarrow> P $ Suc n \<in> S"
-  shows "lset P' \<subseteq> S"
+    and step_assumption: "\<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S; Q P \<rbrakk>
+      \<Longrightarrow> Q (ltl P) \<and> lhd (ltl P) \<in> S"
+  shows "lset P \<subseteq> S"
 proof
-  fix v assume "v \<in> lset P'"
-  thus "v \<in> S" using assms proof (induct arbitrary: v0 rule: llist_set_induct)
+  fix v assume "v \<in> lset P"
+  thus "v \<in> S" using vmc_path assms(1,2) proof (induct arbitrary: v0 rule: llist_set_induct)
     case (find P)
-    then interpret vmc_path G P v0 p well_ordered_strategy by blast
-    show ?case by (simp add: find.prems(2))
+    then interpret vmc_path G P v0 p \<sigma> by blast
+    show ?case by (simp add: find.prems(3))
   next
     case (step P v)
-    then interpret vmc_path G P v0 p well_ordered_strategy by blast
+    then interpret vmc_path G P v0 p \<sigma> by blast
     show ?case proof (cases)
       assume "lnull (ltl P)"
       hence "P = LCons v LNil" by (metis llist.disc(2) lset_cases step.hyps(2))
-      thus ?thesis using step.prems(2) P_LCons by blast
+      thus ?thesis using step.prems(3) P_LCons by blast
     next
       assume "\<not>lnull (ltl P)"
-      then interpret vmc_path_no_deadend G P v0 p well_ordered_strategy
+      then interpret vmc_path_no_deadend G P v0 p \<sigma>
         using vmc_path_lnull_ltl_no_deadend by blast
-      have "v0 \<in> lset P" by simp
-      { assume "v0 \<in> VV p"
-        hence "well_ordered_strategy v0 = w0" using v0_conforms by blast
-        hence "choose v0 v0 = w0" by (simp add: step.prems(2) well_ordered_strategy_def)
-        hence "w0 \<in> S" using step.prems(3)[OF `v0 \<in> lset P` `v0 \<in> S` `v0 \<in> VV p`] by simp
-      }
-      hence "w0 \<in> S" using `v0\<rightarrow>w0` step.prems(4) `v0 \<in> lset P` `v0 \<in> S` by blast
-      thus "v \<in> S" using step.hyps(3)[OF vmc_path_ltl] step.prems(3,4) sorry
+      show "v \<in> S"
+        using step.hyps(3)
+              step_assumption[OF vmc_path_no_deadend `v0 \<in> S` `Q P`, folded w0_def]
+              vmc_path_ltl
+        by blast
     qed
   qed
 qed
-*)
+(* path_lset_induction without the Q predicate. *)
+corollary (in vmc_path) path_lset_induction_simple [case_names base step]:
+  "\<lbrakk> v0 \<in> S; \<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S \<rbrakk> \<Longrightarrow> lhd (ltl P) \<in> S \<rbrakk> \<Longrightarrow> lset P \<subseteq> S"
+  using path_lset_induction[of "\<lambda>P. True"] by blast
 
 lemma merge_attractor_strategies:
   assumes "S \<subseteq> V"
@@ -74,54 +71,35 @@ proof-
 
   {
     fix v0 assume "v0 \<in> S"
-    fix P assume "vmc_path G P v0 p well_ordered_strategy"
+    fix P assume P: "vmc_path G P v0 p well_ordered_strategy"
     then interpret vmc_path G P v0 p well_ordered_strategy .
     have "visits_via P S W" proof (rule ccontr)
       assume contra: "\<not>visits_via P S W"
-      have "lset P \<subseteq> S - W" proof (rule ccontr)
-        assume "\<not>lset P \<subseteq> S - W"
-        hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> S - W" by (meson lset_subset)
-        then obtain n where n:
-          "enat n < llength P" "P $ n \<notin> S - W"
-          "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> S - W)"
-          using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> S - W"] by blast
-        from n(1) n(3) have "\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W" using dual_order.strict_trans enat_ord_simps(2) by blast
-        hence "lset (ltake (enat n) P) \<subseteq> S - W" using lset_ltake by blast
-        hence "P $ n \<notin> W" using contra[unfolded visits_via_def] n(1) by blast
-        moreover have "P $ n \<notin> V - S - W" proof
-          assume "P $ n \<in> V - S - W"
-          hence "n \<noteq> 0" using `v0 \<in> S` n(2) P_0 by force
-          then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
-          hence "P $ n' \<in> S - W" using `\<And>i. i < n \<Longrightarrow> P $ i \<in> S - W` by blast
-          def [simp]: P' \<equiv> "ldropn n' P"
-          def [simp]: \<sigma>' \<equiv> "choose (P $ n')"
-          hence \<sigma>': "strategy p \<sigma>'" "strategy_attracts_via p \<sigma>' (P $ n') S W"
-            using `P $ n' \<in> S - W` choose_good good_def \<sigma>'_def by blast+
-          have "enat n' < llength P" using n(1) n' using dual_order.strict_trans enat_ord_simps(2) by blast
-          show False proof (cases)
-            assume "P $ n' \<in> VV p"
-            hence "well_ordered_strategy (P $ n') \<in> S \<union> W"
-              using \<sigma>'(1) \<sigma>'(2) `P $ n' \<in> S - W` assms(1) assms(2)
-                strategy_attracts_VVp S_W_no_deadends well_ordered_strategy_def by auto
-            moreover have "well_ordered_strategy (P $ n') = P $ n" proof-
-              have "enat (Suc n') < llength P" using n' n(1) by simp
-              hence "well_ordered_strategy (P $ n') = P $ Suc n'"
-                using `P $ n' \<in> VV p` vmc_path_conforms by blast
-              thus ?thesis using n' by simp
-            qed
-            ultimately show False using `P $ n \<in> V - S - W` by auto
-          next
-            assume "P $ n' \<notin> VV p"
-            hence "\<not>(P $ n')\<rightarrow>(P $ n)" using strategy_attracts_VVpstar
-              \<sigma>'(1) \<sigma>'(2) `P $ n \<in> V - S - W` `P $ n' \<in> S - W` assms(1) assms(2) by blast
-            hence "\<not>(P $ n')\<rightarrow>(P $ Suc n')" using n' by simp
-            moreover have "enat (Suc n') < llength P" using n' n(1) by simp
-            ultimately show False using P_valid `enat n' < llength P` valid_path_impl1 by blast
-          qed
-        qed
-        moreover have "P $ n \<in> V" using n(1) P_valid valid_path_finite_in_V' by blast
-        ultimately show False using n(2) by blast
+
+      hence "lset P \<subseteq> S - W" proof (induct rule: path_lset_induction)
+        case base
+        show "v0 \<in> S - W" using `v0 \<in> S` contra visits_via_trivial by blast
+      next
+        case (step P v0)
+        interpret vmc_path_no_deadend G P v0 p well_ordered_strategy using step.hyps(1) .
+        have "insert v0 S = S" using step.hyps(2) by blast
+        hence "\<not>visits_via (ltl P) S W"
+          using visits_via_LCons[of "ltl P" S W v0, folded P_LCons] step.hyps(3) by auto
+        moreover hence "w0 \<notin> W" using vmc_path.visits_via_trivial[OF vmc_path_ltl] by blast
+        moreover have "w0 \<in> S \<union> W" proof (cases)
+          assume "v0 \<in> VV p"
+          hence "well_ordered_strategy v0 = w0" using v0_conforms by blast
+          hence "choose v0 v0 = w0" using step.hyps(2) well_ordered_strategy_def by auto
+          moreover have "strategy_attracts_via p (choose v0) v0 S W"
+            using choose_good good_def step.hyps(2) by blast
+          ultimately show ?thesis
+            by (metis strategy_attracts_via_successor strategy_attracts_via_v0
+                      choose_strategy step.hyps(2) `v0\<rightarrow>w0` w0_V)
+        qed (metis DiffD1 assms(2) step.hyps(2) strategy_attracts_via_successor
+                   strategy_attracts_via_v0 `v0\<rightarrow>w0` w0_V)
+        ultimately show ?case using w0_def by auto
       qed
+
       have "\<not>lfinite P" proof
         assume "lfinite P"
         hence "deadend (llast P)" using P_maximal `\<not>lnull P` maximal_ends_on_deadend by blast
@@ -155,8 +133,10 @@ proof-
   thus ?thesis using strategy_attractsI[of S] well_ordered_strategy_valid by blast
 qed
 
+(* Let S be the winning region of player p.  Then there exists a uniform winning strategy on S. *)
 lemma merge_winning_strategies:
-  assumes "S \<subseteq> V" and strategies_ex: "\<And>v. v \<in> V \<Longrightarrow> v \<in> S \<longleftrightarrow> (\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v)"
+  assumes "S \<subseteq> V"
+    and strategies_ex: "\<And>v. v \<in> V \<Longrightarrow> v \<in> S \<longleftrightarrow> (\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v)"
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> (\<forall>v \<in> S. winning_strategy p \<sigma> v)"
 proof-
   def good \<equiv> "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
@@ -185,60 +165,37 @@ proof-
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
   qed (insert `S \<subseteq> V` r)
 
-  have S_closed: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> w \<in> S" proof-
-    fix v w \<sigma> assume "v \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
-    hence "\<sigma> \<in> good w" using strategies_continue by blast
-    thus "w \<in> S" using strategies_continue good_def strategies_ex `v\<rightarrow>w` by blast
-  qed
-
   {
     fix v0 assume "v0 \<in> S"
     fix P assume P: "vmc_path G P v0 p well_ordered_strategy"
     then interpret vmc_path G P v0 p well_ordered_strategy .
+
+    have "lset P \<subseteq> S" proof (induct rule: path_lset_induction_simple)
+      case (step P v0)
+      interpret vmc_path_no_deadend G P v0 p well_ordered_strategy using step.hyps(1) .
+      { assume "v0 \<in> VV p"
+        hence "well_ordered_strategy v0 = w0" using v0_conforms by blast
+        hence "choose v0 v0 = w0" by (simp add: step.hyps(2) well_ordered_strategy_def)
+      }
+      hence "choose v0 \<in> good w0" using strategies_continue choose_good step.hyps(2) by simp
+      thus ?case unfolding good_def using strategies_ex `w0 \<in> V` w0_def by auto
+    qed (insert `v0 \<in> S`)
+
     have "winning_path p P" proof (rule ccontr)
       assume contra: "\<not>winning_path p P"
-      hence "winning_path p** P" using paths_are_winning_for_exactly_one_player P_valid by blast
-      have "lset P \<subseteq> S" proof
-        fix v assume "v \<in> lset P"
-        thus "v \<in> S" using `v0 \<in> S` P `winning_path p** P` proof (induct arbitrary: v0 rule: llist_set_induct)
-          case (find P)
-          then interpret vmc_path G P v0 p well_ordered_strategy by blast
-          show ?case by (simp add: find.prems(1))
-        next
-          case (step P v)
-          then interpret vmc_path G P v0 p well_ordered_strategy by blast
-          show ?case proof (cases)
-            assume "lnull (ltl P)"
-            hence "P = LCons v LNil" by (metis llist.disc(2) lset_cases step.hyps(2))
-            thus ?thesis using step.prems(1) P_LCons by blast
-          next
-            assume "\<not>lnull (ltl P)"
-            then interpret vmc_path_no_deadend G P v0 p well_ordered_strategy
-              using vmc_path_lnull_ltl_no_deadend by blast
-            { assume "v0 \<in> VV p"
-              hence "well_ordered_strategy v0 = w0" using v0_conforms by blast
-              hence "choose v0 v0 = w0" by (simp add: v0_conforms step.prems(1) well_ordered_strategy_def)
-            }
-            hence "w0 \<in> S" using S_closed `v0\<rightarrow>w0` choose_good step.prems(1) by blast
-            moreover have "vmc_path G (ltl P) w0 p well_ordered_strategy" using vmc_path_ltl by blast
-            moreover have "winning_path p** (ltl P)"
-              using `\<not>lnull P` `\<not>lnull (ltl P)` winning_path_ltl step.prems(3) by blast
-            ultimately show "v \<in> S" using step.hyps(3) `\<not>lnull (ltl P)` by blast
-          qed
-        qed
-      qed
+
       have "\<not>lfinite P" proof
         assume "lfinite P"
-        hence "deadend (llast P)" using P_maximal `\<not>lnull P` maximal_ends_on_deadend by blast
+        hence "deadend (llast P)" using maximal_ends_on_deadend by simp
         moreover have "llast P \<in> S" using `lset P \<subseteq> S` `\<not>lnull P` `lfinite P` lfinite_lset by blast
-        moreover have "llast P \<in> VV p" using `winning_path p** P` `lfinite P` `\<not>lnull P`
+        moreover have "llast P \<in> VV p"
+          using contra paths_are_winning_for_exactly_one_player `lfinite P`
           unfolding winning_path_def by simp
         ultimately show False using no_VVp_deadends by blast
       qed
 
       obtain n where n: "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
-        using path_eventually_conforms_to_\<sigma>_map_n[OF `lset P \<subseteq> S` P_valid P_conforms]
-          by blast
+        using path_eventually_conforms_to_\<sigma>_map_n[OF `lset P \<subseteq> S` P_valid P_conforms] by blast
       def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
       interpret P': vmc_path G P' "lhd P'" p \<sigma>' proof
@@ -256,8 +213,7 @@ proof-
       qed
       ultimately have "winning_path p P'" unfolding winning_strategy_def using P'.vmc_path by blast
       moreover have "\<not>lfinite P'" using `\<not>lfinite P` P'_def by simp
-      ultimately show False
-        using contra winning_path_drop_add[OF P_valid] by auto
+      ultimately show False using contra winning_path_drop_add[OF P_valid] by auto
     qed
   }
   thus ?thesis unfolding winning_strategy_def using well_ordered_strategy_valid by auto
