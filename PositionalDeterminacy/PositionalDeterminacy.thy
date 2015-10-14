@@ -263,7 +263,7 @@ proof-
                 next
                   text {*
                     @{term P} leaves @{term V'} to enter @{term "attractor p K"}.
-                    Then @{term "P $ n'"} must already be in the attractor because there is an edge,
+                    Then @{term v0} must already be in the attractor because there is an edge,
                     which is a contradiction to @{term "v0 \<in> V'"}. *}
                   assume "w0 \<notin> W1"
                   hence "w0 \<in> attractor p K" using V_decomp `w0 \<notin> V'` w0_V by blast

@@ -37,7 +37,8 @@ coinductive (in ParityGame) path_conforms_with_strategy
 
 text {*
   Define a locale for valid maximal paths that conform to a given strategy, because we need
-  this concept quite often.
+  this concept quite often.  However, we are not yet able to add interesting lemmas to this locale.
+  We will do this at the end of this section, where we have more lemmas available.
 *}
 locale vmc_path = vm_path +
   fixes p \<sigma> assumes P_conforms [simp]: "path_conforms_with_strategy p P \<sigma>"
@@ -264,7 +265,7 @@ subsection {* Greedy conforming path *}
 
 text {*
   Given a starting point and two strategies, there exists a path conforming to both strategies.
-  Here we define this path.  In particular, this also shows that the assumptions of the locales
+  Here we define this path.  Incidentally, this also shows that the assumptions of the locales
   @{text vmc_path} and @{text vmc2_path} are satisfiable.
 
   We are only interested in proving the existence of such a path, so the definition
@@ -416,6 +417,10 @@ end
 
 end
 
+subsection {* Valid maximal conforming paths *}
+
+text {* Now is the time to add some lemmas to the locale @{text "vmc_path"}. *}
+
 context vmc_path begin
 lemma Ptl_conforms [simp]: "path_conforms_with_strategy p (ltl P) \<sigma>"
   using P_conforms path_conforms_with_strategy_ltl by blast
@@ -450,8 +455,8 @@ lemma (in ParityGame) valid_maximal_conforming_path_0:
 subsection {* Valid maximal conforming paths with one edge *}
 
 text {*
-  We define a locale for valid maximal conforming paths that contain at least one edge,
-  This is equivalent to the first node being no deadend.  This assumption seems simple, but we use
+  We define a locale for valid maximal conforming paths that contain at least one edge.
+  This is equivalent to the first vertex being no deadend.  This assumption seems simple, but we use
   it in several places because it allows us to prove much stronger lemmas about @{term "ltl P"}
   compared to @{term "vmc_path"}.
 *}
