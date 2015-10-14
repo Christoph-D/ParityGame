@@ -44,13 +44,16 @@ proof-
     have "G'.VV p = V' \<inter> VV p" unfolding G'_def using subgame_VV by simp
 
     have V_decomp: "V = attractor p K \<union> V' \<union> W1" proof-
-      have "V - W1 \<subseteq> attractor p K \<union> V'" unfolding V'_def U_def by auto
-      hence "V \<subseteq> attractor p K \<union> V' \<union> W1" by blast
-      moreover have "attractor p K \<subseteq> V" by (metis Diff_subset K_def U_def attractor_is_bounded_by_V inf_le1 subset_trans)
-      ultimately show ?thesis unfolding W1_def using `V' \<subseteq> V` by blast
+      have "V \<subseteq> attractor p K \<union> V' \<union> W1"
+        unfolding V'_def U_def by blast
+      moreover have "attractor p K \<subseteq> V"
+        using attractor_is_bounded_by_V[of K] unfolding K_def U_def by blast
+      ultimately show ?thesis
+        unfolding W1_def using `V' \<subseteq> V` by blast
     qed
 
-    obtain \<sigma>W1 where \<sigma>W1: "strategy p** \<sigma>W1" "\<And>v. v \<in> W1 \<Longrightarrow> winning_strategy p** \<sigma>W1 v"
+    obtain \<sigma>W1 where \<sigma>W1:
+      "strategy p** \<sigma>W1" "\<And>v. v \<in> W1 \<Longrightarrow> winning_strategy p** \<sigma>W1 v"
       using merge_winning_strategies[of W1 "p**"] W1_def by fastforce
 
     have G'_no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>G'.deadend v" proof-
@@ -61,7 +64,8 @@ proof-
           fix w assume "v\<rightarrow>w"
           { assume "w \<in> V'"
             hence "w \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` by blast
-            moreover hence "v \<rightarrow>\<^bsub>G'\<^esub> w" unfolding G'_def using `V' \<subseteq> V` `v \<in> V\<^bsub>G'\<^esub>` `v\<rightarrow>w` by simp
+            moreover hence "v \<rightarrow>\<^bsub>G'\<^esub> w" unfolding G'_def
+              using `V' \<subseteq> V` `v \<in> V\<^bsub>G'\<^esub>` `v\<rightarrow>w` by simp
             ultimately have False using `G'.deadend v` by blast
           }
           thus "w \<notin> V'" by blast
@@ -82,8 +86,10 @@ proof-
             hence "w \<notin> attractor p K" by blast
             hence "w \<in> W1" using not_in_V' V_decomp `v\<rightarrow>w` by blast
           }
-          (* All successors of v point to W1, so v \<in> W1 *)
-          hence "winning_strategy p** \<sigma>W1 v" using strategy_extends_backwards_VVp[of v p \<sigma>W1] \<sigma>W1 `v \<in> VV p` by blast
+          text {* All successors of @{term v} point to @{term W1}, so we have @{term "v \<in> W1"}. *}
+          hence "winning_strategy p** \<sigma>W1 v"
+            using strategy_extends_backwards_VVp \<sigma>W1 `v \<in> VV p`
+            by blast
           hence False using W1_def \<sigma>W1(1) `v \<in> VV p` `v \<notin> W1` by blast
         }
         moreover {
@@ -107,7 +113,8 @@ proof-
             hence "w \<notin> W1" by blast
             hence "w \<in> attractor p K" using not_in_V' V_decomp `v\<rightarrow>w` by blast
           }
-          (* All successors of v point to attractor p K, so v \<in> attractor p K *)
+          text {* All successors of @{term v} point to @{term "attractor p K"},
+            so we have @{term "v \<in> attractor p K"}. *}
           hence "v \<in> attractor p K" using `v \<in> VV p**` attractor_set_VVpstar `\<not>deadend v` by blast
           hence False using `v \<in> V'` V'_def by blast
         }
@@ -119,7 +126,7 @@ proof-
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
 
-      (* Apply the induction hypothesis to get the winning regions of G'. *)
+      text {* Apply the induction hypothesis to get the winning regions of @{term G'}. *}
       have G'_winning_regions: "\<exists>p \<sigma>. G'.strategy p \<sigma> \<and> G'.winning_strategy p \<sigma> v" proof-
         have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
           { assume "min_prio \<in> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>"
@@ -137,7 +144,7 @@ proof-
         thus ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` G'_no_deadends G'.ParityGame by blast
       qed
 
-      (* It turns out the winning region of player p** is empty. *)
+      text {* It turns out the winning region of player @{term "p**"} is empty. *}
       have "\<exists>\<sigma>. G'.strategy p \<sigma> \<and> G'.winning_strategy p \<sigma> v" proof (rule ccontr)
         assume "\<not>?thesis"
         moreover obtain p' \<sigma> where p': "G'.strategy p' \<sigma>" "G'.winning_strategy p' \<sigma> v"
@@ -204,10 +211,14 @@ proof-
                 thus False using n(2) by blast
               qed
               show False proof (cases)
-                (* P leaves V' to enter W1.  This is fatal for player p. *)
+                text {*
+                  @{term P} leaves @{term V'} to enter @{term W1}.
+                  This is fatal for player @{term p}. *}
                 assume "P $ n \<in> W1"
                 def P' \<equiv> "ldropn n P"
-                (* P' is winning in W1 because \<sigma>' is \<sigma>W1 on W1. *)
+                text {*
+                  @{term P'} is winning in @{term W1} because @{term \<sigma>'} is @{term \<sigma>W1}
+                  on @{term W1}. *}
                 interpret vmc_path G P' "P $ n" "p**" \<sigma>'
                   unfolding P'_def using n(1) vmc_path_ldropn by auto
                 have "path_conforms_with_strategy p** P' \<sigma>W1" proof-
@@ -230,8 +241,10 @@ proof-
                   unfolding P'_def using winning_path_drop_add[OF `valid_path P`] n(1) by blast
                 thus False using `\<not>winning_path p** P` by blast
               next
-                (* P leaves V' to enter attractor p K.  Then P $ n' must already be in the
-                attractor because there is an edge, which is a contradiction to P $ n' \<in> V'. *)
+                text {*
+                  @{term P} leaves @{term V'} to enter @{term "attractor p K"}.
+                  Then @{term "P $ n'"} must already be in the attractor because there is an edge,
+                  which is a contradiction to @{term "P $ n' \<in> V'"}. *}
                 assume "P $ n \<notin> W1"
                 hence "P $ n \<in> attractor p K"
                   using V_decomp n(2) P_valid n(1) valid_path_finite_in_V by blast
@@ -239,7 +252,8 @@ proof-
                 ultimately have "P $ n' \<in> attractor p K" using `P $ n' \<in> VV p` attractor_set_VVp by blast
                 thus False using `P $ n' \<in> V'` V'_def by blast
               qed
-            qed (* lset P \<subseteq> V' *)
+            qed
+            text {* This concludes the proof of @{term "lset P \<subseteq> V'"}. *}
             hence "G'.valid_path P" using subgame_valid_path by simp
             moreover have "G'.maximal_path P"
               using `lset P \<subseteq> V'` subgame_maximal_path `V' \<subseteq> V` by simp
