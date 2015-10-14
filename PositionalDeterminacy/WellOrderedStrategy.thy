@@ -8,10 +8,10 @@ text {*
   Later we will use this to construct uniform attractor and winning strategies.
 *}
 
-theory Well_Ordered_Strategy
+theory WellOrderedStrategy
 imports
   Main
-  strategy
+  Strategy
 begin
 
 locale WellOrderedStrategies = ParityGame +

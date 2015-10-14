@@ -1,6 +1,6 @@
 session PositionalDeterminacy = Coinductive +
   options [document = pdf, document_output = "output"]
   theories
-    positional_strategy
+    PositionalDeterminacy
   document_files
     "root.tex"

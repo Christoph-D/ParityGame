@@ -1,9 +1,9 @@
 section {* Attractor sets *}
 
-theory attractor
+theory Attractor
 imports
   Main
-  strategy_attracts
+  StrategyAttracts
 begin
 
 text {* Here we give two definitions of the attractor set and show their equivalence.

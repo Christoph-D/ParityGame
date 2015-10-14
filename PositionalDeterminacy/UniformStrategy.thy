@@ -2,10 +2,10 @@ section {* Uniform strategies *}
 
 text {* Theorems about how to get a uniform strategy given strategies for each node. *}
 
-theory merge_strategies
+theory UniformStrategy
 imports
   Main
-  attractor Winning_Strategy Well_Ordered_Strategy
+  Attractor WinningStrategy WellOrderedStrategy
 begin
 
 context ParityGame begin

@@ -1,9 +1,9 @@
 section {* Parity Games *}
 
-theory parity_game
+theory ParityGame
 imports
   Main
-  More_Coinductive_List
+  MoreCoinductiveList
 begin
 
 subsection {* Basic definitions *}

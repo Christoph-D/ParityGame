@@ -1,9 +1,9 @@
 section {* Positional strategies *}
 
-theory strategy
+theory Strategy
 imports
   Main
-  parity_game
+  ParityGame
 begin
 
 subsection {* Definitions *}

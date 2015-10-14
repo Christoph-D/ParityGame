@@ -2,10 +2,10 @@ section {* Winning strategies *}
 
 text {* Here we define winning strategies. *}
 
-theory Winning_Strategy
+theory WinningStrategy
 imports
   Main
-  strategy_attracts
+  StrategyAttracts
 begin
 
 context ParityGame begin

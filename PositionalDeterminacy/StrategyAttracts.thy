@@ -2,10 +2,10 @@ section {* Attracting strategies *}
 
 text {* Introduces the concept of attracting strategies. *}
 
-theory strategy_attracts
+theory StrategyAttracts
 imports
   Main
-  strategy
+  Strategy
 begin
 
 context ParityGame begin

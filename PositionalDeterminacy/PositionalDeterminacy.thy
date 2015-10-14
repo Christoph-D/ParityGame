@@ -1,9 +1,9 @@
 section {* Positional determinacy of parity games *}
 
-theory positional_strategy
+theory PositionalDeterminacy
 imports
   Main
-  attractor_strategy
+  AttractorStrategy
 begin
 
 context ParityGame begin

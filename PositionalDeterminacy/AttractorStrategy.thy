@@ -2,10 +2,10 @@ section {* Attractor strategies *}
 
 text {* This theory proves that every attractor set has an attractor strategy. *}
 
-theory attractor_strategy
+theory AttractorStrategy
 imports
   Main
-  parity_game merge_strategies
+  UniformStrategy
 begin
 
 context ParityGame begin

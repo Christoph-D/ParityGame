@@ -2,7 +2,7 @@ section {* Auxiliary lemmas for coinductive lists *}
 
 text {* Some lemmas to allow better reasoning with coinductive lists. *}
 
-theory More_Coinductive_List
+theory MoreCoinductiveList
 imports
   Main
   "../Coinductive/Coinductive_List"
