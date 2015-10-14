@@ -148,7 +148,19 @@ lemma valid_path_no_deadends:
   using valid_path_impl1 by blast
 lemma valid_path_ends_on_deadend:
   "\<lbrakk> valid_path P; enat i < llength P; deadend (P $ i) \<rbrakk> \<Longrightarrow> enat (Suc i) = llength P"
-  by (meson Suc_ile_eq antisym_conv le_less_linear valid_path_no_deadends)
+proof (induct i arbitrary: P)
+  case 0
+  thus ?case by (metis less_Suc0 less_enatE neq_iff valid_path_edges valid_path_finite_in_V)
+next
+  case (Suc n)
+  have "enat n < llength (ltl P)"
+    using Suc.prems(2) enat_Suc_ltl by blast
+  moreover hence "deadend (ltl P $ n)"
+    using Suc.prems(2,3) by (metis ldrop_eSuc_ltl ldropn_Suc_conv_ldropn lhd_LCons)
+  ultimately have "enat (Suc n) = llength (ltl P)"
+    using Suc.hyps[of "ltl P"] Suc.prems(1) valid_path_ltl by blast
+  thus ?case by (metis Suc.prems(2) Suc_ile_eq dual_order.order_iff_strict enat_Suc_ltl less_irrefl)
+qed
 
 lemma valid_path_prefix: "valid_path P \<Longrightarrow> lprefix P' P \<Longrightarrow> valid_path P'"
   apply (subst valid_path_equiv, subst (asm) valid_path_equiv)
