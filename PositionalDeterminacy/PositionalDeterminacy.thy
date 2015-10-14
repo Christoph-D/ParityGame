@@ -408,93 +408,85 @@ proof-
         have "\<not>lfinite P"
           using no_deadends lfinite_lset maximal_ends_on_deadend[of P] P_maximal P_not_null lset_P_V
           by blast
-        have "lset P \<subseteq> V - W1" proof
-          fix v' assume "v' \<in> lset P"
-          thus "v' \<in> V - W1" using P proof (induct arbitrary: v rule: llist_set_induct)
-            case (find P')
-            interpret vmc_path G P' v p \<sigma> using find.prems(2) .
-            show ?case using P_v0 find.prems(1) by blast
-          next
-            case (step P' v')
-            interpret vmc_path G P' v p \<sigma> using step.prems(2) .
-            interpret vmc_path_no_deadend G P' v p \<sigma>
-              by (rule vmc_path_lnull_ltl_no_deadend) (metis DiffE Diff_empty lset_eq_empty step.hyps(2))
-            have "w0 \<in> V - W1" proof (rule ccontr)
-              assume "w0 \<notin> V - W1"
-              hence "w0 \<in> W1" by simp
-              show False proof (cases)
-                assume "v \<in> VV p"
-                hence "\<sigma> v = w0" using v0_conforms by blast
-                hence "v \<notin> K" using choose_works(2)[OF `v \<in> VV p`] `v \<in> V - W1` `w0 \<in> W1` by auto
-                moreover have "v \<notin> attractor p K - K" proof
-                  assume *: "v \<in> attractor p K - K"
-                  hence "visits_via P' (attractor p K) K"
-                    using \<sigma>_attracts strategy_attractsE by blast
-                  then obtain n where
-                    n: "enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"
-                       "\<And>i. i < n \<Longrightarrow>
-                        \<not>(enat i < llength P' \<and> P' $ i \<in> K \<and> lset (ltake (enat i) P') \<subseteq> attractor p K)"
-                    using ex_least_nat_le[of
-                      "\<lambda>n. enat n < llength P' \<and> P' $ n \<in> K \<and> lset (ltake (enat n) P') \<subseteq> attractor p K"]
-                    unfolding visits_via_def by blast
-                  hence n_min: "\<And>i. i < n \<Longrightarrow> P' $ i \<notin> K" proof-
-                    fix i assume "i < n"
-                    moreover hence "enat i < llength P'"
-                      using n(1) dual_order.strict_trans enat_ord_simps(2) by blast
-                    moreover have "lset (ltake (enat i) P') \<subseteq> lset (ltake (enat n) P')"
-                      using `i < n` lset_ltake_prefix by simp
-                    ultimately show "P' $ i \<notin> K" using n by blast
-                  qed
-                  have "v \<notin> K" using * by blast
-                  hence "n \<noteq> 0" using n(1) by (metis P_0)
-                  have "w0 \<notin> K" using `w0 \<in> W1` K_def U_def by blast
-                  hence "Suc 0 \<noteq> n" using n(1) P_Suc_0 by auto
-                  hence "Suc (Suc 0) \<le> n" using `n \<noteq> 0` by presburger
-                  hence "lset (ltake (enat (Suc (Suc 0))) P') \<subseteq> attractor p K"
-                    using n by (meson enat_ord_simps(1) lset_ltake_prefix subset_trans)
-                  hence "lset (ltake (eSuc (eSuc 0)) P') \<subseteq> attractor p K"
-                    by (simp add: eSuc_enat zero_enat_def)
-                  hence "ltake (eSuc (eSuc 0)) P' $ Suc 0 \<in> attractor p K"
-                    by (metis Ptl_not_null enat_ltl_Suc i0_less llength_eq_0 lset_lnth_member
-                              ltake.disc(2) ltake_ltl zero_enat_def zero_ne_eSuc)
-                  hence "w0 \<in> attractor p K" using P_Suc_0
-                    by (metis P_not_null Ptl_not_null lnth_0_conv_lhd lnth_ltl ltake.disc(2)
-                              ltake.simps(3) ltake_ltl zero_ne_eSuc)
-                  thus False using `w0 \<in> W1` `attractor p K \<inter> W1 = {}` by blast
+        hence "lset P \<subseteq> V - W1" proof (induct rule: vmc_path_lset_induction)
+          case (step P v)
+          interpret vmc_path_no_deadend G P v p \<sigma> using step.hyps(1) .
+          have "w0 \<in> V - W1" proof (rule ccontr)
+            assume "w0 \<notin> V - W1"
+            hence "w0 \<in> W1" by simp
+            show False proof (cases)
+              assume "v \<in> VV p"
+              hence "\<sigma> v = w0" using v0_conforms by blast
+              hence "v \<notin> K" using choose_works(2)[OF `v \<in> VV p`] `v \<in> V - W1` `w0 \<in> W1` by auto
+              moreover have "v \<notin> attractor p K - K" proof
+                assume *: "v \<in> attractor p K - K"
+                hence "visits_via P (attractor p K) K"
+                  using \<sigma>_attracts strategy_attractsE by blast
+                then obtain n where
+                  n: "enat n < llength P \<and> P $ n \<in> K \<and> lset (ltake (enat n) P) \<subseteq> attractor p K"
+                     "\<And>i. i < n \<Longrightarrow>
+                      \<not>(enat i < llength P \<and> P $ i \<in> K \<and> lset (ltake (enat i) P) \<subseteq> attractor p K)"
+                  using ex_least_nat_le[of
+                    "\<lambda>n. enat n < llength P \<and> P $ n \<in> K \<and> lset (ltake (enat n) P) \<subseteq> attractor p K"]
+                  unfolding visits_via_def by blast
+                hence n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<notin> K" proof-
+                  fix i assume "i < n"
+                  moreover hence "enat i < llength P"
+                    using n(1) dual_order.strict_trans enat_ord_simps(2) by blast
+                  moreover have "lset (ltake (enat i) P) \<subseteq> lset (ltake (enat n) P)"
+                    using `i < n` lset_ltake_prefix by simp
+                  ultimately show "P $ i \<notin> K" using n by blast
                 qed
-                moreover have "v \<notin> V'" proof
-                  assume "v \<in> V'"
-                  have "\<sigma>2 v \<in> V\<^bsub>G'\<^esub>" proof (rule G'.valid_strategy_in_V[of p \<sigma>2 v])
-                    have "v \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` `v \<in> V'` by simp
-                    thus "\<not>G'.deadend v" using G'_no_deadends by blast
-                    show "G'.strategy p \<sigma>2" using \<sigma>2(1) `v \<in> V\<^bsub>G'\<^esub>` by blast
-                    show "v \<in> G'.VV p" using `v \<in> VV p` `G'.VV p = V' \<inter> VV p` `v \<in> V'` by simp
-                  qed
-                  hence "w0 \<in> V\<^bsub>G'\<^esub>" using `v \<in> V'` `\<sigma> v = w0` by simp
-                  thus False using `V\<^bsub>G'\<^esub> = V'` `w0 \<in> W1` V'_def U_def by blast
-                qed
-                ultimately show False using `v \<in> V - W1` V_decomp by blast
-              next
-                assume "v \<notin> VV p"
-                hence "v \<in> VV p**" using step.prems(1) by blast
-                let ?\<sigma> = "\<sigma>W1(v := w0)"
-                have "winning_strategy p** \<sigma>W1 w0" using `w0 \<in> W1` \<sigma>W1(2) by blast
-                moreover have "\<not>(\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v)"
-                  using `v \<in> V - W1` W1_def by blast
-                ultimately have "winning_strategy p** ?\<sigma> w0"
-                  using winning_strategy_updates[of "p**" \<sigma>W1 w0 v w0] \<sigma>W1(1) `v\<rightarrow>w0` by blast
-                moreover have "strategy p** ?\<sigma>" using `v\<rightarrow>w0` \<sigma>W1(1) valid_strategy_updates by blast
-                ultimately have "winning_strategy p** ?\<sigma> v"
-                  using strategy_extends_backwards_VVp[of v "p**" ?\<sigma> w0]
-                        `v \<in> VV p**` `v\<rightarrow>w0`
-                  by auto
-                hence "v \<in> W1" unfolding W1_def using `strategy p** ?\<sigma>` `v \<in> V - W1` by blast
-                thus False using `v \<in> V - W1` by blast
+                have "v \<notin> K" using * by blast
+                hence "n \<noteq> 0" using n(1) by (metis P_0)
+                have "w0 \<notin> K" using `w0 \<in> W1` K_def U_def by blast
+                hence "Suc 0 \<noteq> n" using n(1) P_Suc_0 by auto
+                hence "Suc (Suc 0) \<le> n" using `n \<noteq> 0` by presburger
+                hence "lset (ltake (enat (Suc (Suc 0))) P) \<subseteq> attractor p K"
+                  using n by (meson enat_ord_simps(1) lset_ltake_prefix subset_trans)
+                hence "lset (ltake (eSuc (eSuc 0)) P) \<subseteq> attractor p K"
+                  by (simp add: eSuc_enat zero_enat_def)
+                hence "ltake (eSuc (eSuc 0)) P $ Suc 0 \<in> attractor p K"
+                  by (metis Ptl_not_null enat_ltl_Suc i0_less llength_eq_0 lset_lnth_member
+                            ltake.disc(2) ltake_ltl zero_enat_def zero_ne_eSuc)
+                hence "w0 \<in> attractor p K" using P_Suc_0
+                  by (metis P_not_null Ptl_not_null lnth_0_conv_lhd lnth_ltl ltake.disc(2)
+                            ltake.simps(3) ltake_ltl zero_ne_eSuc)
+                thus False using `w0 \<in> W1` `attractor p K \<inter> W1 = {}` by blast
               qed
+              moreover have "v \<notin> V'" proof
+                assume "v \<in> V'"
+                have "\<sigma>2 v \<in> V\<^bsub>G'\<^esub>" proof (rule G'.valid_strategy_in_V[of p \<sigma>2 v])
+                  have "v \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` `v \<in> V'` by simp
+                  thus "\<not>G'.deadend v" using G'_no_deadends by blast
+                  show "G'.strategy p \<sigma>2" using \<sigma>2(1) `v \<in> V\<^bsub>G'\<^esub>` by blast
+                  show "v \<in> G'.VV p" using `v \<in> VV p` `G'.VV p = V' \<inter> VV p` `v \<in> V'` by simp
+                qed
+                hence "w0 \<in> V\<^bsub>G'\<^esub>" using `v \<in> V'` `\<sigma> v = w0` by simp
+                thus False using `V\<^bsub>G'\<^esub> = V'` `w0 \<in> W1` V'_def U_def by blast
+              qed
+              ultimately show False using `v \<in> V - W1` V_decomp by blast
+            next
+              assume "v \<notin> VV p"
+              hence "v \<in> VV p**" using step.hyps(2) by blast
+              let ?\<sigma> = "\<sigma>W1(v := w0)"
+              have "winning_strategy p** \<sigma>W1 w0" using `w0 \<in> W1` \<sigma>W1(2) by blast
+              moreover have "\<not>(\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v)"
+                using `v \<in> V - W1` W1_def by blast
+              ultimately have "winning_strategy p** ?\<sigma> w0"
+                using winning_strategy_updates[of "p**" \<sigma>W1 w0 v w0] \<sigma>W1(1) `v\<rightarrow>w0` by blast
+              moreover have "strategy p** ?\<sigma>" using `v\<rightarrow>w0` \<sigma>W1(1) valid_strategy_updates by blast
+              ultimately have "winning_strategy p** ?\<sigma> v"
+                using strategy_extends_backwards_VVp[of v "p**" ?\<sigma> w0]
+                      `v \<in> VV p**` `v\<rightarrow>w0`
+                by auto
+              hence "v \<in> W1" unfolding W1_def using `strategy p** ?\<sigma>` `v \<in> V - W1` by blast
+              thus False using `v \<in> V - W1` by blast
             qed
-            thus "v' \<in> V - W1" using step.hyps(3) vmc_path_ltl by blast
           qed
-        qed
+          thus ?case unfolding w0_def using step.hyps(3) by simp
+        qed (insert P(1))
+        text {* This concludes the proof of @{thm this}. *}
         hence "lset P \<subseteq> attractor p K \<union> V'" using V_decomp by blast
         text {*
           Every @{term \<sigma>}-conforming path starting in @{term "V - W1"} is winning.
@@ -612,6 +604,9 @@ proof-
   moreover have "\<exists>p. winning_priority p (Min (\<omega> ` V))" by auto
   ultimately show ?thesis by blast
 qed
+
+
+subsection {* Positional determinacy without deadends *}
 
 theorem positional_strategy_exists_without_deadends:
   assumes "v \<in> V" "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
@@ -824,11 +819,12 @@ proof-
             using P_conforms G'.path_conforms_with_strategy_irrelevant_updates by blast
         qed
         then interpret vmc_path G' P v0 p \<sigma> using conforms_to_another_strategy by blast
-        have *: "G'.winning_path p P" using \<sigma>(2)[unfolded G'.winning_strategy_def] vmc_path by blast
-        have False using `\<not>winning_path p P`
-          using G'.winning_path_supergame[OF * ParityGame, unfolded G'_def]
-                subgame_VV_subset[of "p**" V'] subgame_\<omega>[of V']
-          by blast
+        have "G'.winning_path p P" using \<sigma>(2)[unfolded G'.winning_strategy_def] vmc_path by blast
+        from `\<not>winning_path p P`
+             G'.winning_path_supergame[OF this ParityGame, unfolded G'_def]
+             subgame_VV_subset[of "p**" V']
+             subgame_\<omega>[of V']
+          have False by blast
       }
       thus ?thesis unfolding winning_strategy_def by blast
     qed
