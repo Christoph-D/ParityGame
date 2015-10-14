@@ -82,6 +82,8 @@ subsection {* Valid strategies *}
 lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> \<sigma> v \<in> V"
   unfolding strategy_def using valid_edge_set by auto
 
+subsection {* Conforming strategies *}
+
 lemma path_conforms_with_strategy_ltl [intro]:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ltl P) \<sigma>"
   by (drule path_conforms_with_strategy.cases) (simp_all add: path_conforms_with_strategy.intros(1))
@@ -102,22 +104,20 @@ proof (coinduction arbitrary: P P')
     thus ?thesis by (metis lprefix_LCons_conv lprefix_antisym lprefix_code(1) path_conforms_with_strategy(2))
   next
     case (path_conforms_VVp v w)
-    thus ?thesis proof (cases "P' = LNil \<or> P' = LCons v LNil")
-      case True thus ?thesis by auto
-    next
-      case False
+    thus ?thesis proof (cases)
+      assume "P' \<noteq> LNil \<and> P' \<noteq> LCons v LNil"
       hence "\<exists>Q. P' = LCons v (LCons w Q)"
         by (metis local.path_conforms_VVp(1) lprefix_LCons_conv path_conforms_with_strategy(2))
       thus ?thesis using local.path_conforms_VVp(1,3,4) path_conforms_with_strategy(2) by force
-    qed
+    qed auto
   next
     case (path_conforms_VVpstar v)
-    thus ?thesis proof (cases "P' = LNil", simp)
-      case False
+    thus ?thesis proof (cases)
+      assume "P' \<noteq> LNil"
       hence "\<exists>Q. P' = LCons v Q"
         using local.path_conforms_VVpstar(1) lprefix_LCons_conv path_conforms_with_strategy(2) by fastforce
       thus ?thesis using local.path_conforms_VVpstar path_conforms_with_strategy(2) by auto
-    qed
+    qed simp
   qed
 qed
 
@@ -347,21 +347,25 @@ proof-
     moreover hence "lhd P' \<in> V" by blast
     moreover hence "\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V"
       by (metis P' calculation(1) greedy_conforming_path.simps(2) greedy_path_ltl_ex lnull_def)
-    (* The conjunction of all the above *)
+    text {* The conjunction of all the above. *}
     ultimately
       have "\<exists>P'. ?P = LCons v0 P' \<and> \<not>lnull P' \<and> v0\<rightarrow>lhd P' \<and> lhd P' \<in> V
         \<and> (\<exists>v. P' = greedy_conforming_path p \<sigma> \<sigma>' v \<and> v \<in> V)"
       using P' by blast
   } note coinduction_helper = this
 
-  show "valid_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
+  show "valid_path P" using assms unfolding P_def
+  proof (coinduction arbitrary: v0 rule: valid_path.coinduct)
     case (valid_path v0)
-    from `v0 \<in> V` assms(2,3) show ?case using coinduction_helper[of v0] greedy_path_lhd by blast
+    from `v0 \<in> V` assms(2,3) show ?case
+      using coinduction_helper[of v0] greedy_path_lhd by blast
   qed
 
-  show "maximal_path P" using assms unfolding P_def proof (coinduction arbitrary: v0)
+  show "maximal_path P" using assms unfolding P_def
+  proof (coinduction arbitrary: v0)
     case (maximal_path v0)
-    from `v0 \<in> V` assms(2,3) show ?case using coinduction_helper[of v0] greedy_path_deadend_v' by blast
+    from `v0 \<in> V` assms(2,3) show ?case
+      using coinduction_helper[of v0] greedy_path_deadend_v' by blast
   qed
 
   {
@@ -384,7 +388,8 @@ proof-
         }
         thus ?thesis by auto
       next
-        case False thus ?thesis using coinduction_helper[of v0] path_conforms_with_strategy by auto
+        case False
+        thus ?thesis using coinduction_helper[of v0] path_conforms_with_strategy by auto
       qed
     qed
   }
@@ -442,6 +447,15 @@ lemma (in ParityGame) valid_maximal_conforming_path_0:
   shows "vmc_path G P (P $ 0) p \<sigma>"
   using assms by unfold_locales (simp_all add: lnth_0_conv_lhd)
 
+subsection {* Valid maximal conforming paths with one edge *}
+
+text {*
+  We define a locale for valid maximal conforming paths that contain at least one edge,
+  This is equivalent to the first node being no deadend.  This assumption seems simple, but we use
+  it in several places because it allows us to prove much stronger lemmas about @{term "ltl P"}
+  compared to @{term "vmc_path"}.
+*}
+
 locale vmc_path_no_deadend = vmc_path +
   assumes v0_no_deadend [simp]: "\<not>deadend v0"
 begin
@@ -463,51 +477,15 @@ lemma v0_conforms: "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
 
 lemma w0_V [simp]: "w0 \<in> V" by (metis Ptl_LCons Ptl_valid valid_path_cons_simp)
 lemma w0_lset_P [simp]: "w0 \<in> lset P" by (metis P_LCons' lset_intros(1) lset_intros(2))
-lemma w0_VV: "w0 \<in> VV p \<or> w0 \<in> VV p**" by simp
 
 lemma vmc_path_ltl [simp]: "vmc_path G (ltl P) w0 p \<sigma>" by (unfold_locales) (simp_all add: w0_def)
 end
 
 context vmc_path begin
 
-lemma vmc_path_llength_no_deadend:
-  assumes "enat (Suc n) < llength P"
-  shows "vmc_path_no_deadend G P v0 p \<sigma>"
-  using assms P_0 P_no_deadends
-  by (unfold_locales)
-     (metis enat_Suc_ltl enat_ltl_Suc ldropn_Suc_conv_ldropn ldropn_lnull llist.distinct(1) lnull_0_llength)
-
 lemma vmc_path_lnull_ltl_no_deadend:
-  assumes "\<not>lnull (ltl P)"
-  shows "vmc_path_no_deadend G P v0 p \<sigma>"
-  using assms P_0 P_no_deadends
-  by (unfold_locales) (metis enat_ltl_Suc lnull_0_llength)
-
-lemma valid_maximal_conforming_lappend:
-  assumes "enat (Suc n) < llength P" "vmc_path G P' (P $ n) p \<sigma>"
-  shows "vmc_path G (lappend (ltake (enat (Suc n)) P) (ltl P')) v0 p \<sigma>"
-proof (unfold_locales)
-  let ?A = "ltake (enat (Suc n)) P"
-  let ?P = "lappend ?A (ltl P')"
-  have len_Suc_P: "llength ?A = enat (Suc n)"
-    using assms(1) llength_ltake' by blast
-  hence "enat (Suc n) \<le> llength ?P" by simp
-  thus "\<not>lnull ?P" using Suc_ile_eq by auto
-  interpret P': vmc_path G P' "P $ n" p \<sigma> using assms(2) .
-  have "\<not>deadend (P $ n)" using P_no_deadends assms(1) by blast
-  then interpret P': vmc_path_no_deadend G P' "P $ n" p \<sigma> by unfold_locales
-  show "valid_path ?P" using valid_path_lappend llast_ltake[OF assms(1)] by simp
-  show "maximal_path ?P" using maximal_path_lappend by simp
-  show "path_conforms_with_strategy p (lappend ?A (ltl P')) \<sigma>" proof-
-    have "\<not>lnull ?A" by (metis P_not_null enat_ord_simps(2) lessI lnull_ltake not_iless0)
-    thus ?thesis
-      using path_conforms_with_strategy_lappend[of ?A]
-      by (simp add: P'.v0_conforms P'.w0_def llast_ltake[OF assms(1)])
-  qed
-  show "lhd (lappend ?A (ltl P')) = v0"
-    by (metis P_v0 Suc_ile_eq len_Suc_P dual_order.irrefl enat_ltl_Suc lappend_ltake_enat_ldropn
-              lhd_lappend llist.expand lnull_ltlI order_refl)
-qed
+  "\<not>lnull (ltl P) \<Longrightarrow> vmc_path_no_deadend G P v0 p \<sigma>"
+  using P_0 P_no_deadends by (unfold_locales) (metis enat_ltl_Suc lnull_0_llength)
 
 lemma vmc_path_conforms:
   assumes "enat (Suc n) < llength P" "P $ n \<in> VV p"
@@ -520,6 +498,10 @@ proof-
   have "\<sigma> (P $ n) = P'.w0" using P'.v0_conforms assms(2) by blast
   thus ?thesis using P'_def P'.P_Suc_0 assms(1) by simp
 qed
+
+subsection {* An @{term lset} induction schema for paths *}
+
+text {* Let us define an induction schema useful for proving @{term "lset P \<subseteq> S"}. *}
 
 lemma vmc_path_lset_induction [consumes 1, case_names base step]:
   assumes "Q P"

@@ -1,12 +1,16 @@
 section {* Attractor sets *}
 
-text {* Here we give two definitions of the attractor set and show their equivalence. *}
-
 theory attractor
 imports
   Main
   strategy_attracts
 begin
+
+text {* Here we give two definitions of the attractor set and show their equivalence.
+  The first definition uses an explicit least fixed point, the second definition is via
+  @{text "inductive_set"}.  It turns out that we can prove a stronger induction scheme for the
+  first definition.
+*}
 
 context ParityGame begin
 

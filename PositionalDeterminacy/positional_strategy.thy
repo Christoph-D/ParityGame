@@ -248,7 +248,7 @@ proof-
                 assume "P $ n \<notin> W1"
                 hence "P $ n \<in> attractor p K"
                   using V_decomp n(2) P_valid n(1) valid_path_finite_in_V by blast
-                moreover have "P $ n' \<rightarrow> P $ n" using P_valid n' n(1) valid_path_impl1 by blast
+                moreover have "P $ n' \<rightarrow> P $ n" using P_valid n' n(1) valid_path_edges by blast
                 ultimately have "P $ n' \<in> attractor p K" using `P $ n' \<in> VV p` attractor_set_VVp by blast
                 thus False using `P $ n' \<in> V'` V'_def by blast
               qed
