@@ -8,7 +8,7 @@ begin
 
 context ParityGame begin
 
-subsection {* Induction step for the proof of positional determinacy *}
+subsection {* Induction step *}
 
 text {*
   The proof of positional determinacy is by induction over the size of the finite set
@@ -21,15 +21,23 @@ lemma positional_strategy_induction_step:
   assumes "v \<in> V"
     and no_deadends: "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
     and IH: "\<And>(G :: ('a, 'b) ParityGame_scheme) v.
-      \<lbrakk> card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) < card (\<omega> ` V); v \<in> V\<^bsub>G\<^esub>; ParityGame G; \<And>v. v \<in> V\<^bsub>G\<^esub> \<Longrightarrow> \<not>Digraph.deadend G v  \<rbrakk>
-        \<Longrightarrow> \<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v"
+      \<lbrakk> card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>) < card (\<omega> ` V); v \<in> V\<^bsub>G\<^esub>;
+        ParityGame G;
+        \<And>v. v \<in> V\<^bsub>G\<^esub> \<Longrightarrow> \<not>Digraph.deadend G v  \<rbrakk>
+      \<Longrightarrow> \<exists>p \<sigma>. ParityGame.strategy G p \<sigma> \<and> ParityGame.winning_strategy G p \<sigma> v"
   shows "\<exists>p \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v"
 proof-
   {
+    text {* First, we determine the minimum priority and the player who likes it. *}
     def min_prio \<equiv> "Min (\<omega> ` V)"
     fix p assume p: "winning_priority p min_prio"
-    def W0 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
+    text {* Then we define the tentative winning region of player @{term "p**"}.
+      The rest of the proof is to show that this is the complete winning region.
+    *}
     def W1 \<equiv> "{ v \<in> V. \<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v }"
+    text {* For this, we define several more sets of nodes.
+      First, @{text U} is the tentative winning region of player @{term p}.
+    *}
     def U \<equiv> "V - W1"
     def K \<equiv> "U \<inter> (\<omega> -` {min_prio})"
     def V' \<equiv> "U - attractor p K"
@@ -52,9 +60,12 @@ proof-
         unfolding W1_def using `V' \<subseteq> V` by blast
     qed
 
+    text {*
+      By definition of @{term W1}, we obtain a winning strategy on @{term W1} for player @{term "p**"}.
+    *}
     obtain \<sigma>W1 where \<sigma>W1:
       "strategy p** \<sigma>W1" "\<And>v. v \<in> W1 \<Longrightarrow> winning_strategy p** \<sigma>W1 v"
-      using merge_winning_strategies[of W1 "p**"] W1_def by fastforce
+      using merge_winning_strategies[of W1 "p**"] unfolding W1_def by blast
 
     have G'_no_deadends: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> \<not>G'.deadend v" proof-
       fix v assume v: "v \<in> V\<^bsub>G'\<^esub>"
@@ -88,8 +99,8 @@ proof-
           }
           text {* All successors of @{term v} point to @{term W1}, so we have @{term "v \<in> W1"}. *}
           hence "winning_strategy p** \<sigma>W1 v"
-            using strategy_extends_backwards_VVp \<sigma>W1 `v \<in> VV p`
-            by blast
+            using strategy_extends_backwards_VVpstar \<sigma>W1 `v \<in> VV p`
+            by simp
           hence False using W1_def \<sigma>W1(1) `v \<in> VV p` `v \<notin> W1` by blast
         }
         moreover {
@@ -102,10 +113,15 @@ proof-
               let ?\<sigma>W1 = "\<sigma>W1(v := w)"
               have "strategy p** ?\<sigma>W1" by (simp add: \<sigma>W1(1) `v\<rightarrow>w` valid_strategy_updates)
               moreover have "winning_strategy p** ?\<sigma>W1 v" proof-
-                have "\<not>(\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v)" using `v \<notin> W1` `v \<in> V` W1_def by auto
-                moreover have "winning_strategy p** \<sigma>W1 w" using `w \<in> W1` \<sigma>W1(2) by blast
-                ultimately have "winning_strategy p** ?\<sigma>W1 w" using winning_strategy_updates[of "p**" \<sigma>W1 w v w] \<sigma>W1 `v\<rightarrow>w` by blast
-                thus ?thesis using strategy_extends_backwards_VVpstar[of v p ?\<sigma>W1 w] `v \<in> VV p**` `v\<rightarrow>w` `strategy p** ?\<sigma>W1` by auto
+                have "\<not>(\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v)"
+                  using `v \<notin> W1` `v \<in> V` W1_def by auto
+                moreover have "winning_strategy p** \<sigma>W1 w"
+                  using `w \<in> W1` \<sigma>W1(2) by blast
+                ultimately have "winning_strategy p** ?\<sigma>W1 w"
+                  using winning_strategy_updates[of "p**" \<sigma>W1 w v w] \<sigma>W1 `v\<rightarrow>w` by blast
+                thus ?thesis
+                  using strategy_extends_backwards_VVp[of v "p**" ?\<sigma>W1 w]
+                        `v \<in> VV p**` `v\<rightarrow>w` `strategy p** ?\<sigma>W1` by auto
               qed
               ultimately have "v \<in> W1" using W1_def \<sigma>W1(1) `v \<in> VV p**` by blast
               hence False using `v \<in> V'` V'_def U_def by blast
@@ -126,8 +142,8 @@ proof-
     {
       fix v assume "v \<in> V\<^bsub>G'\<^esub>"
 
-      text {* Apply the induction hypothesis to get the winning regions of @{term G'}. *}
-      have G'_winning_regions: "\<exists>p \<sigma>. G'.strategy p \<sigma> \<and> G'.winning_strategy p \<sigma> v" proof-
+      text {* Apply the induction hypothesis to get the winning strategy for @{term v} in @{term G'}. *}
+      have G'_winning_strategy: "\<exists>p \<sigma>. G'.strategy p \<sigma> \<and> G'.winning_strategy p \<sigma> v" proof-
         have "card (\<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>) < card (\<omega> ` V)" proof-
           { assume "min_prio \<in> \<omega>\<^bsub>G'\<^esub> ` V\<^bsub>G'\<^esub>"
             then obtain v where v: "v \<in> V\<^bsub>G'\<^esub>" "\<omega>\<^bsub>G'\<^esub> v = min_prio" by blast
@@ -144,11 +160,14 @@ proof-
         thus ?thesis using IH[of G'] `v \<in> V\<^bsub>G'\<^esub>` G'_no_deadends G'.ParityGame by blast
       qed
 
-      text {* It turns out the winning region of player @{term "p**"} is empty. *}
+      text {*
+        It turns out the winning region of player @{term "p**"} is empty, so we have a strategy
+        for player @{term p}.
+      *}
       have "\<exists>\<sigma>. G'.strategy p \<sigma> \<and> G'.winning_strategy p \<sigma> v" proof (rule ccontr)
         assume "\<not>?thesis"
         moreover obtain p' \<sigma> where p': "G'.strategy p' \<sigma>" "G'.winning_strategy p' \<sigma> v"
-          using G'_winning_regions by blast
+          using G'_winning_strategy by blast
         ultimately have "p' \<noteq> p" by blast
         hence "p' = p**" by (cases p; cases p') auto
         with p' have \<sigma>: "G'.strategy p** \<sigma>" "G'.winning_strategy p** \<sigma> v" by simp_all
@@ -285,16 +304,31 @@ proof-
       qed
     } note recursion = this
 
+    text {*
+      We compose a winning strategy for player @{term p} on @{term "V - W1"} out of three pieces.
+    *}
+
+    text {*
+      First, if we happen to land in the attractor region of @{term K}, we follow the attractor
+      strategy.  This is good because the priority of the vertices in @{term K} is good for
+      player @{term p}, so he likes to go there. *}
     obtain \<sigma>1
       where \<sigma>1: "strategy p \<sigma>1"
                 "strategy_attracts p \<sigma>1 (attractor p K) K"
       using attractor_has_strategy[of K p] K_def U_def by auto
+
+    text {* Next, on @{term G'} we follow the winning strategy whose existence we proved earlier. *}
     obtain \<sigma>2
       where \<sigma>2: "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> G'.strategy p \<sigma>2"
                 "\<And>v. v \<in> V\<^bsub>G'\<^esub> \<Longrightarrow> G'.winning_strategy p \<sigma>2 v"
       using G'.merge_winning_strategies[of "V\<^bsub>G'\<^esub>"] recursion by blast
 
+    text {*
+      As a last option we choose an arbitrary successor but avoid entering @{term W1}.
+      In particular, this defines the strategy on the set @{term K}. *}
     def choose \<equiv> "\<lambda>v. SOME w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1)"
+
+    text {* Compose the three pieces. *}
     def \<sigma> \<equiv> "override_on (override_on choose \<sigma>2 V') \<sigma>1 (attractor p K - K)"
 
     have "attractor p K \<inter> W1 = {}" proof (rule ccontr)
@@ -310,6 +344,7 @@ proof-
       thus False unfolding W1_def using comp.paths_stay_in_winning_region \<sigma>W1 v(2) by auto
     qed
 
+    text {* On specific sets, @{term \<sigma>} behaves like one of the three pieces. *}
     have \<sigma>_\<sigma>1 [simp]: "\<And>v. v \<in> attractor p K - K \<Longrightarrow> \<sigma> v = \<sigma>1 v" unfolding \<sigma>_def by simp
     have \<sigma>_\<sigma>2 [simp]: "\<And>v. v \<in> V' \<Longrightarrow> \<sigma> v = \<sigma>2 v" unfolding \<sigma>_def V'_def by auto
     have \<sigma>_K [simp]: "\<And>v. v \<in> K \<union> W1 \<Longrightarrow> \<sigma> v = choose v" proof-
@@ -319,6 +354,7 @@ proof-
         by (metis (mono_tags, lifting) Diff_iff IntI UnE override_on_def override_on_emptyset)
     qed
 
+    text {* Show that @{term choose} succeeds in avoiding entering @{term W1}. *}
     { fix v assume v: "v \<in> VV p"
       hence "\<not>deadend v" using no_deadends by blast
       have "\<exists>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1)" proof (cases)
@@ -329,7 +365,8 @@ proof-
         show ?thesis proof (rule ccontr)
           assume "\<not>(\<exists>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1))"
           hence "\<And>w. v\<rightarrow>w \<Longrightarrow> winning_strategy p** \<sigma>W1 w" using \<sigma>W1(2) by blast
-          hence "winning_strategy p** \<sigma>W1 v" using strategy_extends_backwards_VVp \<sigma>W1(1) `v \<in> VV p` by blast
+          hence "winning_strategy p** \<sigma>W1 v"
+            using strategy_extends_backwards_VVpstar \<sigma>W1(1) `v \<in> VV p` by simp
           hence "v \<in> W1" unfolding W1_def using \<sigma>W1(1) `\<not>deadend v` by blast
           thus False using `v \<notin> W1` by blast
         qed
@@ -363,7 +400,7 @@ proof-
       ultimately show ?thesis by simp
     qed
 
-    (* Show that \<sigma> is a winning strategy on V - W1. *)
+    text {* Show that @{term \<sigma>} is a winning strategy on @{term "V - W1"}. *}
     have "\<forall>v \<in> V - W1. winning_strategy p \<sigma> v" proof-
       {
         fix v P assume P: "v \<in> V - W1" "vmc_path G P v p \<sigma>"
@@ -448,7 +485,9 @@ proof-
                   using winning_strategy_updates[of "p**" \<sigma>W1 w0 v w0] \<sigma>W1(1) `v\<rightarrow>w0` by blast
                 moreover have "strategy p** ?\<sigma>" using `v\<rightarrow>w0` \<sigma>W1(1) valid_strategy_updates by blast
                 ultimately have "winning_strategy p** ?\<sigma> v"
-                  using strategy_extends_backwards_VVpstar[of v p ?\<sigma> w0] `v \<in> VV p**` `v\<rightarrow>w0` by auto
+                  using strategy_extends_backwards_VVp[of v "p**" ?\<sigma> w0]
+                        `v \<in> VV p**` `v\<rightarrow>w0`
+                  by auto
                 hence "v \<in> W1" unfolding W1_def using `strategy p** ?\<sigma>` `v \<in> V - W1` by blast
                 thus False using `v \<in> V - W1` by blast
               qed

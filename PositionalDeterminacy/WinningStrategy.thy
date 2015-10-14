@@ -1,7 +1,5 @@
 section {* Winning strategies *}
 
-text {* Here we define winning strategies. *}
-
 theory WinningStrategy
 imports
   Main
@@ -11,11 +9,29 @@ begin
 context ParityGame begin
 
 text {*
+  Here we define winning strategies.
+
   A strategy is winning for player @{term p} from @{term v0} if every maximal @{term \<sigma>}-path
   starting in @{term v0} is winning.
 *}
 definition winning_strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a \<Rightarrow> bool" where
   "winning_strategy p \<sigma> v0 \<equiv> \<forall>P. vmc_path G P v0 p \<sigma> \<longrightarrow> winning_path p P"
+
+subsection {* Deadends *}
+
+lemma no_winning_strategy_on_deadends:
+  assumes "v \<in> VV p" "deadend v" "strategy p \<sigma>"
+  shows "\<not>winning_strategy p \<sigma> v"
+proof-
+  obtain P where "vmc_path G P v p \<sigma>" using strategy_conforming_path_exists_single assms by blast
+  then interpret vmc_path G P v p \<sigma> .
+  have "lnull (ltl P)" using `deadend v` using P_LCons lnull_def valid_path_cons_simp by fastforce
+  hence "P = LCons v LNil" by (metis P_LCons lnull_def)
+  hence "\<not>winning_path p P" unfolding winning_path_def using `v \<in> VV p` by auto
+  thus ?thesis using winning_strategy_def by fastforce
+qed
+
+subsection {* Extension theorems *}
 
 lemma strategy_extends_VVp:
   assumes v0: "v0 \<in> VV p" "\<not>deadend v0"
@@ -42,6 +58,47 @@ proof (unfold winning_strategy_def, intro allI impI)
     by auto
   thus "winning_path p P" using winning_path_ltl[of p "LCons v0 P"] by auto
 qed
+
+lemma strategy_extends_backwards_VVpstar:
+  assumes v0: "v0 \<in> VV p**"
+    and \<sigma>: "strategy p \<sigma>" "\<And>w. v0\<rightarrow>w \<Longrightarrow> winning_strategy p \<sigma> w"
+  shows "winning_strategy p \<sigma> v0"
+proof-
+  { fix P assume "vmc_path G P v0 p \<sigma>"
+    then interpret vmc_path G P v0 p \<sigma> .
+    have "winning_path p P" proof (cases)
+      assume "deadend v0"
+      thus ?thesis using P_deadend_v0_LCons winning_path_def v0 by auto
+    next
+      assume "\<not>deadend v0"
+      then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
+      interpret ltlP: vmc_path G "ltl P" w0 p \<sigma> using vmc_path_ltl .
+      have "winning_path p (ltl P)"
+        using \<sigma>(2) v0_edge_w0 vmc_path_ltl winning_strategy_def by blast
+      thus "winning_path p P"
+        using winning_path_LCons by (metis P_LCons' ltlP.P_LCons ltlP.P_not_null)
+    qed
+  }
+  thus ?thesis unfolding winning_strategy_def by blast
+qed
+
+lemma strategy_extends_backwards_VVp:
+  assumes v0: "v0 \<in> VV p" "\<sigma> v0 = w" "v0\<rightarrow>w"
+    and \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> w"
+  shows "winning_strategy p \<sigma> v0"
+proof-
+  { fix P assume "vmc_path G P v0 p \<sigma>"
+    then interpret vmc_path G P v0 p \<sigma> .
+    have "\<not>deadend v0" using `v0\<rightarrow>w` by blast
+    then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
+    have "winning_path p (ltl P)"
+      using \<sigma>(2)[unfolded winning_strategy_def] v0(1,2) v0_conforms vmc_path_ltl by presburger
+    hence "winning_path p P" using winning_path_LCons by (metis P_LCons Ptl_not_null)
+  }
+  thus ?thesis unfolding winning_strategy_def by blast
+qed
+
+subsection {* Winning regions *}
 
 lemma (in vmc_path) paths_stay_in_winning_region:
   assumes \<sigma>': "strategy p \<sigma>'" "winning_strategy p \<sigma>' v0"
@@ -78,6 +135,8 @@ proof
   qed
 qed
 
+subsection {* Updates *}
+
 lemma winning_strategy_updates:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
     and v: "\<not>(\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v)" "v\<rightarrow>w"
@@ -91,58 +150,6 @@ proof-
     hence "path_conforms_with_strategy p P \<sigma>"
       using P_conforms path_conforms_with_strategy_irrelevant' by blast
     hence "winning_path p P" using conforms_to_another_strategy \<sigma>(2) winning_strategy_def by blast
-  }
-  thus ?thesis unfolding winning_strategy_def by blast
-qed
-
-lemma no_winning_strategy_on_deadends:
-  assumes "v \<in> VV p" "deadend v" "strategy p \<sigma>"
-  shows "\<not>winning_strategy p \<sigma> v"
-proof-
-  obtain P where "vmc_path G P v p \<sigma>" using strategy_conforming_path_exists_single assms by blast
-  then interpret vmc_path G P v p \<sigma> .
-  have "lnull (ltl P)" using `deadend v` using P_LCons lnull_def valid_path_cons_simp by fastforce
-  hence "P = LCons v LNil" by (metis P_LCons lnull_def)
-  hence "\<not>winning_path p P" unfolding winning_path_def using `v \<in> VV p` by auto
-  thus ?thesis using winning_strategy_def by fastforce
-qed
-
-(* TODO: the following two lemmas are backwards, they have too many **. *)
-lemma strategy_extends_backwards_VVp:
-  assumes v0: "v0 \<in> VV p"
-    and \<sigma>: "strategy p** \<sigma>" "\<And>w. v0\<rightarrow>w \<Longrightarrow> winning_strategy p** \<sigma> w"
-  shows "winning_strategy p** \<sigma> v0"
-proof-
-  { fix P assume "vmc_path G P v0 p** \<sigma>"
-    then interpret vmc_path G P v0 "p**" \<sigma> .
-    have "winning_path p** P" proof (cases)
-      assume "deadend v0"
-      thus ?thesis using P_deadend_v0_LCons winning_path_def v0 by auto
-    next
-      assume "\<not>deadend v0"
-      then interpret vmc_path_no_deadend G P v0 "p**" \<sigma> by unfold_locales
-      interpret ltlP: vmc_path G "ltl P" w0 "p**" \<sigma> using vmc_path_ltl .
-      have "winning_path p** (ltl P)"
-        using \<sigma>(2) v0_edge_w0 vmc_path_ltl winning_strategy_def by blast
-      thus "winning_path p** P"
-        using winning_path_LCons by (metis P_LCons' ltlP.P_LCons ltlP.P_not_null)
-    qed
-  }
-  thus ?thesis unfolding winning_strategy_def by blast
-qed
-
-lemma strategy_extends_backwards_VVpstar:
-  assumes v0: "v0 \<in> VV p**" "\<sigma> v0 = w" "v0\<rightarrow>w"
-    and \<sigma>: "strategy p** \<sigma>" "winning_strategy p** \<sigma> w"
-  shows "winning_strategy p** \<sigma> v0"
-proof-
-  { fix P assume "vmc_path G P v0 p** \<sigma>"
-    then interpret vmc_path G P v0 "p**" \<sigma> .
-    have "\<not>deadend v0" using `v0\<rightarrow>w` by blast
-    then interpret vmc_path_no_deadend G P v0 "p**" \<sigma> by unfold_locales
-    have "winning_path p** (ltl P)"
-      using \<sigma>(2)[unfolded winning_strategy_def] v0(1) v0(2) v0_conforms vmc_path_ltl by presburger
-    hence "winning_path p** P" using winning_path_LCons by (metis P_LCons Ptl_not_null)
   }
   thus ?thesis unfolding winning_strategy_def by blast
 qed
