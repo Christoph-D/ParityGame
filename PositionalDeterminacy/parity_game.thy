@@ -87,6 +87,24 @@ proof-
 qed
 
 lemma valid_path_impl1:
+lemma valid_path_coinduct [consumes 1, case_names base step]:
+  assumes major: "Q P"
+    and head: "\<And>v P. Q (LCons v LNil) \<Longrightarrow> v \<in> V"
+    and step: "\<And>v w P. Q (LCons v (LCons w P)) \<Longrightarrow> v\<rightarrow>w \<and> (Q (LCons w P) \<or> valid_path (LCons w P))"
+  shows "valid_path P"
+using major proof (coinduction arbitrary: P rule: valid_path.coinduct)
+  case valid_path
+  { assume "P \<noteq> LNil"
+    then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
+    assume "\<not>(\<exists>v. P = LCons v LNil \<and> v \<in> V)"
+    hence "P' \<noteq> LNil" using head valid_path P' by blast
+    then obtain w P'' where P'': "P' = LCons w P''" by (meson neq_LNil_conv)
+    hence "v\<rightarrow>w" "Q (LCons w P'') \<or> valid_path (LCons w P'')" using step valid_path P' P'' by blast+
+    hence ?case using P' P'' by auto
+  }
+  thus ?case by blast
+qed
+
   "valid_path P \<Longrightarrow> lset P \<subseteq> V \<and> (\<forall>i v w. enat (Suc i) < llength P \<and> P $ i = v \<and> P $ Suc i = w \<longrightarrow> v\<rightarrow>w)"
   using valid_path_edges valid_path_in_V by blast
 lemma valid_path_impl2:
