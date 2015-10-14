@@ -200,81 +200,80 @@ proof-
             text {*
               First we show that @{term P} stays in @{term V'}, because if it stays in @{term V'},
               then it conforms to @{term \<sigma>}, so it must be winning for @{term "p**"}. *}
-            have "lset P \<subseteq> V'" proof (rule ccontr)
-              text {* Assume @{term P} does not stay in @{term V'}. *}
-              assume "\<not>lset P \<subseteq> V'"
-              text {* Then there exists a minimal @{term "n \<noteq> 0"} where it leaves @{term V'}. *}
-              hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> V'" by (simp add: lset_subset)
-              then obtain n where n: "enat n < llength P" "P $ n \<notin> V'"
-                "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> V')"
-                using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> V'"] by blast
-              have n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> V'"
-                using n(1,3) dual_order.strict_trans enat_ord_simps(2) by blast
-              have "n \<noteq> 0" using n(2) `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> = V'` by (metis P_0)
-              then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
-              hence "P $ n' \<in> V'" using n_min by blast
-              have "P $ n' \<in> VV p" proof (rule ccontr)
-                text {*
-                  Assume that @{term P} leaves @{term V'} from a @{term "p**"} vertex @{term x}.
-                  @{term P} conforms to @{term \<sigma>} on @{term V'}.  On @{term "p**"} vertices
-                  @{term \<sigma>} always chooses a successor in @{term V'}, so @{term x} cannot be a
-                  @{term "p**"} vertex. *}
-                assume "P $ n' \<notin> VV p"
-                hence "P $ n' \<in> VV p**" using `P $ n' \<in> V'` `V' \<subseteq> V` by auto
-                hence "\<sigma>' (P $ n') = P $ Suc n'" using n' n(1) vmc_path_conforms by blast
-                hence *: "\<sigma> (P $ n') = P $ Suc n'" using \<sigma>'_def `P $ n' \<in> V'` by auto
-                have "\<not>G'.deadend (P $ n')"
-                  using `P $ n' \<in> V'` G'_no_deadends `V\<^bsub>G'\<^esub> = V'` by blast
-                moreover have "P $ n' \<in> G'.VV p**"
-                  using `P $ n' \<in> VV p**` `P $ n' \<in> V'` subgame_VV[of "p**" V'] G'_def by fastforce
-                ultimately have "P $ n' \<rightarrow>\<^bsub>G'\<^esub> \<sigma> (P $ n')"
-                  using \<sigma>(1)[unfolded G'.strategy_def] `P $ n' \<in> VV p**` by blast
-                hence "P $ n' \<rightarrow>\<^bsub>G'\<^esub> P $ n" using * n' by simp
-                hence "P $ n \<in> V'" using `V\<^bsub>G'\<^esub> = V'` by blast
-                thus False using n(2) by blast
-              qed
-              show False proof (cases)
-                text {*
-                  @{term P} leaves @{term V'} to enter @{term W1}.
-                  This is fatal for player @{term p}. *}
-                assume "P $ n \<in> W1"
-                def P' \<equiv> "ldropn n P"
-                text {*
-                  @{term P'} is winning in @{term W1} because @{term \<sigma>'} is @{term \<sigma>W1}
-                  on @{term W1}. *}
-                interpret vmc_path G P' "P $ n" "p**" \<sigma>'
-                  unfolding P'_def using n(1) vmc_path_ldropn by auto
-                have "path_conforms_with_strategy p** P' \<sigma>W1" proof-
-                  { fix v assume "v \<in> V" "\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v"
-                    hence "v \<in> W1" unfolding W1_def by blast
-                    hence "\<sigma>W1 v = \<sigma>' v" by (simp add: U_def V'_def \<sigma>'_def)
-                  }
-                  hence "lset P' \<subseteq> W1"
-                    using W1_def paths_stay_in_winning_region \<sigma>W1 `P $ n \<in> W1` vmc_path
-                    by blast
-                  moreover have "\<And>v. v \<in> W1 \<Longrightarrow> \<sigma>' v = \<sigma>W1 v" by (simp add: U_def V'_def \<sigma>'_def)
-                  moreover have "path_conforms_with_strategy p** P' \<sigma>'" unfolding P'_def by simp
-                  ultimately show ?thesis
-                    by (metis path_conforms_with_strategy_irrelevant_updates subsetCE)
+            hence "lset P \<subseteq> V'" proof (induct rule: vmc_path_lset_induction)
+              case base thus ?case using `V\<^bsub>G'\<^esub> = V'` `v \<in> V\<^bsub>G'\<^esub>` by blast
+            next
+              case (step P v0)
+              interpret vmc_path_no_deadend G P v0 "p**" \<sigma>' using step.hyps(1) .
+              have "w0 \<in> V'" proof (rule ccontr)
+                assume "w0 \<notin> V'"
+                have "v0 \<in> VV p" proof (rule ccontr)
+                  text {*
+                    Assume that @{term P} leaves @{term V'} from a @{term "p**"} vertex @{term x}.
+                    @{term P} conforms to @{term \<sigma>} on @{term V'}.  On @{term "p**"} vertices
+                    @{term \<sigma>} always chooses a successor in @{term V'}, so @{term x} cannot be a
+                    @{term "p**"} vertex. *}
+                  assume "v0 \<notin> VV p"
+                  hence "v0 \<in> VV p**" using `v0 \<in> V'` `V' \<subseteq> V` by auto
+                  hence "\<sigma>' v0 = w0" using v0_conforms by blast
+                  hence *: "\<sigma> v0 = w0" using \<sigma>'_def `v0 \<in> V'` by auto
+                  have "\<not>G'.deadend v0"
+                    using `v0 \<in> V'` G'_no_deadends `V\<^bsub>G'\<^esub> = V'` by blast
+                  moreover have "v0 \<in> G'.VV p**"
+                    using `v0 \<in> VV p**` `v0 \<in> V'` subgame_VV[of "p**" V'] G'_def by fastforce
+                  ultimately have "v0 \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v0"
+                    using \<sigma>(1)[unfolded G'.strategy_def] `v0 \<in> VV p**` by blast
+                  hence "v0 \<rightarrow>\<^bsub>G'\<^esub> w0" using * by simp
+                  thus False using `w0 \<notin> V'` `V\<^bsub>G'\<^esub> = V'` by blast
                 qed
-                then interpret vmc_path G P' "P $ n" "p**" \<sigma>W1 using conforms_to_another_strategy by blast
-                have "winning_path p** P'"
-                  using \<sigma>W1(2) `P $ n \<in> W1` vmc_path winning_strategy_def by blast
-                hence "winning_path p** P"
-                  unfolding P'_def using winning_path_drop_add[OF `valid_path P`] n(1) by blast
-                thus False using `\<not>winning_path p** P` by blast
-              next
-                text {*
-                  @{term P} leaves @{term V'} to enter @{term "attractor p K"}.
-                  Then @{term "P $ n'"} must already be in the attractor because there is an edge,
-                  which is a contradiction to @{term "P $ n' \<in> V'"}. *}
-                assume "P $ n \<notin> W1"
-                hence "P $ n \<in> attractor p K"
-                  using V_decomp n(2) P_valid n(1) valid_path_finite_in_V by blast
-                moreover have "P $ n' \<rightarrow> P $ n" using P_valid n' n(1) valid_path_edges by blast
-                ultimately have "P $ n' \<in> attractor p K" using `P $ n' \<in> VV p` attractor_set_VVp by blast
-                thus False using `P $ n' \<in> V'` V'_def by blast
+
+                show False proof (cases)
+                  text {*
+                    @{term P} leaves @{term V'} to enter @{term W1}.
+                    This is fatal for player @{term p}. *}
+                  assume "w0 \<in> W1"
+                  def P' \<equiv> "ltl P"
+                  text {*
+                    @{term P'} is winning in @{term W1} because @{term \<sigma>'} is @{term \<sigma>W1}
+                    on @{term W1}. *}
+                  interpret vmc_path G P' w0 "p**" \<sigma>'
+                    unfolding P'_def using vmc_path_ltl by blast
+                  have "path_conforms_with_strategy p** P' \<sigma>W1" proof-
+                    { fix v assume "v \<in> V" "\<exists>\<sigma>. strategy p** \<sigma> \<and> winning_strategy p** \<sigma> v"
+                      hence "v \<in> W1" unfolding W1_def by blast
+                      hence "\<sigma>W1 v = \<sigma>' v" by (simp add: U_def V'_def \<sigma>'_def)
+                    }
+                    hence "lset P' \<subseteq> W1"
+                      using W1_def paths_stay_in_winning_region \<sigma>W1 `w0 \<in> W1` vmc_path
+                      by blast
+                    moreover have "\<And>v. v \<in> W1 \<Longrightarrow> \<sigma>' v = \<sigma>W1 v" by (simp add: U_def V'_def \<sigma>'_def)
+                    moreover have "path_conforms_with_strategy p** P' \<sigma>'" unfolding P'_def by simp
+                    ultimately show ?thesis
+                      by (metis path_conforms_with_strategy_irrelevant_updates subsetCE)
+                  qed
+                  then interpret vmc_path G P' w0 "p**" \<sigma>W1
+                    using conforms_to_another_strategy by blast
+                  have "winning_path p** P'"
+                    using \<sigma>W1(2) `w0 \<in> W1` vmc_path winning_strategy_def by blast
+                  hence "winning_path p** P"
+                    unfolding P'_def
+                    using winning_path_LCons[of "p**" "ltl P" v0] P_LCons' Ptl_LCons
+                    by auto
+                  thus False using `\<not>winning_path p** P` by blast
+                next
+                  text {*
+                    @{term P} leaves @{term V'} to enter @{term "attractor p K"}.
+                    Then @{term "P $ n'"} must already be in the attractor because there is an edge,
+                    which is a contradiction to @{term "v0 \<in> V'"}. *}
+                  assume "w0 \<notin> W1"
+                  hence "w0 \<in> attractor p K" using V_decomp `w0 \<notin> V'` w0_V by blast
+                  hence "v0 \<in> attractor p K" using `v0 \<in> VV p` attractor_set_VVp `v0\<rightarrow>w0` by blast
+                  thus False using `v0 \<in> V'` V'_def by blast
+                qed
               qed
+              moreover have "\<not>winning_path p** (ltl P)"
+                by (metis P_LCons Ptl_not_null step.hyps(3) winning_path_LCons)
+              ultimately show ?case unfolding w0_def by blast
             qed
             text {* This concludes the proof of @{term "lset P \<subseteq> V'"}. *}
             hence "G'.valid_path P" using subgame_valid_path by simp
