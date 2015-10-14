@@ -6,11 +6,7 @@ imports
   StrategyAttracts
 begin
 
-text {* Here we give two definitions of the attractor set and show their equivalence.
-  The first definition uses an explicit least fixed point, the second definition is via
-  @{text "inductive_set"}.  It turns out that we can prove a stronger induction scheme for the
-  first definition.
-*}
+text {* Here we define the @{term p}-attractor of a set of vertices. *}
 
 context ParityGame begin
 
@@ -25,19 +21,9 @@ text {* The attractor set of a given set of vertices, defined as a least fixed p
 definition attractor :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
   "attractor p W = lfp (attractor_step p W)"
 
-text {* The attractor set of a given set of vertices, defined inductively. *}
-inductive_set attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
-  for p :: Player and W :: "'a set" where
-  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W" |
-  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W" |
-  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W"
-
-definition attractor_strategy_on :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> 'a set \<Rightarrow> 'a set \<Rightarrow> bool" where
-  "attractor_strategy_on p \<sigma> A W \<equiv> strategy p \<sigma> \<and> strategy_attracts p \<sigma> A W"
-
-lemma directly_attracted_disjoint [simp]: "directly_attracted p W \<inter> W = {}"
-  and directly_attracted_empty [simp]: "directly_attracted p {} = {}"
-  and directly_attracted_V_empty [simp]: "directly_attracted p V = {}"
+lemma directly_attracted_disjoint     [simp]: "directly_attracted p W \<inter> W = {}"
+  and directly_attracted_empty        [simp]: "directly_attracted p {} = {}"
+  and directly_attracted_V_empty      [simp]: "directly_attracted p V = {}"
   and directly_attracted_bounded_by_V [simp]: "directly_attracted p W \<subseteq> V"
   and directly_attracted_contains_no_deadends [elim]: "v \<in> directly_attracted p W \<Longrightarrow> \<not>deadend v"
   using directly_attracted_def by auto
@@ -158,6 +144,11 @@ lemma attractor_set_non_empty: "W \<noteq> {} \<Longrightarrow> attractor p W \<
   and attractor_set_base: "W \<subseteq> attractor p W"
   using attractor_unfolding by auto
 
+lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
+  using attractor_lowerbound attractor_step_bounded_by_V by auto
+
+subsection {* Extension theorems *}
+
 lemma attractor_set_VVp:
   assumes "v \<in> VV p" "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W"
   shows "v \<in> attractor p W"
@@ -181,69 +172,6 @@ proof (rule ccontr)
   ultimately have "v \<in> directly_attracted p (attractor p W)"
     unfolding directly_attracted_def using assms(2) assms(3) by blast
   thus False using * attractor_unfolding by auto
-qed
-
-lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
-  using attractor_lowerbound attractor_step_bounded_by_V by auto
-
-subsection {* @{term attractor_inductive} *}
-
-text {*
-  We show that the inductive definition and the definition via least fixed point are the same.
-*}
-lemma attractor_inductive_is_attractor:
-  assumes "W \<subseteq> V"
-  shows "attractor_inductive p W = attractor p W"
-proof
-  show "attractor_inductive p W \<subseteq> attractor p W" proof
-    fix v show "v \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor p W" proof (induct rule: attractor_inductive.induct)
-    case (Base v) thus ?case using attractor_set_base by auto
-    next case (VVp v) thus ?case using attractor_set_VVp by auto
-    next case (VVpstar v) thus ?case using attractor_set_VVpstar by auto
-    qed
-  qed
-  show "attractor p W \<subseteq> attractor_inductive p W" proof-
-    def P \<equiv> "\<lambda>S. S \<subseteq> attractor_inductive p W"
-    from `W \<subseteq> V` have "P (attractor p W)" proof (induct rule: attractor_set_induction)
-      case (step S)
-      hence "S \<subseteq> attractor_inductive p W" using P_def by simp
-      have "W \<union> S \<union> directly_attracted p S \<subseteq> attractor_inductive p W" proof
-        fix v assume "v \<in> W \<union> S \<union> directly_attracted p S"
-        moreover
-        { assume "v \<in> W" hence "v \<in> attractor_inductive p W" by blast }
-        moreover
-        { assume "v \<in> S" hence "v \<in> attractor_inductive p W"
-            by (meson `S \<subseteq> attractor_inductive p W` set_rev_mp) }
-        moreover
-        { assume v_attracted: "v \<in> directly_attracted p S"
-          hence "v \<in> V" using `S \<subseteq> V` attractor_step_bounded_by_V by blast
-          hence "v \<in> attractor_inductive p W" proof (cases rule: VV_cases)
-            assume "v \<in> VV p"
-            hence "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using v_attracted directly_attracted_def by blast
-            hence "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W"
-              using `S \<subseteq> attractor_inductive p W` by blast
-            thus ?thesis by (simp add: `v \<in> VV p` attractor_inductive.VVp)
-          next
-            assume "v \<in> VV p**"
-            hence *: "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> S" using v_attracted directly_attracted_def by blast
-            have "\<not>deadend v" using v_attracted directly_attracted_def by blast
-            show ?thesis proof (rule ccontr)
-              assume "v \<notin> attractor_inductive p W"
-              hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> attractor_inductive p W"
-                by (metis attractor_inductive.VVpstar `v \<in> VV p**` `\<not>deadend v`)
-              hence "\<exists>w. v\<rightarrow>w \<and> w \<notin> S" using `S \<subseteq> attractor_inductive p W` by (meson subsetCE)
-              thus False using * by blast
-            qed
-          qed
-        }
-        ultimately show "v \<in> attractor_inductive p W" by (meson UnE)
-      qed
-      thus "P (W \<union> S \<union> directly_attracted p S)" using P_def by simp
-    next
-      case (union M) thus ?case by (simp add: P_def Sup_least)
-    qed
-    thus ?thesis using P_def by simp
-  qed
 qed
 
 end -- "context ParityGame"
