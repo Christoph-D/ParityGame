@@ -41,6 +41,7 @@ lemma Digraph [simp]: "Digraph G" by unfold_locales
 
 lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<rightarrow>w \<Longrightarrow> w \<in> V" using valid_edge_set by blast+
 
+text {* A vertex without successors is a \emph{deadend}. *}
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 
 subsection {* Valid paths *}

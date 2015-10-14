@@ -122,7 +122,7 @@ qed (simp add: lnull_def)
 
 subsection {* @{term "ldropn"} *}
 
-lemma ltl_ldrop: "(\<And>xs. P xs \<Longrightarrow> P (ltl xs)) \<Longrightarrow> P xs \<Longrightarrow> P (ldropn n xs)"
+lemma ltl_ldrop: "\<lbrakk> \<And>xs. P xs \<Longrightarrow> P (ltl xs); P xs \<rbrakk> \<Longrightarrow> P (ldropn n xs)"
   unfolding ldropn_def by (induct n) simp_all
 
 subsection {* @{term "lfinite"} *}
@@ -131,19 +131,19 @@ lemma lfinite_drop_set: "lfinite xs \<Longrightarrow> \<exists>n. v \<notin> lse
   by (metis ldrop_inf lmember_code(1) lset_lmember)
 
 lemma index_infinite_set:
-  "\<lbrakk> \<not>lfinite x; lnth x i = y; \<And>i. lnth x i = y \<Longrightarrow> (\<exists>j > i. lnth x j = y) \<rbrakk> \<Longrightarrow> y \<in> lset (ldropn n x)"
-proof (induct n arbitrary: x i)
+  "\<lbrakk> \<not>lfinite x; lnth x m = y; \<And>i. lnth x i = y \<Longrightarrow> (\<exists>m > i. lnth x m = y) \<rbrakk> \<Longrightarrow> y \<in> lset (ldropn n x)"
+proof (induct n arbitrary: x m)
   case 0 thus ?case using lset_nth_member_inf by auto
 next
   case (Suc n)
   obtain a xs where x: "x = LCons a xs" by (meson Suc.prems(1) lnull_imp_lfinite not_lnull_conv)
-  obtain j where j: "j > i" "lnth x j = y" using Suc.prems(2,3) by blast
+  obtain j where j: "j > m" "lnth x j = y" using Suc.prems(2,3) by blast
   have "lnth xs (j - 1) = y" by (metis lnth_LCons' j(1,2) not_less0 x)
-  moreover have "\<And>i. lnth xs i = y \<Longrightarrow> \<exists>j>i. lnth xs j = y" proof-
+  moreover {
     fix i assume "lnth xs i = y"
     hence "lnth x (Suc i) = y" by (simp add: x)
-    thus "\<exists>j>i. lnth xs j = y" by (metis Suc.prems(3) Suc_lessE lnth_Suc_LCons x)
-  qed
+    hence "\<exists>j>i. lnth xs j = y" by (metis Suc.prems(3) Suc_lessE lnth_Suc_LCons x)
+  }
   ultimately show ?case using Suc.hyps Suc.prems(1) x by auto
 qed
 
