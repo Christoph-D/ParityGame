@@ -1,6 +1,11 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt,a4paper]{scrartcl}
 \usepackage{isabelle,isabellesym}
+\usepackage{amsfonts}
 
+\typearea{11}
+\renewcommand{\bf}{\normalfont\bfseries}
+\renewcommand{\rm}{\normalfont\rmfamily}
+\renewcommand{\it}{\normalfont\itshape}
 % further packages required for unusual symbols (see also
 % isabellesym.sty), use only when needed
 
@@ -35,12 +40,14 @@
 
 \begin{document}
 
-\title{PositionalDeterminacy}
+\title{Positional Determinacy of Parity Games}
 \author{Christoph Dittmann\\christoph.dittmann@tu-berlin.de}
 \maketitle
 
 \begin{abstract}
-  Positional determinacy of parity games.
+  We formalize a proof of positional determinacy of parity games in
+  Isabelle/HOL.  This proof works for both finite and for infinite
+  parity games.
 \end{abstract}
 
 \tableofcontents
