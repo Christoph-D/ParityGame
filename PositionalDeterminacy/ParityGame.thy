@@ -234,18 +234,21 @@ end -- "locale Digraph"
 
 subsection {* Parity games *}
 
+text {* Parity games are games played by two players, called Even and Odd. *}
+
 datatype Player = Even | Odd
 abbreviation other_player :: "Player \<Rightarrow> Player" where "other_player p \<equiv> (if p = Even then Odd else Even)"
 notation other_player ("(_**)" [1000] 1000)
 lemma other_other_player [simp]: "p**** = p" using Player.exhaust by auto
 
-record 'a ParityGame = "'a Graph" +
-  priority :: "'a \<Rightarrow> nat" ("\<omega>\<index>")
-  player0 :: "'a set" ("V0\<index>")
+text {*
+  A parity game is tuple $(V,E,V_0,\omega)$, where $(V,E)$ is a graph, $V_0 \subseteq V$
+  and @{term \<omega>} is a function from $V \to \mathbb{N}$ with finite image.
+*}
 
-abbreviation winning_priority :: "Player \<Rightarrow> nat \<Rightarrow> bool" where
-  "winning_priority p \<equiv> (if p = Even then even else odd)"
-lemma winning_priority_for_one_player: "winning_priority p i \<longleftrightarrow> \<not>winning_priority p** i" by simp
+record 'a ParityGame = "'a Graph" +
+  player0 :: "'a set" ("V0\<index>")
+  priority :: "'a \<Rightarrow> nat" ("\<omega>\<index>")
 
 locale ParityGame = Digraph G for G :: "('a, 'b) ParityGame_scheme" (structure) +
   assumes valid_player0_set: "V0 \<subseteq> V"
@@ -266,16 +269,21 @@ subsection {* Subgames *}
 text {* We define a subgame by restricting the set of vertices to a given subset. *}
 
 definition subgame where
-  "subgame V' \<equiv> G\<lparr> verts := V' \<inter> V, arcs := E \<inter> (V' \<times> V'), player0 := V0 \<inter> V' \<rparr>"
+  "subgame V' \<equiv> G\<lparr>
+    verts   := V \<inter> V',
+    arcs    := E \<inter> (V' \<times> V'),
+    player0 := V0 \<inter> V' \<rparr>"
 
 lemma subgame_V [simp]: "V\<^bsub>subgame V'\<^esub> \<subseteq> V"
   and subgame_E [simp]: "E\<^bsub>subgame V'\<^esub> \<subseteq> E"
   and subgame_\<omega>: "\<omega>\<^bsub>subgame V'\<^esub> = \<omega>"
   unfolding subgame_def by simp_all
 
-lemma subgame_V' [simp]: "V' \<subseteq> V \<Longrightarrow> V\<^bsub>subgame V'\<^esub> = V'" unfolding subgame_def by auto
-lemma subgame_E' [simp]: "V' \<subseteq> V \<Longrightarrow> E\<^bsub>subgame V'\<^esub> = E \<inter> (V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>)"
-  unfolding subgame_def by auto
+lemma
+  assumes "V' \<subseteq> V"
+  shows subgame_V' [simp]: "V\<^bsub>subgame V'\<^esub> = V'"
+    and subgame_E' [simp]: "E\<^bsub>subgame V'\<^esub> = E \<inter> (V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>)"
+  unfolding subgame_def using assms by auto
 
 lemma subgame_VV [simp]: "ParityGame.VV (subgame V') p = V' \<inter> VV p" proof-
   have "ParityGame.VV (subgame V') Even = V' \<inter> VV Even" unfolding subgame_def by auto
@@ -288,17 +296,16 @@ qed
 corollary subgame_VV_subset [simp]: "ParityGame.VV (subgame V') p \<subseteq> VV p" by simp
 
 lemma subgame_finite [simp]: "finite (\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub>)" proof-
-  have "finite (\<omega> ` V\<^bsub>subgame V'\<^esub>)" using subgame_V priorities_finite by (meson finite_subset image_mono)
+  have "finite (\<omega> ` V\<^bsub>subgame V'\<^esub>)" using subgame_V priorities_finite
+    by (meson finite_subset image_mono)
   thus ?thesis by (simp add: subgame_def)
 qed
 
-lemma subgame_\<omega>_subset [simp]: "\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub> \<subseteq> \<omega> ` V" by (simp add: image_mono subgame_\<omega>)
+lemma subgame_\<omega>_subset [simp]: "\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub> \<subseteq> \<omega> ` V"
+  by (simp add: image_mono subgame_\<omega>)
 
-lemma subgame_Digraph:
-  shows "Digraph (subgame V')"
-proof (unfold_locales)
-  show "E\<^bsub>subgame V'\<^esub> \<subseteq> V\<^bsub>subgame V'\<^esub> \<times> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using valid_edge_set by auto
-qed
+lemma subgame_Digraph: "Digraph (subgame V')"
+  by (unfold_locales) (auto simp add: subgame_def)
 
 lemma subgame_ParityGame:
   shows "ParityGame (subgame V')"
@@ -309,9 +316,6 @@ proof (unfold_locales)
   show "finite (\<omega>\<^bsub>subgame V'\<^esub> ` V\<^bsub>subgame V'\<^esub>)" by simp
 qed
 
-lemma subgame_deadend [simp]: "\<not>Digraph.deadend (subgame V') v \<Longrightarrow> \<not>deadend v"
-  by (meson subgame_E subgame_V subsetCE)
-
 lemma subgame_valid_path:
   assumes P: "valid_path P" "lset P \<subseteq> V'"
   shows "Digraph.valid_path (subgame V') P"
@@ -319,7 +323,8 @@ proof-
   have "lset P \<subseteq> V" using P(1) valid_path_in_V by blast
   hence "lset P \<subseteq> V\<^bsub>subgame V'\<^esub>" unfolding subgame_def using P(2) by auto
   with P(1) show ?thesis
-  proof (coinduction arbitrary: P rule: Digraph.valid_path.coinduct[OF subgame_Digraph, case_names IH])
+  proof (coinduction arbitrary: P
+    rule: Digraph.valid_path.coinduct[OF subgame_Digraph, case_names IH])
     case IH
     thus ?case proof (cases rule: valid_path.cases)
       case (valid_path_cons v w Ps)
@@ -341,39 +346,44 @@ proof-
        (cases rule: maximal_path.cases, auto)
 qed
 
-definition path_priorities :: "'a Path \<Rightarrow> nat \<Rightarrow> nat" where
-  "path_priorities P i \<equiv> \<omega> (P $ i)"
-(* The set of priorities that occur infinitely often on a given path. *)
+subsection {* Priorities occurring infinitely often *}
+
+text {*
+  The set of priorities that occur infinitely often on a given path.  We need this to define the
+  winning condition of parity games.
+*}
 definition path_inf_priorities :: "'a Path \<Rightarrow> nat set" where
   "path_inf_priorities P \<equiv> {k. \<forall>n. k \<in> lset (ldropn n (lmap \<omega> P))}"
 
-lemma path_priorities_equiv: assumes "\<not>lfinite P" shows "path_priorities P i = lmap \<omega> P $ i" proof-
-  have "enat i < llength P" using assms enat_iless llength_eq_enat_lfiniteD neq_iff by blast
-  thus ?thesis by (simp add: path_priorities_def)
-qed
-
-lemma path_priorities_in_\<omega>V: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> path_priorities P i \<in> \<omega> ` V"
-  unfolding path_priorities_def using lset_nth_member_inf[of P V i] valid_path_in_V by blast
-
+text {*
+  Because @{term \<omega>} is image-finite, by the pigeon-hole principle every infinite path has at least
+  one priority that occurs infinitely often.
+*}
 lemma path_inf_priorities_is_nonempty:
-  assumes "valid_path P" "\<not>lfinite P"
+  assumes P: "valid_path P" "\<not>lfinite P"
   shows "\<exists>k. k \<in> path_inf_priorities P"
 proof-
-  have "range (path_priorities P) \<subseteq> \<omega> ` V"
-    by (simp add: path_priorities_in_\<omega>V assms image_subsetI)
-  hence "finite (range (path_priorities P))"
+  text {* Define a map from indices to priorities on the path. *}
+  def f \<equiv> "\<lambda>i. \<omega> (P $ i)"
+  have "range f \<subseteq> \<omega> ` V" unfolding f_def
+    using valid_path_in_V[OF P(1)] lset_nth_member_inf[OF P(2)]
+    by blast
+  hence "finite (range f)"
     using priorities_finite finite_subset by blast
-  then obtain n0 where n0: "\<not>(finite {n. path_priorities P n = path_priorities P n0})"
-    using pigeonhole_infinite[of UNIV "path_priorities P"] by auto
-  def k \<equiv> "path_priorities P n0"
-  hence "lmap \<omega> P $ n0 = k" using assms(2) path_priorities_equiv by simp
+  then obtain n0 where n0: "\<not>(finite {n. f n = f n0})"
+    using pigeonhole_infinite[of UNIV f] by auto
+  def k \<equiv> "f n0"
+  text {* The priority @{term k} occurs infinitely often. *}
+  have "lmap \<omega> P $ n0 = k" unfolding f_def k_def
+    using assms(2) by (simp add: infinite_small_llength)
   moreover {
     fix n assume "lmap \<omega> P $ n = k"
-    have "\<exists>n' > n. path_priorities P n' = k" using n0 k_def infinite_nat_iff_unbounded by auto
-    hence "\<exists>n' > n. lmap \<omega> P $ n' = k" using assms(2) path_priorities_equiv by auto
+    have "\<exists>n' > n. f n' = k" using n0 k_def infinite_nat_iff_unbounded by auto
+    hence "\<exists>n' > n. lmap \<omega> P $ n' = k" unfolding f_def
+      using assms(2) by (simp add: infinite_small_llength)
   }
   ultimately have "\<forall>n. k \<in> lset (ldropn n (lmap \<omega> P))"
-    using index_infinite_set[of "lmap \<omega> P" n0 k] assms(2) lfinite_lmap
+    using index_infinite_set[of "lmap \<omega> P" n0 k] P(2) lfinite_lmap
     by blast
   thus ?thesis unfolding path_inf_priorities_def by blast
 qed
@@ -400,13 +410,30 @@ qed
 corollary path_inf_priorities_ltl: "path_inf_priorities P = path_inf_priorities (ltl P)"
   by (metis llist.exhaust ltl_simps path_inf_priorities_LCons)
 
-(* True iff the path is winning for the given player. *)
+
+subsection {* Winning condition *}
+
+text {*
+  Let $G = (V,E,V_0,\omega)$ be a parity game.
+  An infinite path $v_0,v_1,\ldots$ in $G$ is winning for player Even (Odd) if the minimum priority
+  occurring infinitely often is even (odd).
+  A finite path is winning for player @{term p} if the last vertex on the path belongs to the other
+  player.
+
+  Empty paths are irrelevant, but it is useful to assign them to a fixed winner in order to get a
+  functions.
+*}
+
+abbreviation "winning_priority p \<equiv> (if p = Even then even else odd)"
+
 definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" where
   "winning_path p P \<equiv>
-    (\<not>lfinite P \<and> (\<exists>a \<in> path_inf_priorities P. (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
+    (\<not>lfinite P \<and> (\<exists>a \<in> path_inf_priorities P.
+      (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a))
     \<or> (\<not>lnull P \<and> lfinite P \<and> llast P \<in> VV p**)
     \<or> (lnull P \<and> p = Even)"
 
+text {* Every path has a unique winner. *}
 lemma paths_are_winning_for_one_player:
   assumes "valid_path P"
   shows "winning_path p P \<longleftrightarrow> \<not>winning_path p** P"
@@ -423,7 +450,8 @@ proof (cases)
       by blast
     hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P"
       unfolding infinite winning_path_def using `\<not>lnull P` infinite by (metis le_antisym not_le)
-    thus ?thesis using winning_priority_for_one_player by blast
+    moreover have "\<forall>q. winning_priority p q \<longleftrightarrow> \<not>winning_priority p** q" by simp
+    ultimately show ?thesis by blast
   qed
 qed (simp add: winning_path_def)
 
@@ -432,7 +460,8 @@ lemma winning_path_ltl:
   shows "winning_path p (ltl P)"
 proof (cases)
   assume "lfinite P"
-  moreover have "llast P = llast (ltl P)" using P(2,3) by (metis llast_LCons2 ltl_simps(2) not_lnull_conv)
+  moreover have "llast P = llast (ltl P)"
+    using P(2,3) by (metis llast_LCons2 ltl_simps(2) not_lnull_conv)
   ultimately show ?thesis using P by (simp add: winning_path_def)
 next
   assume "\<not>lfinite P"
@@ -460,11 +489,12 @@ lemma winning_path_LCons:
   shows "winning_path p (LCons v P)"
 proof (cases)
   assume "lfinite P"
-  moreover have "llast P = llast (LCons v P)" using P(2) by (metis llast_LCons2 not_lnull_conv)
+  moreover have "llast P = llast (LCons v P)"
+    using P(2) by (metis llast_LCons2 not_lnull_conv)
   ultimately show ?thesis using P by (simp add: winning_path_def)
 next
   assume "\<not>lfinite P"
-  thus ?thesis using winning_path_def path_inf_priorities_LCons using P by auto
+  thus ?thesis using winning_path_def path_inf_priorities_LCons P by auto
 qed
 
 lemma winning_path_supergame:
@@ -475,7 +505,8 @@ proof-
   { assume "\<not>lfinite P"
     moreover hence "\<not>lnull P" by auto
     ultimately
-      have "\<exists>a. a \<in> path_inf_priorities P \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a"
+      have "\<exists>a. a \<in> path_inf_priorities P
+        \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a"
       using assms(1) unfolding winning_path_def by blast
     moreover have "path_inf_priorities P = ParityGame.path_inf_priorities G' P"
       unfolding path_inf_priorities_def using ParityGame.path_inf_priorities_def[of G' P] G'(1,3)
