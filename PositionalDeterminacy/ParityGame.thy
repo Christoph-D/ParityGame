@@ -1,4 +1,4 @@
-section {* Parity Games *}
+section {* Parity games *}
 
 theory ParityGame
 imports

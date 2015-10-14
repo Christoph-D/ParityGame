@@ -485,7 +485,7 @@ proof-
           qed
           thus ?case unfolding w0_def using step.hyps(3) by simp
         qed (insert P(1))
-        text {* This concludes the proof of @{thm this}. *}
+        text {* This concludes the proof of @{term "lset P \<subseteq> V - W1"}. *}
         hence "lset P \<subseteq> attractor p K \<union> V'" using V_decomp by blast
         text {*
           Every @{term \<sigma>}-conforming path starting in @{term "V - W1"} is winning.
