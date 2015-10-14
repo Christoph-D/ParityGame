@@ -374,27 +374,30 @@ proof-
   ultimately have "\<forall>n. k \<in> lset (ldropn n (lmap \<omega> P))"
     using index_infinite_set[of "lmap \<omega> P" n0 k] assms(2) lfinite_lmap
     by blast
-  thus ?thesis using path_inf_priorities_def by blast
+  thus ?thesis unfolding path_inf_priorities_def by blast
 qed
 
-lemma path_inf_priorities_LCons: "path_inf_priorities P = path_inf_priorities (LCons v P)" (is "?A = ?B")
+lemma path_inf_priorities_LCons:
+  "path_inf_priorities P = path_inf_priorities (LCons v P)" (is "?A = ?B")
 proof
   show "?A \<subseteq> ?B" proof
     fix a assume "a \<in> ?A"
     hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> (LCons v P)))"
-      using path_inf_priorities_def in_set_ldropn[of a _ "lmap \<omega> (LCons v P)"] by auto
+      unfolding path_inf_priorities_def
+      using in_lset_ltlD[of a] by (simp add: ltl_ldropn)
     thus "a \<in> ?B" using path_inf_priorities_def by blast
   qed
 next
   show "?B \<subseteq> ?A" proof
     fix a assume "a \<in> ?B"
-    hence "\<forall>n. a \<in> lset (ldropn (Suc n) (lmap \<omega> (LCons v P)))" using path_inf_priorities_def by blast
+    hence "\<forall>n. a \<in> lset (ldropn (Suc n) (lmap \<omega> (LCons v P)))"
+      unfolding path_inf_priorities_def by blast
     hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> P))" by auto
     thus "a \<in> ?A" using path_inf_priorities_def by blast
   qed
 qed
 corollary path_inf_priorities_ltl: "path_inf_priorities P = path_inf_priorities (ltl P)"
-  by (metis llist.exhaust ltl_simps(1,2) path_inf_priorities_LCons)
+  by (metis llist.exhaust ltl_simps path_inf_priorities_LCons)
 
 (* True iff the path is winning for the given player. *)
 definition winning_path :: "Player \<Rightarrow> 'a Path \<Rightarrow> bool" where

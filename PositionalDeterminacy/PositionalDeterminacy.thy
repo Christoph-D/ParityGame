@@ -178,24 +178,28 @@ proof-
             fix P assume "vmc_path G P v p** \<sigma>'"
             then interpret vmc_path G P v "p**" \<sigma>' .
             assume "\<not>winning_path p** P"
-            (* First we show that P stays in V', because if it stays in V', then it conforms to \<sigma>,
-            so it must be winning for p**. *)
+            text {*
+              First we show that @{term P} stays in @{term V'}, because if it stays in @{term V'},
+              then it conforms to @{term \<sigma>}, so it must be winning for @{term "p**"}. *}
             have "lset P \<subseteq> V'" proof (rule ccontr)
-              (* Assume P does not stay in V'. *)
+              text {* Assume @{term P} does not stay in @{term V'}. *}
               assume "\<not>lset P \<subseteq> V'"
-              (* Then there exists a minimal n where it leaves V', which cannot be 0. *)
+              text {* Then there exists a minimal @{term "n \<noteq> 0"} where it leaves @{term V'}. *}
               hence "\<exists>n. enat n < llength P \<and> P $ n \<notin> V'" by (simp add: lset_subset)
               then obtain n where n: "enat n < llength P" "P $ n \<notin> V'"
                 "\<And>i. i < n \<Longrightarrow> \<not>(enat i < llength P \<and> P $ i \<notin> V')"
                 using ex_least_nat_le[of "\<lambda>n. enat n < llength P \<and> P $ n \<notin> V'"] by blast
               have n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<in> V'"
-                using n(1) n(3) dual_order.strict_trans enat_ord_simps(2) by blast
+                using n(1,3) dual_order.strict_trans enat_ord_simps(2) by blast
               have "n \<noteq> 0" using n(2) `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> = V'` by (metis P_0)
               then obtain n' where n': "Suc n' = n" using not0_implies_Suc by blast
               hence "P $ n' \<in> V'" using n_min by blast
               have "P $ n' \<in> VV p" proof (rule ccontr)
-                (* Assume that P leaves V' from a p** node x. P conforms to \<sigma> on V'.  On p** nodes
-                \<sigma> always chooses a successor in V', so x cannot be a p** node. *)
+                text {*
+                  Assume that @{term P} leaves @{term V'} from a @{term "p**"} vertex @{term x}.
+                  @{term P} conforms to @{term \<sigma>} on @{term V'}.  On @{term "p**"} vertices
+                  @{term \<sigma>} always chooses a successor in @{term V'}, so @{term x} cannot be a
+                  @{term "p**"} vertex. *}
                 assume "P $ n' \<notin> VV p"
                 hence "P $ n' \<in> VV p**" using `P $ n' \<in> V'` `V' \<subseteq> V` by auto
                 hence "\<sigma>' (P $ n') = P $ Suc n'" using n' n(1) vmc_path_conforms by blast
@@ -453,16 +457,23 @@ proof-
           qed
         qed
         hence "lset P \<subseteq> attractor p K \<union> V'" using V_decomp by blast
-        (* Every \<sigma>-conforming path starting in V - W1 is winning.  We distinguish two cases:
-           1. P eventually stays in V'.  Then P is winning because \<sigma>2 is winning.
-           2. P visits K infinitely often.  Then P is winning because of the priority of K.
-        *)
+        text {*
+          Every @{term \<sigma>}-conforming path starting in @{term "V - W1"} is winning.
+          We distinguish two cases:
+          \begin{enumerate}
+            \item @{term P} eventually stays in @{term V'}.
+              Then @{term P} is winning because @{term \<sigma>2} is winning.
+            \item @{term P} visits @{term K} infinitely often.
+              Then @{term P} is winning because of the priority of the vertices in @{term K}.
+          \end{enumerate}
+        *}
         have "winning_path p P" proof (cases)
           assume "\<exists>n. lset (ldropn n P) \<subseteq> V'"
-          (* P eventually stays in V'. *)
+          text {* The first case: @{term P} eventually stays in @{term V'}. *}
           then obtain n where n: "lset (ldropn n P) \<subseteq> V'" by blast
           def P' \<equiv> "ldropn n P"
-          have "\<not>lnull P'" using P'_def `\<not>lfinite P` infinite_no_deadend lfinite_ldropn by blast
+          have "\<not>lnull P'" unfolding P'_def
+            using `\<not>lfinite P` lfinite_ldropn lnull_imp_lfinite by blast
           moreover have "lset P' \<subseteq> V'" using P'_def n by simp
           ultimately have "lhd P' \<in> V'" by auto
           hence "V' \<inter> V \<noteq> {}" using `V' \<subseteq> V` by auto
@@ -500,7 +511,7 @@ proof-
             by blast
         next
           assume "\<not>(\<exists>n. lset (ldropn n P) \<subseteq> V')"
-          (* P visits K infinitely often. *)
+          text {* The second case: @{term P} visits @{term K} infinitely often. *}
           hence *: "\<And>n. \<not>lset (ldropn n P) \<subseteq> V'" by blast
           have *: "\<And>n. \<exists>k \<ge> n. P $ k \<notin> V'" proof-
             fix n
@@ -530,8 +541,10 @@ proof-
             have "ldropn n P $ k - n = P $ (k - n) + n"
               using k(1) lnth_ldropn[of n "k - n" P] infinite_small_llength `\<not>lfinite P` by blast
             hence "ldropn n P $ k - n \<in> K" using k by simp
-            thus "lset (ldropn n P) \<inter> K \<noteq> {}"
-              by (meson `\<not>lfinite P` disjoint_iff_not_equal lfinite_ldropn llist_nth_set)
+            moreover have "enat (k - n) < llength (ldropn n P)"
+              using `\<not>lfinite P` lfinite_ldropn by blast
+            ultimately show "lset (ldropn n P) \<inter> K \<noteq> {}"
+              using in_lset_conv_lnth[of "ldropn n P $ k - n"] by blast
           qed
           {
             fix n

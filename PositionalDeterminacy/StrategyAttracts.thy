@@ -35,7 +35,7 @@ proof-
     by (metis n(1) ldropn_Suc_LCons ldropn_Suc_conv_ldropn ldropn_eq_LConsD)
   moreover have "P' $ Suc n \<in> W" unfolding P'_def by (simp add: n(2))
   moreover have "lset (ltake (enat (Suc n)) P') \<subseteq> insert v0 A"
-    using lset_ltake_Suc'[of "P'" v0 n A] unfolding P'_def by (simp add: n(3))
+    using lset_ltake_Suc[of P' v0 n A] unfolding P'_def by (simp add: n(3))
   ultimately show ?thesis unfolding visits_via_def P'_def by blast
 qed
 

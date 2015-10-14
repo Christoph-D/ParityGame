@@ -83,7 +83,7 @@ proof-
       def [simp]: P' \<equiv> "ldropn n P"
       interpret vmc_path G P' "lhd P'" p \<sigma>' proof
         show "\<not>lnull P'" unfolding P'_def
-          using `\<not>lfinite P` infinite_no_deadend lfinite_ldropn by blast
+          using `\<not>lfinite P` lfinite_ldropn lnull_imp_lfinite by blast
       qed (simp_all add: n)
       have "strategy p \<sigma>'" unfolding \<sigma>'_def
         using path_strategies_strategy `lset P \<subseteq> S - W` `\<not>lfinite P` infinite_small_llength
@@ -176,7 +176,8 @@ proof-
       def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
       interpret P': vmc_path G P' "lhd P'" p \<sigma>' proof
-        show "\<not>lnull P'" using `\<not>lfinite P` using P'_def infinite_no_deadend lfinite_ldropn by blast
+        show "\<not>lnull P'" using `\<not>lfinite P` unfolding P'_def
+          using lfinite_ldropn lnull_imp_lfinite by blast
       qed (simp_all add: n)
       have "strategy p \<sigma>'" unfolding \<sigma>'_def
         using path_strategies_strategy `lset P \<subseteq> S` `\<not>lfinite P` by blast

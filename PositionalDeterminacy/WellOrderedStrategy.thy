@@ -189,7 +189,7 @@ lemma path_strategies_eventually_constant:
 proof-
   def \<sigma>_set \<equiv> "lset (path_strategies P)"
   have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" unfolding \<sigma>_set_def path_strategies_def
-    by (metis assms(1) image_eqI llist.set_map llist_nth_set)
+    using assms(1) lfinite_lmap lset_nth_member_inf by blast
   then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set"
     using wfE_min[of "r - Id" _ \<sigma>_set] by auto
   obtain n where n: "path_strategies P $ n = \<sigma>'"
@@ -203,8 +203,8 @@ proof-
         using assms by (simp add: infinite_small_llength)
       with * have "(path_strategies P $ m, path_strategies P $ n) \<in> r - Id" by simp
       with \<sigma>'(2) n have "path_strategies P $ m \<notin> \<sigma>_set" by blast
-      thus False unfolding \<sigma>_set_def
-        by (metis (mono_tags, lifting) assms(1) lfinite_lmap llist_nth_set path_strategies_def)
+      thus False unfolding \<sigma>_set_def path_strategies_def
+        using assms(1) lfinite_lmap lset_nth_member_inf by blast
     qed
   }
   thus ?thesis by blast
