@@ -140,7 +140,7 @@ proof (rule ccontr)
   hence "v \<in> V - attractor p W" using assms(1) by blast
   moreover have "v \<notin> VV p" using assms(1) by auto
   ultimately have "v \<in> directly_attracted p (attractor p W)"
-    unfolding directly_attracted_def using assms(2) assms(3) by blast
+    unfolding directly_attracted_def using assms(2,3) by blast
   thus False using * attractor_unfolding by auto
 qed
 
