@@ -32,22 +32,8 @@ lemma directly_attracted_union:
   assumes "v \<in> directly_attracted p W" "v \<notin> U"
   shows "v \<in> directly_attracted p (W \<union> U)"
 proof-
-  have v1: "\<not>deadend v" using assms(1) directly_attracted_def by auto
-  have v2: "v \<in> V - (W \<union> U)" using assms directly_attracted_def by auto
-  hence "v \<in> V" by simp
-  thus ?thesis proof (cases rule: VV_cases)
-    assume "v \<in> VV p"
-    hence "v \<notin> VV p**" by (simp add: VV_impl1)
-    hence "\<exists>w. v\<rightarrow>w \<and> w \<in> W" using directly_attracted_def assms(1) by auto
-    hence "\<exists>w. v\<rightarrow>w \<and> w \<in> W \<union> U" by auto
-    thus ?thesis using v1 v2 `v \<notin> VV p**` directly_attracted_def by blast
-  next
-    assume "v \<in> VV p**"
-    hence "v \<notin> VV p" by (simp add: VV_impl2)
-    hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W" using directly_attracted_def assms(1) by auto
-    hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> W \<union> U" by auto
-    thus ?thesis using v1 v2 `v \<notin> VV p` directly_attracted_def by blast
-  qed
+  have "v \<in> V - (W \<union> U)" using assms unfolding directly_attracted_def by auto
+  thus ?thesis using assms(1) unfolding directly_attracted_def by auto
 qed
 
 subsection {* @{text attractor_step} *}
