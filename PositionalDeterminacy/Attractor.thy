@@ -48,9 +48,9 @@ lemma mono_restriction_is_mono: "mono f \<Longrightarrow> mono (\<lambda>S. f (S
 lemma attractor_step_mono: "mono (attractor_step p W)"
 proof (rule monoI)
   fix S T :: "'a set" assume "S \<subseteq> T"
-  show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" proof
-    fix v assume v: "v \<in> W \<union> S \<union> directly_attracted p S"
-    show "v \<in> W \<union> T \<union> directly_attracted p T" proof (cases)
+  show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" (is "?A \<subseteq> ?B") proof
+    fix v assume v: "v \<in> ?A"
+    show "v \<in> ?B" proof (cases)
       assume "v \<notin> W \<and> v \<notin> T"
       hence "v \<in> directly_attracted p S" using v `S \<subseteq> T` by blast
       thus ?thesis unfolding directly_attracted_def using `S \<subseteq> T` by auto
@@ -76,7 +76,8 @@ proof-
   let ?f = "\<lambda>S. attractor_step p W (S \<inter> V)"
   let ?A = "lfp ?f"
   let ?B = "lfp (attractor_step p W)"
-  have f_mono: "mono ?f" using mono_restriction_is_mono[of "attractor_step p W"] attractor_step_mono by simp
+  have f_mono: "mono ?f"
+    using mono_restriction_is_mono[of "attractor_step p W"] attractor_step_mono by simp
   have P_A: "?P ?A" proof (rule lfp_ordinal_induct_set)
     show "\<And>S. ?P S \<Longrightarrow> ?P (W \<union> (S \<inter> V) \<union> directly_attracted p (S \<inter> V))"
       by (metis assms(1) attractor_step_bounded_by_V inf.absorb1 inf_le2 local.step)
