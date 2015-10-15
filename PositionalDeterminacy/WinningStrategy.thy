@@ -3,7 +3,7 @@ section {* Winning strategies *}
 theory WinningStrategy
 imports
   Main
-  StrategyAttracts
+  Strategy
 begin
 
 context ParityGame begin

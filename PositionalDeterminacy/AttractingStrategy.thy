@@ -2,7 +2,7 @@ section {* Attracting strategies *}
 
 text {* Introduces the concept of attracting strategies. *}
 
-theory StrategyAttracts
+theory AttractingStrategy
 imports
   Main
   Strategy

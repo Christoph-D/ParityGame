@@ -3,7 +3,7 @@ section {* Attractor sets *}
 theory Attractor
 imports
   Main
-  StrategyAttracts
+  AttractingStrategy
 begin
 
 text {* Here we define the @{term p}-attractor of a set of vertices. *}
