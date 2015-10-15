@@ -42,15 +42,18 @@
 
 \title{Positional Determinacy of Parity Games}
 \author{Christoph Dittmann\\christoph.dittmann@tu-berlin.de}
+\date{\today}
 \maketitle
 
 \begin{abstract}
   We formalize a proof of positional determinacy of parity games in
   Isabelle/HOL.  This proof works for both finite and infinite parity
-  games.
+  games.  We follow the proof in \cite{kreutzer2015}, which is based
+  on \cite{zielonka1998}.
 \end{abstract}
 
 \tableofcontents
+\newpage
 
 % sane default for proof documents
 \parindent 0pt\parskip 0.5ex
@@ -58,9 +61,11 @@
 % generated text of all theories
 \input{session}
 
-% optional bibliography
-%\bibliographystyle{abbrv}
-%\bibliography{root}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{Bibliography}
+\bibliographystyle{plain}
+\bibliography{root}
 
 \end{document}
 

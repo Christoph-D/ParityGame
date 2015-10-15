@@ -4,3 +4,4 @@ session PositionalDeterminacy = Coinductive +
     PositionalDeterminacy
   document_files
     "root.tex"
+    "root.bib"

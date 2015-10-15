@@ -1,3 +1,4 @@
 output/
-document/
+document/*
 !document/root.tex
+!document/root.bib
