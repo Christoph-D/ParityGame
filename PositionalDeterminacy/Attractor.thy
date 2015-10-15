@@ -95,7 +95,7 @@ lemma attractor_unfolding: "attractor p W = attractor_step p W (attractor p W)"
 lemma attractor_lowerbound: "attractor_step p W S \<subseteq> S \<Longrightarrow> attractor p W \<subseteq> S"
   unfolding attractor_def using attractor_step_mono by (simp add: lfp_lowerbound)
 
-text {* A powerful induction schema for attractor. *}
+text {* A powerful induction schema for @{term attractor}. *}
 lemma attractor_set_induction [consumes 1, case_names step union]:
   assumes "W \<subseteq> V"
     and step: "\<And>S. S \<subseteq> V \<Longrightarrow> P S \<Longrightarrow> P (attractor_step p W S)"
@@ -114,15 +114,15 @@ proof-
       fix M
       let ?M = "{S \<inter> V | S. S \<in> M}"
       assume "\<forall>S\<in>M. ?P S"
-      hence "\<And>S. S \<in> M \<Longrightarrow> P (S \<inter> V)" by simp
       hence "\<forall>S \<in> ?M. S \<subseteq> V \<and> P S" by auto
       hence *: "P (\<Union>?M)" by (simp add: union)
       have "\<Union>?M = (\<Union>M) \<inter> V" by blast
-      thus "?P (\<Union>M)" using * by simp
+      thus "?P (\<Union>M)" using * by auto
     qed
-  qed (simp add: f_mono)
+  qed (insert f_mono)
 
-  have *: "W \<union> (V \<inter> V) \<union> directly_attracted p (V \<inter> V) \<subseteq> V" using `W \<subseteq> V` attractor_step_bounded_by_V by auto
+  have *: "W \<union> (V \<inter> V) \<union> directly_attracted p (V \<inter> V) \<subseteq> V"
+    using `W \<subseteq> V` attractor_step_bounded_by_V by auto
   have "?A \<subseteq> V" "?B \<subseteq> V" using * by (simp_all add: lfp_lowerbound)
 
   have "?A = ?f ?A" using f_mono lfp_unfold by blast
