@@ -46,30 +46,14 @@ lemma mono_restriction_is_mono: "mono f \<Longrightarrow> mono (\<lambda>S. f (S
   unfolding mono_def by (meson inf_mono monoD subset_refl)
 
 lemma attractor_step_mono: "mono (attractor_step p W)"
-proof (unfold mono_def; intro allI impI)
+proof (rule monoI)
   fix S T :: "'a set" assume "S \<subseteq> T"
   show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" proof
     fix v assume v: "v \<in> W \<union> S \<union> directly_attracted p S"
     show "v \<in> W \<union> T \<union> directly_attracted p T" proof (cases)
-      assume "\<not>(v \<in> W \<or> v \<in> T)"
-      hence v_assm2: "v \<notin> W \<and> v \<notin> T" by simp
-      hence v_S_attracted: "v \<in> directly_attracted p S" using v `S \<subseteq> T` by blast
-      hence "\<not>deadend v" using directly_attracted_def by blast
-      have "v \<in> V - T" using v_S_attracted by (simp add: v_assm2 directly_attracted_def)
-      hence "v \<in> directly_attracted p T" proof (cases rule: VV_cases[of v p], simp)
-        assume "v \<in> VV p"
-        hence "v \<notin> VV p**" by auto
-        have "\<exists>w. v\<rightarrow>w \<and> w \<in> S" using `v \<in> VV p` v_S_attracted directly_attracted_def by blast
-        hence "\<exists>w. v\<rightarrow>w \<and> w \<in> T" using `S \<subseteq> T` by blast
-        thus ?thesis using `v \<in> V - T` `v \<in> VV p` `v \<notin> VV p**` `\<not>deadend v` directly_attracted_def by blast
-      next
-        assume "v \<in> VV p**"
-        hence "v \<notin> VV p" by auto
-        have "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> S" using `v \<in> VV p**` v_S_attracted directly_attracted_def by blast
-        hence "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> T" using `S \<subseteq> T` by blast
-        thus ?thesis using `v \<in> V - T` `v \<in> VV p**` `v \<notin> VV p` `\<not>deadend v` directly_attracted_def by blast
-      qed
-      thus ?thesis by simp
+      assume "v \<notin> W \<and> v \<notin> T"
+      hence "v \<in> directly_attracted p S" using v `S \<subseteq> T` by blast
+      thus ?thesis unfolding directly_attracted_def using `S \<subseteq> T` by auto
     qed simp
   qed
 qed
