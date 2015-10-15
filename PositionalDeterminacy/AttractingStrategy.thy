@@ -12,7 +12,7 @@ context ParityGame begin
 
 subsection {* Paths visiting a set *}
 
-text {* A path that stays in @{term A} until eventually it visits @{term W}. *}
+text {* A path that stays in @{text A} until eventually it visits @{text W}. *}
 definition "visits_via P A W \<equiv> \<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
 
 lemma visits_via_monotone: "\<lbrakk> visits_via P A W; A \<subseteq> A' \<rbrakk> \<Longrightarrow> visits_via P A' W"
