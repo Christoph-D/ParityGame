@@ -5,7 +5,7 @@ text {* This theory proves that every attractor set has an attractor strategy. *
 theory AttractorStrategy
 imports
   Main
-  UniformStrategy
+  Attractor UniformStrategy
 begin
 
 context ParityGame begin

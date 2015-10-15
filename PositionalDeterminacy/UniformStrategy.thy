@@ -5,7 +5,7 @@ text {* Theorems about how to get a uniform strategy given strategies for each n
 theory UniformStrategy
 imports
   Main
-  Attractor WinningStrategy WellOrderedStrategy
+  StrategyAttracts WinningStrategy WellOrderedStrategy
 begin
 
 context ParityGame begin
