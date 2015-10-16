@@ -234,7 +234,7 @@ end -- "locale Digraph"
 
 subsection {* Parity games *}
 
-text {* Parity games are games played by two players, called Even and Odd. *}
+text {* Parity games are games played by two players, called \Even and \Odd. *}
 
 datatype Player = Even | Odd
 
@@ -415,9 +415,9 @@ subsection {* Winning condition *}
 
 text {*
   Let $G = (V,E,V_0,\omega)$ be a parity game.
-  An infinite path $v_0,v_1,\ldots$ in $G$ is winning for player Even (Odd) if the minimum priority
-  occurring infinitely often is even (odd).
-  A finite path is winning for player @{term p} if the last vertex on the path belongs to the other
+  An infinite path $v_0,v_1,\ldots$ in $G$ is winning for player \Even (\Odd) if the minimum
+  priority occurring infinitely often is even (odd).
+  A finite path is winning for player @{term p} iff the last vertex on the path belongs to the other
   player.
 
   Empty paths are irrelevant, but it is useful to assign them to a fixed winner in order to get a

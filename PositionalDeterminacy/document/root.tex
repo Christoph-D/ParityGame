@@ -1,6 +1,7 @@
 \documentclass[11pt,a4paper]{scrartcl}
 \usepackage{isabelle,isabellesym}
 \usepackage{amsfonts}
+\usepackage{xspace}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 
@@ -25,6 +26,9 @@
 % for uniform font size
 %\renewcommand{\isastyle}{\isastyleminor}
 
+\newcommand{\Even}{\textsc{Even}\xspace}
+\newcommand{\Odd}{\textsc{Odd}\xspace}
+
 \begin{document}
 
 \title{Positional Determinacy of Parity Games}
@@ -33,14 +37,67 @@
 \maketitle
 
 \begin{abstract}
-  We formalize a proof of positional determinacy of parity games in
-  Isabelle/HOL.  This proof works for both finite and infinite parity
-  games.  We follow the proof in \cite{kreutzer2015}, which is based
-  on \cite{zielonka1998}.
+  We formalize a proof of positional determinacy of parity games (a
+  two-player graph game) in Isabelle/HOL.  This proof works for both
+  finite and infinite parity games.  We follow the proof in
+  \cite{kreutzer2015}, which is based on \cite{zielonka1998}.
 \end{abstract}
 
 \tableofcontents
 \newpage
+
+\section{Introduction}
+
+Parity games are games played by two-players, called \Even and \Odd,
+on labelled directed graphs.  Each vertex is labelled with their
+player and with a natural number, called its \emph{priority}.
+
+To call this a \emph{parity game}, we only need to assume that the
+number of different priorities is finite.  Of course, this condition
+is only relevant on infinite graphs.
+
+One reason parity games are important is that determining the winner
+is polynomial-time equivalent to the model-checking problem of the
+modal $\mu$-calculus, a logic able to express LTL and CTL* properties.
+
+\subsection{Formal introduction}
+
+Formally, a parity game is $G = (V,E,V_0,\omega)$, where $(V,E)$ is a
+directed graph, $V_0 \subseteq V$ is the set of \Even vertices, and
+$\omega: V \to \mathbb{N}$ is a function with $|f(V)| < \infty$.
+
+A \emph{play} is a maximal path in $G$.  A finite play is winning for
+\Even iff the last vertex is not in $V_0$.  An infinite play is
+winning for \Even iff the minimum priority occurring infinitely often
+on the path is even.  On an infinite path at least one priority occurs
+infinitely often because there is only a finite number of different
+priorities.
+
+A vertex $v$ is \emph{winning} for a player~$p$ iff all plays starting
+from $v$ are winning for~$p$.  It is well-known that parity games are
+\emph{determined}, that is, every node is winning for some player.
+
+A more surprising property is that parity games are also
+\emph{positionally determined}.  This means that for every vertex $v$
+winning for \Even, there is a function $\sigma: V_0 \to V$ such that
+all \Even needs to do in order to win from $v$ is to consult this
+function whenever it is his turn (similarly if $v$ is winning for
+\Odd).  This is also called a \emph{positional strategy} for the
+winning player.
+
+See \cite{automata2002/kuesters} for a modern survey on positional
+determinacy of parity games.  Their proof is based on a proof by
+Zielonka \cite{zielonka1998}.
+
+\subsection{Overview}
+
+Here we formalize the proof from \cite{kreutzer2015} in Isabelle/HOL.
+This proof is similar to the proof in \cite{automata2002/kuesters},
+but we do not explicitly define so-called ``$\sigma$-traps''.  Using
+$\sigma$-traps could be worth exploring, because it has the potential
+to simplify our formalization.
+
+
 
 % sane default for proof documents
 \parindent 0pt\parskip 0.5ex
