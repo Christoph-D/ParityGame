@@ -52,7 +52,8 @@ text {*
 coinductive valid_path :: "'a Path \<Rightarrow> bool" where
   valid_path_base: "valid_path LNil"
 | valid_path_base': "v \<in> V \<Longrightarrow> valid_path (LCons v LNil)"
-| valid_path_cons: "\<lbrakk> v \<in> V; w \<in> V; v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk> \<Longrightarrow> valid_path (LCons v Ps)"
+| valid_path_cons: "\<lbrakk> v \<in> V; w \<in> V; v\<rightarrow>w; valid_path Ps; \<not>lnull Ps; lhd Ps = w \<rbrakk>
+    \<Longrightarrow> valid_path (LCons v Ps)"
 
 inductive_simps valid_path_cons_simp: "valid_path (LCons x xs)"
 
@@ -226,9 +227,8 @@ proof (coinduction arbitrary: P rule: maximal_path.coinduct)
 qed
 
 lemma infinite_path_is_maximal: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrakk> \<Longrightarrow> maximal_path P"
-  apply (coinduction arbitrary: P rule: maximal_path.coinduct)
-  apply (cases rule: valid_path.cases, simp)
-  by simp_all
+  by (coinduction arbitrary: P rule: maximal_path.coinduct)
+     (cases rule: valid_path.cases, auto)
 
 end -- "locale Digraph"
 
@@ -237,7 +237,8 @@ subsection {* Parity games *}
 text {* Parity games are games played by two players, called Even and Odd. *}
 
 datatype Player = Even | Odd
-abbreviation other_player :: "Player \<Rightarrow> Player" where "other_player p \<equiv> (if p = Even then Odd else Even)"
+
+abbreviation "other_player p \<equiv> (if p = Even then Odd else Even)"
 notation other_player ("(_**)" [1000] 1000)
 lemma other_other_player [simp]: "p**** = p" using Player.exhaust by auto
 
@@ -258,11 +259,11 @@ lemma ParityGame [simp]: "ParityGame G" by unfold_locales
 
 text {* @{text "VV p"} is the set of nodes belonging to player @{term p}. *}
 abbreviation VV :: "Player \<Rightarrow> 'a set" where "VV p \<equiv> (if p = Even then V0 else V - V0)"
-lemma VVp_to_V [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" by (metis (full_types) Diff_subset subsetCE valid_player0_set)
-lemma VV_impl1 [intro]: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**" by auto
-lemma VV_impl2 [intro]: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by auto
+lemma VVp_to_V [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" using valid_player0_set by (cases p) auto
+lemma VV_impl1: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**" by auto
+lemma VV_impl2: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by auto
 lemma VV_equivalence [iff]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
-lemma VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by fastforce
+lemma VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by auto
 
 subsection {* Subgames *}
 
@@ -378,7 +379,7 @@ proof-
     using assms(2) by (simp add: infinite_small_llength)
   moreover {
     fix n assume "lmap \<omega> P $ n = k"
-    have "\<exists>n' > n. f n' = k" using n0 k_def infinite_nat_iff_unbounded by auto
+    have "\<exists>n' > n. f n' = k" unfolding k_def using n0 infinite_nat_iff_unbounded by auto
     hence "\<exists>n' > n. lmap \<omega> P $ n' = k" unfolding f_def
       using assms(2) by (simp add: infinite_small_llength)
   }
@@ -396,15 +397,14 @@ proof
     hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> (LCons v P)))"
       unfolding path_inf_priorities_def
       using in_lset_ltlD[of a] by (simp add: ltl_ldropn)
-    thus "a \<in> ?B" using path_inf_priorities_def by blast
+    thus "a \<in> ?B" unfolding path_inf_priorities_def by blast
   qed
 next
   show "?B \<subseteq> ?A" proof
     fix a assume "a \<in> ?B"
     hence "\<forall>n. a \<in> lset (ldropn (Suc n) (lmap \<omega> (LCons v P)))"
       unfolding path_inf_priorities_def by blast
-    hence "\<forall>n. a \<in> lset (ldropn n (lmap \<omega> P))" by auto
-    thus "a \<in> ?A" using path_inf_priorities_def by blast
+    thus "a \<in> ?A" unfolding path_inf_priorities_def by simp
   qed
 qed
 corollary path_inf_priorities_ltl: "path_inf_priorities P = path_inf_priorities (ltl P)"
@@ -440,16 +440,18 @@ lemma paths_are_winning_for_one_player:
 proof (cases)
   assume "\<not>lnull P"
   show ?thesis proof (cases)
-    assume finite: "lfinite P"
-    hence "llast P \<in> V" using assms `\<not>lnull P` lfinite_lset valid_path_in_V by blast
-    thus ?thesis by (simp add: `\<not>lnull P` local.finite winning_path_def)
+    assume "lfinite P"
+    thus ?thesis
+      using assms lfinite_lset valid_path_in_V
+      unfolding winning_path_def
+      by auto
   next
-    assume infinite: "\<not>lfinite P"
+    assume "\<not>lfinite P"
     then obtain a where "a \<in> path_inf_priorities P" "\<And>b. b < a \<Longrightarrow> b \<notin> path_inf_priorities P"
       using assms ex_least_nat_le[of "\<lambda>a. a \<in> path_inf_priorities P"] path_inf_priorities_is_nonempty
       by blast
     hence "\<forall>q. winning_priority q a \<longleftrightarrow> winning_path q P"
-      unfolding infinite winning_path_def using `\<not>lnull P` infinite by (metis le_antisym not_le)
+      unfolding winning_path_def using `\<not>lnull P` `\<not>lfinite P` by (metis le_antisym not_le)
     moreover have "\<forall>q. winning_priority p q \<longleftrightarrow> \<not>winning_priority p** q" by simp
     ultimately show ?thesis by blast
   qed
@@ -465,19 +467,19 @@ proof (cases)
   ultimately show ?thesis using P by (simp add: winning_path_def)
 next
   assume "\<not>lfinite P"
-  thus ?thesis using winning_path_def path_inf_priorities_ltl using P(1,2) by auto
+  thus ?thesis using winning_path_def path_inf_priorities_ltl P(1,2) by auto
 qed
 
 corollary winning_path_drop:
   assumes "winning_path p P" "enat n < llength P"
   shows "winning_path p (ldropn n P)"
-using assms proof (induct n, simp)
+using assms proof (induct n)
   case (Suc n)
   hence "winning_path p (ldropn n P)" using dual_order.strict_trans enat_ord_simps(2) by blast
   moreover have "ltl (ldropn n P) = ldropn (Suc n) P" by (simp add: ldrop_eSuc_ltl ltl_ldropn)
   moreover hence "\<not>lnull (ldropn n P)" using Suc.prems(2) by (metis leD lnull_ldropn lnull_ltlI)
   ultimately show ?case using winning_path_ltl[of p "ldropn n P"] Suc.prems(2) by auto
-qed
+qed simp
 
 corollary winning_path_drop_add:
   assumes "valid_path P" "winning_path p (ldropn n P)" "enat n < llength P"
@@ -491,10 +493,10 @@ proof (cases)
   assume "lfinite P"
   moreover have "llast P = llast (LCons v P)"
     using P(2) by (metis llast_LCons2 not_lnull_conv)
-  ultimately show ?thesis using P by (simp add: winning_path_def)
+  ultimately show ?thesis using P unfolding winning_path_def by simp
 next
   assume "\<not>lfinite P"
-  thus ?thesis using winning_path_def path_inf_priorities_LCons P by auto
+  thus ?thesis using P path_inf_priorities_LCons unfolding winning_path_def by simp
 qed
 
 lemma winning_path_supergame:
@@ -502,28 +504,13 @@ lemma winning_path_supergame:
   and G': "ParityGame G'" "VV p** \<subseteq> ParityGame.VV G' p**" "\<omega> = \<omega>\<^bsub>G'\<^esub>"
   shows "ParityGame.winning_path G' p P"
 proof-
-  { assume "\<not>lfinite P"
-    moreover hence "\<not>lnull P" by auto
-    ultimately
-      have "\<exists>a. a \<in> path_inf_priorities P
-        \<and> (\<forall>b \<in> path_inf_priorities P. a \<le> b) \<and> winning_priority p a"
-      using assms(1) unfolding winning_path_def by blast
-    moreover have "path_inf_priorities P = ParityGame.path_inf_priorities G' P"
-      unfolding path_inf_priorities_def using ParityGame.path_inf_priorities_def[of G' P] G'(1,3)
-      by auto
-    ultimately
-      have "\<exists>a. a \<in> ParityGame.path_inf_priorities G' P
-            \<and> (\<forall>b \<in> ParityGame.path_inf_priorities G' P. a \<le> b) \<and> winning_priority p a" by blast
-  }
-  moreover {
-    assume "lfinite P" "\<not>lnull P"
-    hence "llast P \<in> VV p**" using assms(1) unfolding winning_path_def by blast
-    hence "llast P \<in> ParityGame.VV G' p**" using G'(2) by blast
-  }
-  moreover {
-    assume "lnull P" hence "p = Even" using assms(1) unfolding winning_path_def by simp
-  }
-  ultimately show ?thesis using ParityGame.winning_path_def[of G' p P] G'(1) by blast
+  interpret G': ParityGame G' using G'(1) .
+  have "\<lbrakk> lfinite P; \<not>lnull P \<rbrakk> \<Longrightarrow> llast P \<in> G'.VV p**" and "lnull P \<Longrightarrow> p = Even"
+    using assms(1) unfolding winning_path_def using G'(2) by auto
+  thus ?thesis unfolding G'.winning_path_def
+    using lnull_imp_lfinite assms(1)
+    unfolding winning_path_def path_inf_priorities_def G'.path_inf_priorities_def G'(3)
+    by blast
 qed
 
 end -- "locale ParityGame"

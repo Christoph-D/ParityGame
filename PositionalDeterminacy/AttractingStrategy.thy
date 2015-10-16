@@ -271,7 +271,7 @@ proof (rule strategy_attractsI, rule ccontr)
     assume "lset P \<subseteq> A - W"
     hence "\<And>v. v \<in> lset P \<Longrightarrow> override_on \<sigma>' \<sigma> (A - W) v = \<sigma> v" by auto
     hence "path_conforms_with_strategy p P \<sigma>"
-      using path_conforms_with_strategy_irrelevant_updates[OF P_conforms, of \<sigma>] by blast
+      using path_conforms_with_strategy_irrelevant_updates[OF P_conforms] by blast
     hence "vmc_path G P (P $ 0) p \<sigma>"
       using conforms_to_another_strategy P_0 by blast
     thus False
