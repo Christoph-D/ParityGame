@@ -145,6 +145,23 @@ proof (rule ccontr)
   thus False using * attractor_unfolding by auto
 qed
 
+
+subsection {* Removing an attractor *}
+
+lemma removing_attractor_induces_no_deadends:
+  assumes "v \<in> S - attractor p W" "\<exists>w \<in> S. v\<rightarrow>w" "\<And>w. \<lbrakk> v \<in> VV p**; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<in> S"
+  shows "\<exists>w \<in> S - attractor p W. v\<rightarrow>w"
+proof-
+  have "v \<in> V" using assms(2) by blast
+  thus ?thesis proof (cases rule: VV_cases)
+    assume "v \<in> VV p"
+    thus ?thesis using attractor_set_VVp assms by blast
+  next
+    assume "v \<in> VV p**"
+    thus ?thesis using attractor_set_VVpstar assms by (metis Diff_iff edges_are_in_V(2))
+  qed
+qed
+
 end -- "context ParityGame"
 
 end

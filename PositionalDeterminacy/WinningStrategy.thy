@@ -100,16 +100,24 @@ qed
 
 subsection {* Winning regions *}
 
+definition "winning_region p \<equiv> { v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
+
+lemma winning_regionI:
+  assumes "v \<in> V" "strategy p \<sigma>" "winning_strategy p \<sigma> v"
+  shows "v \<in> winning_region p"
+  using assms unfolding winning_region_def by blast
+
 lemma (in vmc_path) paths_stay_in_winning_region:
   assumes \<sigma>': "strategy p \<sigma>'" "winning_strategy p \<sigma>' v0"
-    and \<sigma>: "\<And>v. v \<in> V \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v \<Longrightarrow> \<sigma>' v = \<sigma> v"
-  shows "lset P \<subseteq> { v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }" (is "lset P \<subseteq> ?W0")
+    and \<sigma>: "\<And>v. v \<in> winning_region p \<Longrightarrow> \<sigma>' v = \<sigma> v"
+  shows "lset P \<subseteq> winning_region p"
 proof
   fix x assume "x \<in> lset P"
-  thus "x \<in> ?W0" using assms vmc_path proof (induct arbitrary: v0 rule: llist_set_induct)
+  thus "x \<in> winning_region p" using assms vmc_path
+  proof (induct arbitrary: v0 rule: llist_set_induct)
     case (find P v0)
     interpret vmc_path G P v0 p \<sigma> using find.prems(4) .
-    show ?case using P_v0 \<sigma>'(1) find.prems(2) v0_V by blast
+    show ?case using P_v0 \<sigma>'(1) find.prems(2) v0_V unfolding winning_region_def by blast
   next
     case (step P x v0)
     interpret vmc_path G P v0 p \<sigma> using step.prems(4) .
@@ -124,7 +132,8 @@ proof
         hence "winning_strategy p \<sigma>' (\<sigma>' v0)"
           using strategy_extends_VVp local.step(4) step.prems(2) v0_no_deadend by blast
         moreover have "\<sigma> v0 = w0" using v0_conforms `v0 \<in> VV p` by blast
-        moreover have "\<sigma>' v0 = \<sigma> v0" using \<sigma> assms(1) step.prems(2) v0_V by blast
+        moreover have "\<sigma>' v0 = \<sigma> v0"
+          using \<sigma> assms(1) step.prems(2) v0_V unfolding winning_region_def by blast
         ultimately show ?thesis by simp
       next
         assume "v0 \<notin> VV p"
@@ -137,16 +146,25 @@ qed
 
 subsection {* Updates *}
 
+lemma winning_region_in_V [simp]: "winning_region p \<subseteq> V" unfolding winning_region_def by blast
+
+lemma winning_strategy_updates_set:
+  assumes \<sigma>: "strategy p \<sigma>" "\<And>v. v \<in> winning_region p \<Longrightarrow> winning_strategy p \<sigma> v"
+    and v0: "v0 \<in> winning_region p"
+  shows "winning_strategy p (override_on \<sigma>' \<sigma> (winning_region p)) v0"
+proof-
+  show ?thesis sorry
+qed
+
 lemma winning_strategy_updates:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
-    and v: "\<not>(\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v)" "v\<rightarrow>w"
+    and v: "v \<notin> winning_region p" "v\<rightarrow>w"
   shows "winning_strategy p (\<sigma>(v := w)) v0"
 proof-
   { fix P assume "vmc_path G P v0 p (\<sigma>(v := w))"
     then interpret vmc_path G P v0 p "\<sigma>(v := w)" .
-    have "\<And>v'. \<lbrakk> v' \<in> V; \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v' \<rbrakk> \<Longrightarrow> \<sigma> v' = (\<sigma>(v := w)) v'"
-      using v by auto
-    hence "v \<notin> lset P" using v paths_stay_in_winning_region \<sigma> by blast
+    have "\<And>v'. v' \<in> winning_region p \<Longrightarrow> \<sigma> v' = (\<sigma>(v := w)) v'" using v by auto
+    hence "v \<notin> lset P" using v paths_stay_in_winning_region \<sigma> unfolding winning_region_def by blast
     hence "path_conforms_with_strategy p P \<sigma>"
       using P_conforms path_conforms_with_strategy_irrelevant' by blast
     hence "winning_path p P" using conforms_to_another_strategy \<sigma>(2) winning_strategy_def by blast

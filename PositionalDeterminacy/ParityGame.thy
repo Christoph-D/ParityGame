@@ -263,7 +263,7 @@ lemma VVp_to_V [intro]: "v \<in> VV p \<Longrightarrow> v \<in> V" using valid_p
 lemma VV_impl1: "v \<in> VV p \<Longrightarrow> v \<notin> VV p**" by auto
 lemma VV_impl2: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by auto
 lemma VV_equivalence [iff]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
-lemma VV_cases: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by auto
+lemma VV_cases [consumes 1]: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by auto
 
 subsection {* Subgames *}
 

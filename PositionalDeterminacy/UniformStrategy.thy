@@ -112,42 +112,41 @@ text {*
 *}
 
 lemma merge_winning_strategies:
-  assumes "S \<subseteq> V"
-    and strategies_ex: "\<And>v. v \<in> V \<Longrightarrow> v \<in> S \<longleftrightarrow> (\<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v)"
-  shows "\<exists>\<sigma>. strategy p \<sigma> \<and> (\<forall>v \<in> S. winning_strategy p \<sigma> v)"
+  shows "\<exists>\<sigma>. strategy p \<sigma> \<and> (\<forall>v \<in> winning_region p. winning_strategy p \<sigma> v)"
 proof-
   def good \<equiv> "\<lambda>v. { \<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
-  let ?G = "{\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
+  let ?G = "{\<sigma>. \<exists>v \<in> winning_region p. \<sigma> \<in> good v}"
   obtain r where r: "well_order_on ?G r" using well_order_on by blast
 
-  have no_VVp_deadends: "\<And>v. \<lbrakk> v \<in> S; v \<in> VV p \<rbrakk> \<Longrightarrow> \<not>deadend v"
-    using no_winning_strategy_on_deadends strategies_ex by blast
+  have no_VVp_deadends: "\<And>v. \<lbrakk> v \<in> winning_region p; v \<in> VV p \<rbrakk> \<Longrightarrow> \<not>deadend v"
+    using no_winning_strategy_on_deadends unfolding winning_region_def by blast
 
-  interpret WellOrderedStrategies G S p good r proof
-    show "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v" unfolding good_def using strategies_ex `S \<subseteq> V` by blast
+  interpret WellOrderedStrategies G "winning_region p" p good r proof
+    show "\<And>v. v \<in> winning_region p \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v"
+      unfolding good_def winning_region_def by blast
   next
     show "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>" unfolding good_def by blast
   next
-    fix v w \<sigma> assume v: "v \<in> S" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
+    fix v w \<sigma> assume v: "v \<in> winning_region p" "v\<rightarrow>w" "v \<in> VV p \<Longrightarrow> \<sigma> v = w" "\<sigma> \<in> good v"
     hence \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v" unfolding good_def by simp_all
     hence "winning_strategy p \<sigma> w" proof (cases)
       assume "v \<in> VV p"
       moreover hence "\<sigma> v = w" using v(3) by blast
-      moreover have "\<not>deadend v" using no_VVp_deadends `v \<in> VV p` `v \<in> S` by blast
+      moreover have "\<not>deadend v" using no_VVp_deadends `v \<in> VV p` v(1) by blast
       ultimately show ?thesis using strategy_extends_VVp \<sigma> by blast
     next
       assume "v \<notin> VV p"
       thus ?thesis using strategy_extends_VVpstar \<sigma> `v\<rightarrow>w` by blast
     qed
     thus "\<sigma> \<in> good w" unfolding good_def using \<sigma>(1) by blast
-  qed (insert `S \<subseteq> V` r)
+  qed (insert winning_region_in_V r)
 
   {
-    fix v0 assume "v0 \<in> S"
+    fix v0 assume "v0 \<in> winning_region p"
     fix P assume P: "vmc_path G P v0 p well_ordered_strategy"
     then interpret vmc_path G P v0 p well_ordered_strategy .
 
-    have "lset P \<subseteq> S" proof (induct rule: vmc_path_lset_induction_simple)
+    have "lset P \<subseteq> winning_region p" proof (induct rule: vmc_path_lset_induction_simple)
       case (step P v0)
       interpret vmc_path_no_deadend G P v0 p well_ordered_strategy using step.hyps(1) .
       { assume "v0 \<in> VV p"
@@ -155,8 +154,8 @@ proof-
         hence "choose v0 v0 = w0" by (simp add: step.hyps(2) well_ordered_strategy_def)
       }
       hence "choose v0 \<in> good w0" using strategies_continue choose_good step.hyps(2) by simp
-      thus ?case unfolding good_def using strategies_ex `w0 \<in> V` w0_def by auto
-    qed (insert `v0 \<in> S`)
+      thus ?case unfolding good_def winning_region_def using `w0 \<in> V` w0_def by auto
+    qed (insert `v0 \<in> winning_region p`)
 
     have "winning_path p P" proof (rule ccontr)
       assume contra: "\<not>winning_path p P"
@@ -164,7 +163,8 @@ proof-
       have "\<not>lfinite P" proof
         assume "lfinite P"
         hence "deadend (llast P)" using maximal_ends_on_deadend by simp
-        moreover have "llast P \<in> S" using `lset P \<subseteq> S` `\<not>lnull P` `lfinite P` lfinite_lset by blast
+        moreover have "llast P \<in> winning_region p"
+          using `lset P \<subseteq> winning_region p` `\<not>lnull P` `lfinite P` lfinite_lset by blast
         moreover have "llast P \<in> VV p"
           using contra paths_are_winning_for_one_player `lfinite P`
           unfolding winning_path_def by simp
@@ -172,7 +172,7 @@ proof-
       qed
 
       obtain n where n: "path_conforms_with_strategy p (ldropn n P) (path_strategies P $ n)"
-        using path_eventually_conforms_to_\<sigma>_map_n[OF `lset P \<subseteq> S` P_valid P_conforms] by blast
+        using path_eventually_conforms_to_\<sigma>_map_n[OF `lset P \<subseteq> winning_region p` P_valid P_conforms] by blast
       def [simp]: \<sigma>' \<equiv> "path_strategies P $ n"
       def [simp]: P' \<equiv> "ldropn n P"
       interpret P': vmc_path G P' "lhd P'" p \<sigma>' proof
@@ -180,11 +180,13 @@ proof-
           using lfinite_ldropn lnull_imp_lfinite by blast
       qed (simp_all add: n)
       have "strategy p \<sigma>'" unfolding \<sigma>'_def
-        using path_strategies_strategy `lset P \<subseteq> S` `\<not>lfinite P` by blast
+        using path_strategies_strategy `lset P \<subseteq>winning_region p` `\<not>lfinite P` by blast
       moreover have "winning_strategy p \<sigma>' (lhd P')" proof-
-        have "P $ n \<in> S" using `lset P \<subseteq> S` `\<not>lfinite P` lset_nth_member_inf by blast
+        have "P $ n \<in> winning_region p"
+          using `lset P \<subseteq> winning_region p` `\<not>lfinite P` lset_nth_member_inf by blast
         hence "\<sigma>' \<in> good (P $ n)"
-          using path_strategies_good choose_good \<sigma>'_def `\<not>lfinite P` `lset P \<subseteq> S` by blast
+          using path_strategies_good choose_good \<sigma>'_def `\<not>lfinite P` `lset P \<subseteq> winning_region p`
+          by blast
         hence "winning_strategy p \<sigma>' (P $ n)" unfolding good_def by blast
         thus ?thesis
           unfolding P'_def using P_0 `\<not>lfinite P` by (simp add: infinite_small_llength lhd_ldropn)
@@ -196,6 +198,45 @@ proof-
   }
   thus ?thesis unfolding winning_strategy_def using well_ordered_strategy_valid by auto
 qed
+
+subsection {* Winning regions *}
+
+lemma
+  assumes "v \<in> VV p" "deadend v"
+  shows "v \<in> winning_region p**"
+proof-
+  show ?thesis sorry
+qed
+
+lemma winning_region_extends_VVp:
+  assumes v: "v \<in> VV p" "v\<rightarrow>w" and w: "w \<in> winning_region p"
+  shows "v \<in> winning_region p"
+proof (rule ccontr)
+  obtain \<sigma> where \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> w"
+    using w unfolding winning_region_def by blast
+  let ?\<sigma> = "\<sigma>(v := w)"
+  assume contra: "v \<notin> winning_region p"
+  moreover have "strategy p ?\<sigma>" using valid_strategy_updates \<sigma>(1) `v\<rightarrow>w` by blast
+  moreover hence "winning_strategy p ?\<sigma> v"
+    using winning_strategy_updates \<sigma> contra v strategy_extends_backwards_VVp
+    by auto
+  ultimately show False using `v\<rightarrow>w` unfolding winning_region_def by auto
+qed
+
+lemma winning_region_extends_VVpstar:
+  assumes v: "v \<in> VV p**" and w: "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> winning_region p"
+  shows "v \<in> winning_region p"
+proof-
+  obtain \<sigma> where \<sigma>: "strategy p \<sigma>"  "\<And>v. v \<in> winning_region p \<Longrightarrow> winning_strategy p \<sigma> v"
+    using merge_winning_strategies by blast
+  have "winning_strategy p \<sigma> v" using strategy_extends_backwards_VVpstar[OF v \<sigma>(1)] \<sigma>(2) w by blast
+  thus ?thesis unfolding winning_region_def using v \<sigma>(1) by blast
+qed
+
+lemma removing_winning_region_induces_no_deadends:
+  assumes "v \<in> V - winning_region p" "\<not>deadend v"
+  shows "\<exists>w \<in> V - winning_region p. v\<rightarrow>w"
+  sorry
 
 end -- "context ParityGame"
 
