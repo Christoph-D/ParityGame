@@ -366,39 +366,9 @@ proof-
               hence "\<sigma> v = w0" using v0_conforms by blast
               hence "v \<notin> K" using choose_works(2)[OF `v \<in> VV p`] `v \<in> V - W1` `w0 \<in> W1` by auto
               moreover have "v \<notin> attractor p K - K" proof
-                assume *: "v \<in> attractor p K - K"
-                hence "visits_via P (attractor p K) K"
-                  using \<sigma>_attracts strategy_attractsE by blast
-                then obtain n where
-                  n: "enat n < llength P \<and> P $ n \<in> K \<and> lset (ltake (enat n) P) \<subseteq> attractor p K"
-                     "\<And>i. i < n \<Longrightarrow>
-                      \<not>(enat i < llength P \<and> P $ i \<in> K \<and> lset (ltake (enat i) P) \<subseteq> attractor p K)"
-                  using ex_least_nat_le[of
-                    "\<lambda>n. enat n < llength P \<and> P $ n \<in> K \<and> lset (ltake (enat n) P) \<subseteq> attractor p K"]
-                  unfolding visits_via_def by blast
-                hence n_min: "\<And>i. i < n \<Longrightarrow> P $ i \<notin> K" proof-
-                  fix i assume "i < n"
-                  moreover hence "enat i < llength P"
-                    using n(1) dual_order.strict_trans enat_ord_simps(2) by blast
-                  moreover have "lset (ltake (enat i) P) \<subseteq> lset (ltake (enat n) P)"
-                    using `i < n` lset_ltake_prefix by simp
-                  ultimately show "P $ i \<notin> K" using n by blast
-                qed
-                have "v \<notin> K" using * by blast
-                hence "n \<noteq> 0" using n(1) by (metis P_0)
-                have "w0 \<notin> K" using `w0 \<in> W1` K_def U_def by blast
-                hence "Suc 0 \<noteq> n" using n(1) P_Suc_0 by auto
-                hence "Suc (Suc 0) \<le> n" using `n \<noteq> 0` by presburger
-                hence "lset (ltake (enat (Suc (Suc 0))) P) \<subseteq> attractor p K"
-                  using n by (meson enat_ord_simps(1) lset_ltake_prefix subset_trans)
-                hence "lset (ltake (eSuc (eSuc 0)) P) \<subseteq> attractor p K"
-                  by (simp add: eSuc_enat zero_enat_def)
-                hence "ltake (eSuc (eSuc 0)) P $ Suc 0 \<in> attractor p K"
-                  by (metis Ptl_not_null enat_ltl_Suc i0_less llength_eq_0 lset_lnth_member
-                            ltake.disc(2) ltake_ltl zero_enat_def zero_ne_eSuc)
-                hence "w0 \<in> attractor p K" using P_Suc_0
-                  by (metis P_not_null Ptl_not_null lnth_0_conv_lhd lnth_ltl ltake.disc(2)
-                            ltake.simps(3) ltake_ltl zero_ne_eSuc)
+                assume "v \<in> attractor p K - K"
+                hence "w0 \<in> attractor p K"
+                  using attracted_path_step \<sigma>_attracts attractor_set_base by blast
                 thus False using `w0 \<in> W1` `attractor p K \<inter> W1 = {}` by blast
               qed
               moreover have "v \<notin> V'" proof
@@ -671,6 +641,7 @@ proof-
     def \<sigma>' \<equiv> "override_on \<sigma> \<sigma>_attr (A Even \<union> A Odd)"
     have \<sigma>'_is_\<sigma>_on_V': "\<And>v. v \<in> V' \<Longrightarrow> \<sigma>' v = \<sigma> v"
       unfolding V'_def \<sigma>'_def A_def by (cases p) simp_all
+
     have "strategy p \<sigma>'" proof-
       have "\<sigma>' = override_on \<sigma>_attr \<sigma> (UNIV - A Even - A Odd)"
         unfolding \<sigma>'_def override_on_def by (rule ext) simp
