@@ -317,6 +317,12 @@ proof-
   thus ?thesis unfolding P'_def using visits_via_visits in_lset_ldropnD[of _ n P] by blast
 qed
 
+lemma (in vmc_path_no_deadend) attracted_path_step:
+  assumes \<sigma>: "strategy_attracts p \<sigma> A W"
+    and v0: "v0 \<in> A - W"
+  shows "w0 \<in> A \<union> W"
+  by (metis (no_types) DiffD1 P_LCons' \<sigma> strategy_attractsE strategy_attracts_invalid_path v0)
+
 end -- "context ParityGame"
 
 end
