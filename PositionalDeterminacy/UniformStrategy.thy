@@ -201,12 +201,13 @@ qed
 
 subsection {* Winning regions *}
 
-lemma
+lemma winning_region_deadends:
   assumes "v \<in> VV p" "deadend v"
   shows "v \<in> winning_region p**"
-proof-
-  show ?thesis sorry
-qed
+proof (rule winning_regionI)
+  show "v \<in> V" using `v \<in> VV p` by blast
+  show "winning_strategy p** \<sigma>_arbitrary v" using assms winning_strategy_on_deadends by simp
+qed simp
 
 lemma winning_region_extends_VVp:
   assumes v: "v \<in> VV p" "v\<rightarrow>w" and w: "w \<in> winning_region p"
@@ -236,7 +237,16 @@ qed
 lemma removing_winning_region_induces_no_deadends:
   assumes "v \<in> V - winning_region p" "\<not>deadend v"
   shows "\<exists>w \<in> V - winning_region p. v\<rightarrow>w"
-  sorry
+proof (rule ccontr)
+  assume contra: "\<not>?thesis"
+  show False proof (cases)
+    assume "v \<in> VV p"
+    thus ?thesis using assms winning_region_extends_VVp contra by blast
+  next
+    assume "v \<notin> VV p"
+    thus ?thesis using assms(1) contra winning_region_extends_VVpstar by blast
+  qed
+qed
 
 end -- "context ParityGame"
 

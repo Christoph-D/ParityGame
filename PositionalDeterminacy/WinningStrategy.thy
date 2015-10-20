@@ -25,10 +25,23 @@ lemma no_winning_strategy_on_deadends:
 proof-
   obtain P where "vmc_path G P v p \<sigma>" using strategy_conforming_path_exists_single assms by blast
   then interpret vmc_path G P v p \<sigma> .
-  have "lnull (ltl P)" using `deadend v` using P_LCons lnull_def valid_path_cons_simp by fastforce
-  hence "P = LCons v LNil" by (metis P_LCons lnull_def)
+  have "P = LCons v LNil" using P_deadend_v0_LCons `deadend v` by blast
   hence "\<not>winning_path p P" unfolding winning_path_def using `v \<in> VV p` by auto
   thus ?thesis using winning_strategy_def by fastforce
+qed
+
+lemma winning_strategy_on_deadends:
+  assumes "v \<in> VV p" "deadend v" "strategy p \<sigma>"
+  shows "winning_strategy p** \<sigma> v"
+proof-
+  {
+    fix P assume "vmc_path G P v p** \<sigma>"
+    then interpret vmc_path G P v "p**" \<sigma> .
+    have "P = LCons v LNil" using P_deadend_v0_LCons `deadend v` by blast
+    hence "winning_path p** P" unfolding winning_path_def
+      using `v \<in> VV p` P_valid paths_are_winning_for_one_player by auto
+  }
+  thus ?thesis unfolding winning_strategy_def by blast
 qed
 
 subsection {* Extension theorems *}
@@ -148,13 +161,13 @@ subsection {* Updates *}
 
 lemma winning_region_in_V [simp]: "winning_region p \<subseteq> V" unfolding winning_region_def by blast
 
-lemma winning_strategy_updates_set:
+(* lemma winning_strategy_updates_set:
   assumes \<sigma>: "strategy p \<sigma>" "\<And>v. v \<in> winning_region p \<Longrightarrow> winning_strategy p \<sigma> v"
     and v0: "v0 \<in> winning_region p"
   shows "winning_strategy p (override_on \<sigma>' \<sigma> (winning_region p)) v0"
 proof-
   show ?thesis sorry
-qed
+qed *)
 
 lemma winning_strategy_updates:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
