@@ -70,6 +70,8 @@ lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof-
   thus ?thesis unfolding strategy_def by blast
 qed
 
+subsection {* Valid strategies *}
+
 lemma valid_strategy_updates: "\<lbrakk> strategy p \<sigma>; v0\<rightarrow>w0 \<rbrakk> \<Longrightarrow> strategy p (\<sigma>(v0 := w0))"
   unfolding strategy_def by auto
 
@@ -78,10 +80,40 @@ lemma valid_strategy_updates_set:
   shows "strategy p (override_on \<sigma> \<sigma>' A)"
   unfolding strategy_def by (metis assms override_on_def strategy_def)
 
-subsection {* Valid strategies *}
+lemma valid_strategy_updates_set_strong:
+  assumes "strategy p \<sigma>" "strategy p \<sigma>'"
+  shows "strategy p (override_on \<sigma> \<sigma>' A)"
+  using assms(1) assms(2)[unfolded strategy_def] valid_strategy_updates_set by simp
+
+lemma valid_strategy_supergame:
+  assumes \<sigma>: "strategy p \<sigma>"
+    and \<sigma>': "ParityGame.strategy (subgame V') p \<sigma>'"
+    and G'_no_deadends: "\<And>v. v \<in> V' \<Longrightarrow> \<not>Digraph.deadend (subgame V') v"
+  shows "strategy p (override_on \<sigma> \<sigma>' V')" (is "strategy p ?\<sigma>")
+proof-
+  interpret G': ParityGame "subgame V'" using subgame_ParityGame .
+  {
+    fix v assume v: "v \<in> VV p" "\<not>deadend v"
+    have "v \<rightarrow> ?\<sigma> v" proof (cases)
+      assume "v \<in> V'"
+      hence "v \<in> G'.VV p" using subgame_VV `v \<in> VV p` by blast
+      moreover have "\<not>G'.deadend v" using G'_no_deadends `v \<in> V'` by blast
+      ultimately have "v \<rightarrow>\<^bsub>subgame V'\<^esub> \<sigma>' v" using \<sigma>' unfolding G'.strategy_def by blast
+      moreover have "\<sigma>' v = ?\<sigma> v" using `v \<in> V'` by simp
+      ultimately show ?thesis by (metis subgame_E subsetCE)
+    next
+      assume "v \<notin> V'"
+      thus ?thesis using v \<sigma> unfolding strategy_def by simp
+    qed
+  }
+  thus ?thesis unfolding strategy_def by blast
+qed
 
 lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> \<sigma> v \<in> V"
   unfolding strategy_def using valid_edge_set by auto
+
+lemma valid_strategy_only_in_V: "\<lbrakk> strategy p \<sigma>; \<And>v. v \<in> V \<Longrightarrow> \<sigma> v = \<sigma>' v \<rbrakk> \<Longrightarrow> strategy p \<sigma>'"
+  unfolding strategy_def using edges_are_in_V(1) by auto
 
 subsection {* Conforming strategies *}
 

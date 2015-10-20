@@ -119,24 +119,10 @@ proof-
         have "v \<in> winning_region p**" proof (rule winning_regionI)
           show "v \<in> V" using `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> \<subseteq> V` by blast
           def \<sigma>' \<equiv> "override_on (override_on \<sigma>_arbitrary \<sigma>W1 W1) \<sigma> V'"
-          show "strategy p** \<sigma>'" proof-
-            {
-              fix v assume v: "v \<in> VV p**" "\<not>deadend v"
-              have "v \<rightarrow> \<sigma>' v" proof (cases)
-                assume "v \<in> V'"
-                hence "v \<in> G'.VV p**" using subgame_VV[of "p**"] `v \<in> VV p**` G'_def by fastforce
-                moreover have "\<not>G'.deadend v" using G'_no_deadends `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast
-                ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1) G'.strategy_def[of "p**" \<sigma>] by blast
-                moreover have "\<sigma> v = \<sigma>' v" unfolding \<sigma>'_def using `v \<in> V'` by simp
-                ultimately show ?thesis using `E\<^bsub>G'\<^esub> \<subseteq> E` G'_def by fastforce
-              next
-                assume "v \<notin> V'"
-                thus ?thesis unfolding \<sigma>'_def using v valid_arbitrary_strategy \<sigma>W1(1)
-                  unfolding strategy_def by (metis (no_types, lifting) override_on_def)
-              qed
-            }
-            thus ?thesis unfolding strategy_def by blast
-          qed
+          thus "strategy p** \<sigma>'"
+            using valid_strategy_updates_set_strong valid_arbitrary_strategy \<sigma>W1(1)
+                  valid_strategy_supergame \<sigma>(1) G'_no_deadends `V\<^bsub>G'\<^esub> = V'`
+            unfolding G'_def by blast
           show "winning_strategy p** \<sigma>' v"
           proof (unfold winning_strategy_def, intro allI impI, rule ccontr)
             fix P assume "vmc_path G P v p** \<sigma>'"
@@ -686,23 +672,12 @@ proof-
     have \<sigma>'_is_\<sigma>_on_V': "\<And>v. v \<in> V' \<Longrightarrow> \<sigma>' v = \<sigma> v"
       unfolding V'_def \<sigma>'_def A_def by (cases p) simp_all
     have "strategy p \<sigma>'" proof-
-      { fix v assume v: "v \<in> VV p" "\<not>deadend v"
-        have "v\<rightarrow>\<sigma>' v" proof (cases)
-          assume "v \<in> V'"
-          hence "v \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `V' \<subseteq> V` by auto
-          hence "v \<in> G'.VV p" unfolding G'_def subgame_def using `v \<in> VV p` by auto
-          moreover have "\<not>G'.deadend v" using V'_no_deadends `v \<in> V\<^bsub>G'\<^esub>` by blast
-          ultimately have "v \<rightarrow>\<^bsub>G'\<^esub> \<sigma> v" using \<sigma>(1)[unfolded G'.strategy_def] by blast
-          hence "v \<rightarrow> \<sigma> v" unfolding G'_def subgame_def by auto
-          thus ?thesis using \<sigma>'_is_\<sigma>_on_V' `v \<in> V'` by simp
-        next
-          assume "v \<notin> V'"
-          hence "\<sigma>' v = \<sigma>_attr v"
-            unfolding \<sigma>'_def V'_def A_def by (cases p) (insert v(2), auto)
-          thus ?thesis using v \<sigma>_attr(1)[unfolded strategy_def] by auto
-        qed
-      }
-      thus ?thesis unfolding strategy_def by blast
+      have "\<sigma>' = override_on \<sigma>_attr \<sigma> (UNIV - A Even - A Odd)"
+        unfolding \<sigma>'_def override_on_def by (rule ext) simp
+      moreover have "strategy p (override_on \<sigma>_attr \<sigma> V')"
+        using valid_strategy_supergame \<sigma>_attr(1) \<sigma>(1) V'_no_deadends `V\<^bsub>G'\<^esub> = V'`
+        unfolding G'_def by blast
+      ultimately show ?thesis by (simp add: valid_strategy_only_in_V V'_def override_on_def)
     qed
     moreover have "winning_strategy p \<sigma>' v0" proof-
       { fix P assume "vmc_path G P v0 p \<sigma>'"
