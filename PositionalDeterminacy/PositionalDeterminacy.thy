@@ -697,19 +697,15 @@ proof-
                     assume "v0 \<notin> VV p**"
                     hence "v0 \<in> VV p" by simp
                     hence "v0 \<in> G'.VV p" unfolding G'_def using subgame_VV `v0 \<in> V'` by blast
-                    moreover have "v0 \<in> V\<^bsub>G'\<^esub>" using `V\<^bsub>G'\<^esub> = V'` `v0 \<in> V'` by simp
-                    moreover hence "\<not>G'.deadend v0" using V'_no_deadends by blast
-                    ultimately have "\<sigma> v0 \<in> V\<^bsub>G'\<^esub>" using \<sigma>(1)[unfolded G'.strategy_def] by blast
+                    hence "\<sigma> v0 \<in> V\<^bsub>G'\<^esub>" using V'_no_deadends \<sigma>(1)[unfolded G'.strategy_def] by blast
                     hence "\<sigma>' v0 \<in> V'" by (simp add: \<sigma>'_is_\<sigma>_on_V' step.prems(2) `V\<^bsub>G'\<^esub> = V'`)
-                    moreover have "\<sigma>' v0 = P.w0" using `v0 \<in> VV p` P.v0_conforms by blast
-                    ultimately have "P.w0 \<in> V'" by simp
+                    hence "P.w0 \<in> V'" using `v0 \<in> VV p` P.v0_conforms by simp
                     thus False using `P.w0 \<in> A p**` unfolding V'_def by (cases p) auto
                   qed
-                  ultimately have "v0 \<in> A p**"
-                    using A_def `v0\<rightarrow>P.w0` attractor_set_VVp by blast
+                  ultimately have "v0 \<in> A p**" using A_def `v0\<rightarrow>P.w0` attractor_set_VVp by blast
                   thus False using `v0 \<in> V'` unfolding V'_def by (cases p) auto
                 qed
-                ultimately show "P.w0 \<in> V'" unfolding V'_def using A_def by (cases p) auto
+                ultimately show "P.w0 \<in> V'" unfolding V'_def A_def by (cases p) auto
               qed
               moreover have "lset (ltl P) \<inter> A p = {}" using in_lset_ltlD step.prems(3) by fastforce
               ultimately show "v \<notin> A p**" using step.hyps(3)[OF P.vmc_path_ltl] by blast
