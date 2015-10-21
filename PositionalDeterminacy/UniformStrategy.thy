@@ -237,16 +237,7 @@ qed
 lemma removing_winning_region_induces_no_deadends:
   assumes "v \<in> V - winning_region p" "\<not>deadend v"
   shows "\<exists>w \<in> V - winning_region p. v\<rightarrow>w"
-proof (rule ccontr)
-  assume contra: "\<not>?thesis"
-  show False proof (cases)
-    assume "v \<in> VV p"
-    thus ?thesis using assms winning_region_extends_VVp contra by blast
-  next
-    assume "v \<notin> VV p"
-    thus ?thesis using assms(1) contra winning_region_extends_VVpstar by blast
-  qed
-qed
+  using assms winning_region_extends_VVp winning_region_extends_VVpstar by blast
 
 end -- "context ParityGame"
 
