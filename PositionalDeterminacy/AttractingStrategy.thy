@@ -54,6 +54,11 @@ proof-
   thus ?thesis using visits_via_def by blast
 qed
 
+lemma (in vm_path) visits_via_deadend:
+  assumes "visits_via P A (deadends p)"
+  shows "winning_path p** P"
+  using assms visits_via_visits visits_deadend by blast
+
 subsection {* Attracting strategy from a single node *}
 
 text {*
@@ -316,6 +321,12 @@ proof-
   have "visits_via P' A W" using \<sigma> n(2) strategy_attractsE by blast
   thus ?thesis unfolding P'_def using visits_via_visits in_lset_ldropnD[of _ n P] by blast
 qed
+
+lemma attracted_strategy_step:
+  assumes \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> A W"
+    and v0: "\<not>deadend v0" "v0 \<in> A - W" "v0 \<in> VV p"
+  shows "\<sigma> v0 \<in> A \<union> W"
+  by (metis DiffD1 strategy_attracts_VVp assms strategy_attracts_def)
 
 lemma (in vmc_path_no_deadend) attracted_path_step:
   assumes \<sigma>: "strategy_attracts p \<sigma> A W"

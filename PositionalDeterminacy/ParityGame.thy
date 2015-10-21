@@ -265,6 +265,11 @@ lemma VV_impl2: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by auto
 lemma VV_equivalence [iff]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
 lemma VV_cases [consumes 1]: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by auto
 
+subsection {* Sets of deadends *}
+
+definition "deadends p \<equiv> {v \<in> VV p. deadend v}"
+lemma deadends_in_V: "deadends p \<subseteq> V" unfolding deadends_def by blast
+
 subsection {* Subgames *}
 
 text {* We define a subgame by restricting the set of vertices to a given subset. *}
@@ -575,6 +580,19 @@ lemma finite_llast_deadend [simp]: "lfinite P \<Longrightarrow> deadend (llast P
   using P_maximal P_not_null maximal_ends_on_deadend by blast
 lemma finite_llast_V [simp]: "lfinite P \<Longrightarrow> llast P \<in> V"
   using P_not_null lfinite_lset lset_P_V by blast
+
+lemma visits_deadend:
+  assumes "lset P \<inter> deadends p \<noteq> {}"
+  shows "winning_path p** P"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> deadends p"
+    using assms by (meson lset_intersect_lnth)
+  hence *: "enat (Suc n) = llength P" using P_ends_on_deadend unfolding deadends_def by blast
+  hence "llast P = P $ n" by (simp add: eSuc_enat llast_conv_lnth)
+  hence "llast P \<in> deadends p" using n(2) by simp
+  moreover have "lfinite P" using * llength_eq_enat_lfiniteD by force
+  ultimately show ?thesis unfolding winning_path_def deadends_def by auto
+qed
 
 end
 

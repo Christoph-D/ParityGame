@@ -85,6 +85,16 @@ lemma valid_strategy_updates_set_strong:
   shows "strategy p (override_on \<sigma> \<sigma>' A)"
   using assms(1) assms(2)[unfolded strategy_def] valid_strategy_updates_set by simp
 
+lemma subgame_strategy_stays_in_subgame:
+  assumes \<sigma>: "ParityGame.strategy (subgame V') p \<sigma>"
+    and "v \<in> ParityGame.VV (subgame V') p" "\<not>Digraph.deadend (subgame V') v"
+  shows "\<sigma> v \<in> V'"
+proof-
+  interpret G': ParityGame "subgame V'" using subgame_ParityGame .
+  have "\<sigma> v \<in> V\<^bsub>subgame V'\<^esub>" using assms unfolding G'.strategy_def G'.edges_are_in_V(2) by blast
+  thus "\<sigma> v \<in> V'" by (metis Diff_iff IntE subgame_VV Player.distinct(2))
+qed
+
 lemma valid_strategy_supergame:
   assumes \<sigma>: "strategy p \<sigma>"
     and \<sigma>': "ParityGame.strategy (subgame V') p \<sigma>'"
