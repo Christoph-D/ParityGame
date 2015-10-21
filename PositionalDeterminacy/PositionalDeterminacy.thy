@@ -8,23 +8,6 @@ begin
 
 context ParityGame begin
 
-lemma winning_region_deadend_attractor:
-  shows "attractor p (deadends p**) \<subseteq> winning_region p" (is "?A \<subseteq> _")
-proof
-  fix v assume "v \<in> ?A"
-  obtain \<sigma> where \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> ?A (deadends p**)"
-    using attractor_has_strategy deadends_in_V by blast
-  have "winning_strategy p \<sigma> v" proof (unfold winning_strategy_def, intro allI impI)
-    fix P assume P: "vmc_path G P v p \<sigma>"
-    then interpret vmc_path G P v p \<sigma> .
-    have "visits_via P ?A (deadends p**)" using \<sigma>(2) `v \<in> ?A` strategy_attractsE by blast
-    thus "winning_path p P" using visits_via_deadend[of ?A "p**"] by simp
-  qed
-  moreover have "v \<in> V" using `v \<in> ?A` deadends_in_V attractor_is_bounded_by_V
-    by (meson contra_subsetD dual_order.trans)
-  ultimately show "v \<in> winning_region p" using winning_regionI \<sigma>(1) by blast
-qed
-
 text {* Removing the attractor sets of deadends leaves a subgame without deadends. *}
 
 lemma subgame_without_deadends:
