@@ -587,6 +587,39 @@ corollary vmc_path_lset_induction_simple [case_names base step]:
   "\<lbrakk> v0 \<in> S; \<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S \<rbrakk> \<Longrightarrow> lhd (ltl P) \<in> S \<rbrakk> \<Longrightarrow> lset P \<subseteq> S"
   using vmc_path_lset_induction[of "\<lambda>P. True"] by blast
 
+lemma (in vmc_path) vmc_path_lset_closed_subset:
+  assumes VVp: "\<And>v. \<lbrakk> v \<in> S; \<not>deadend v; v \<in> VV p \<rbrakk> \<Longrightarrow> \<sigma> v \<in> S \<union> T"
+    and VVpstar: "\<And>v w. \<lbrakk> v \<in> S; \<not>deadend v; v \<in> VV p** ; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<in> S \<union> T"
+    and v0: "v0 \<in> S"
+    and "lset P \<inter> T = {}"
+  shows "lset P \<subseteq> S"
+proof
+  fix v assume "v \<in> lset P"
+  thus "v \<in> S" using vmc_path assms(3,4)
+  proof (induct arbitrary: v0 rule: llist_set_induct)
+    case (find P)
+    interpret vmc_path G P v0 p \<sigma> using find.prems(1) .
+    show ?case by (simp add: find.prems(2))
+  next
+    case (step P v v0)
+    interpret vmc_path G P v0 p \<sigma> using step.prems(1) .
+    have "\<not>lnull (ltl P)" using step.hyps(2) by (metis emptyE lset_eq_empty)
+    then interpret vmc_path_no_deadend G P v0 p \<sigma> using vmc_path_lnull_ltl_no_deadend by blast
+    have "w0 \<in> S \<union> T" proof (cases)
+      assume "v0 \<in> VV p"
+      hence "\<sigma> v0 \<in> S \<union> T" using assms(1) step.prems(2) v0_no_deadend by blast
+      thus "w0 \<in> S \<union> T" using v0_conforms `v0 \<in> VV p` by simp
+    next
+      assume "v0 \<notin> VV p"
+      thus "w0 \<in> S \<union> T" using `v0\<rightarrow>w0` assms(2) step.prems(2) v0_no_deadend by auto
+    qed
+    hence "w0 \<in> S" using step.prems(3) w0_lset_P by blast
+    moreover have "lset (ltl P) \<inter> T = {}" using step.prems(3)
+      by (meson disjoint_eq_subset_Compl lset_ltl subset_trans)
+    ultimately show "v \<in> S" using step.hyps(3)[of w0] by simp
+  qed
+qed
+
 end
 
 end
