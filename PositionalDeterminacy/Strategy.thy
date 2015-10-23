@@ -17,6 +17,9 @@ text {*
 definition (in ParityGame) strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> v\<rightarrow>\<sigma> v"
 
+lemma (in ParityGame) strategyI:
+  "(\<And>v. \<lbrakk> v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> v\<rightarrow>\<sigma> v) \<Longrightarrow> strategy p \<sigma>"
+  unfolding strategy_def using assms by blast
 
 subsection {* Strategy-conforming paths *}
 

@@ -33,6 +33,23 @@ proof-
   thus ?thesis using winning_path_drop_add P_valid n(1) by blast
 qed
 
+text {* There cannot exist winning strategies for both players for the same vertex. *}
+
+lemma winning_strategy_only_for_one_player:
+  assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v"
+    and \<sigma>': "strategy p** \<sigma>'" "winning_strategy p** \<sigma>' v"
+    and v: "v \<in> V"
+  shows "False"
+proof-
+  obtain P where "vmc2_path G P v p \<sigma> \<sigma>'" using assms strategy_conforming_path_exists by blast
+  then interpret vmc2_path G P v p \<sigma> \<sigma>' .
+  have "winning_path p P"
+    using paths_hits_winning_strategy_is_winning \<sigma>(2) v0_lset_P by blast
+  moreover have "winning_path p** P"
+    using comp.paths_hits_winning_strategy_is_winning \<sigma>'(2) v0_lset_P by blast
+  ultimately show False using P_valid paths_are_winning_for_one_player by blast
+qed
+
 subsection {* Deadends *}
 
 lemma no_winning_strategy_on_deadends:
