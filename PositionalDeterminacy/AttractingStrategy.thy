@@ -1,12 +1,12 @@
 section {* Attracting strategies *}
 
-text {* Introduces the concept of attracting strategies. *}
-
 theory AttractingStrategy
 imports
   Main
   Strategy
 begin
+
+text {* Here we introduce the concept of attracting strategies. *}
 
 context ParityGame begin
 

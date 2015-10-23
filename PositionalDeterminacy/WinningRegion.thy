@@ -7,7 +7,7 @@ imports
 begin
 
 text {*
-  Here we define winning regions of parity games.  A winning region for player @{text p} is a
+  Here we define winning regions of parity games.  The winning region for player @{text p} is the
   set of vertices from which @{text p} has a positional winning strategy.
 *}
 
@@ -69,7 +69,9 @@ proof
   qed
 qed
 
-subsection {* Updates *}
+subsection {* Irrelevant updates *}
+
+text {* Updating a winning strategy outside of the winning region is irrelevant. *}
 
 lemma winning_strategy_updates:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
@@ -104,9 +106,10 @@ qed
 
 text {*
   Unfortunately, we cannot prove the corresponding theorem @{text winning_region_extends_VVpstar}
-  here.  First, we need to show that there exists a uniform winning strategy on
-  @{term "winning_region p"}.  We will prove @{text winning_region_extends_VVpstar} as soon as we
-  have shown this. *}
+  for @{term "VV p**"}-vertices yet.
+  First, we need to show that there exists a uniform winning strategy on @{term "winning_region p"}.
+  We will prove @{text winning_region_extends_VVpstar} as soon as we have this.
+*}
 
 end -- "context ParityGame"
 

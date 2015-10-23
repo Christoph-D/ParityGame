@@ -499,9 +499,8 @@ subsection {* Valid maximal conforming paths with one edge *}
 
 text {*
   We define a locale for valid maximal conforming paths that contain at least one edge.
-  This is equivalent to the first vertex being no deadend.  This assumption seems simple, but we use
-  it in several places because it allows us to prove much stronger lemmas about @{term "ltl P"}
-  compared to @{term "vmc_path"}.
+  This is equivalent to the first vertex being no deadend.  This assumption allows us to prove
+  much stronger lemmas about @{term "ltl P"} compared to @{term "vmc_path"}.
 *}
 
 locale vmc_path_no_deadend = vmc_path +

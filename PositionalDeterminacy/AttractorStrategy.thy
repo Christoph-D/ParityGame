@@ -1,12 +1,12 @@
 section {* Attractor strategies *}
 
-text {* This theory proves that every attractor set has an attractor strategy. *}
-
 theory AttractorStrategy
 imports
   Main
   Attractor UniformStrategy
 begin
+
+text {* This section proves that every attractor set has an attractor strategy. *}
 
 context ParityGame begin
 
@@ -17,29 +17,27 @@ lemma strategy_attracts_extends_VVp:
 proof-
   from v0(1,2) obtain w where "v0\<rightarrow>w" "w \<in> S" using directly_attracted_def by blast
   from `w \<in> S` \<sigma>(2) have "strategy_attracts_via p \<sigma> w S W" unfolding strategy_attracts_def by blast
-  let ?\<sigma> = "\<sigma>(v0 := w)" (* Extend \<sigma> to the new node. *)
+  let ?\<sigma> = "\<sigma>(v0 := w)" -- "Extend @{term \<sigma>} to the new node."
   have "strategy p ?\<sigma>" using \<sigma>(1) `v0\<rightarrow>w` valid_strategy_updates by blast
-  moreover have "strategy_attracts_via p ?\<sigma> v0 (insert v0 S) W" proof-
-    { fix P
-      assume "vmc_path G P v0 p ?\<sigma>"
-      then interpret vmc_path G P v0 p ?\<sigma> .
-      have "\<not>deadend v0" using `v0\<rightarrow>w` by blast
-      then interpret vmc_path_no_deadend G P v0 p ?\<sigma> by unfold_locales
+  moreover have "strategy_attracts_via p ?\<sigma> v0 (insert v0 S) W" proof (rule strategy_attracts_viaI)
+    fix P
+    assume "vmc_path G P v0 p ?\<sigma>"
+    then interpret vmc_path G P v0 p ?\<sigma> .
+    have "\<not>deadend v0" using `v0\<rightarrow>w` by blast
+    then interpret vmc_path_no_deadend G P v0 p ?\<sigma> by unfold_locales
 
-      def [simp]: P'' \<equiv> "ltl P"
-      have "lhd P'' = w" using v0(1) v0_conforms w0_def by auto
-      hence "vmc_path G P'' w p ?\<sigma>" using vmc_path_ltl by (simp add: w0_def)
+    def [simp]: P'' \<equiv> "ltl P"
+    have "lhd P'' = w" using v0(1) v0_conforms w0_def by auto
+    hence "vmc_path G P'' w p ?\<sigma>" using vmc_path_ltl by (simp add: w0_def)
 
-      have *: "v0 \<notin> S - W" using `v0 \<notin> S` by blast
-      have "override_on (\<sigma>(v0 := w)) \<sigma> (S - W) = ?\<sigma>"
-        by (rule ext) (metis * fun_upd_def override_on_def)
-      hence "strategy_attracts p ?\<sigma> S W"
-        using strategy_attracts_irrelevant_override[OF \<sigma>(2,1) `strategy p ?\<sigma>`] by simp
-      hence "strategy_attracts_via p ?\<sigma> w S W" unfolding strategy_attracts_def using `w \<in> S` by blast
-      hence "visits_via P'' S W" unfolding strategy_attracts_via_def using `vmc_path G P'' w p ?\<sigma>` by blast
-      hence "visits_via P (insert v0 S) W" using visits_via_LCons[of "ltl P" S W v0] P_LCons by simp
-    }
-    thus ?thesis unfolding strategy_attracts_via_def by blast
+    have *: "v0 \<notin> S - W" using `v0 \<notin> S` by blast
+    have "override_on (\<sigma>(v0 := w)) \<sigma> (S - W) = ?\<sigma>"
+      by (rule ext) (metis * fun_upd_def override_on_def)
+    hence "strategy_attracts p ?\<sigma> S W"
+      using strategy_attracts_irrelevant_override[OF \<sigma>(2,1) `strategy p ?\<sigma>`] by simp
+    hence "strategy_attracts_via p ?\<sigma> w S W" unfolding strategy_attracts_def using `w \<in> S` by blast
+    hence "visits_via P'' S W" unfolding strategy_attracts_via_def using `vmc_path G P'' w p ?\<sigma>` by blast
+    thus "visits_via P (insert v0 S) W" using visits_via_LCons[of "ltl P" S W v0] P_LCons by simp
   qed
   ultimately show ?thesis by blast
 qed
@@ -48,17 +46,15 @@ lemma strategy_attracts_extends_VVpstar:
   assumes \<sigma>: "strategy_attracts p \<sigma> S W"
     and v0: "v0 \<notin> VV p" "v0 \<in> directly_attracted p S"
   shows "strategy_attracts_via p \<sigma> v0 (insert v0 S) W"
-proof-
-  { fix P
-    assume "vmc_path G P v0 p \<sigma>"
-    then interpret vmc_path G P v0 p \<sigma> .
-    have "\<not>deadend v0" using v0(2) directly_attracted_contains_no_deadends by blast
-    then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
-    have "visits_via (ltl P) S W"
-      using vmc_path.strategy_attractsE[OF vmc_path_ltl \<sigma>] v0 directly_attracted_def by simp
-    hence "visits_via P (insert v0 S) W" using visits_via_LCons[of "ltl P" S W v0] P_LCons by simp
-  }
-  thus ?thesis unfolding strategy_attracts_via_def by blast
+proof (rule strategy_attracts_viaI)
+  fix P
+  assume "vmc_path G P v0 p \<sigma>"
+  then interpret vmc_path G P v0 p \<sigma> .
+  have "\<not>deadend v0" using v0(2) directly_attracted_contains_no_deadends by blast
+  then interpret vmc_path_no_deadend G P v0 p \<sigma> by unfold_locales
+  have "visits_via (ltl P) S W"
+    using vmc_path.strategy_attractsE[OF vmc_path_ltl \<sigma>] v0 directly_attracted_def by simp
+  thus "visits_via P (insert v0 S) W" using visits_via_LCons[of "ltl P" S W v0] P_LCons by simp
 qed
 
 lemma attractor_has_strategy_single:

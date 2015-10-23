@@ -7,8 +7,11 @@ imports
 begin
 
 text {*
-  Constructing a uniform strategy from a set of strategies on a set of nodes often works by
-  well-ordering the strategies and then choosing the minimal strategy on each node.
+  Constructing a uniform strategy from a set of strategies on a set of vertices often works by
+  well-ordering the strategies and then choosing the minimal strategy on each vertex.
+  Then every path eventually follows one strategy because we choose the strategies along the path
+  to be non-increasing in the well-ordering.
+
   The following locale formalizes this idea.
 
   We will use this to construct uniform attractor and winning strategies.
@@ -102,6 +105,8 @@ proof-
   }
   thus ?thesis unfolding well_ordered_strategy_def using valid_strategy_updates_set by force
 qed
+
+subsection {* Strategies on a path *}
 
 text {* Maps a path to its strategies. *}
 definition "path_strategies \<equiv> lmap choose"
@@ -212,6 +217,14 @@ proof-
   }
   thus ?thesis by blast
 qed
+
+subsection {* Eventually one strategy *}
+
+text {*
+  The key lemma: Every path that stays in @{term S} and follows @{const well_ordered_strategy}
+  eventually follows one strategy because the strategies are well-ordered and non-increasing
+  along the path.
+*}
 
 lemma path_eventually_conforms_to_\<sigma>_map_n:
   assumes "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"

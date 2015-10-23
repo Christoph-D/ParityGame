@@ -416,7 +416,8 @@ proof-
           by blast
       next
         assume asm: "\<not>(\<exists>n. lset (ldropn n P) \<subseteq> V')"
-        text {* The second case: @{term P} visits @{term K} infinitely often. *}
+        text {* The second case: @{term P} visits @{term K} infinitely often.
+          Then @{term min_prio} occurs infinitely often on @{term P}. *}
         have "min_prio \<in> path_inf_priorities P"
         unfolding path_inf_priorities_def proof (intro CollectI allI)
           fix n
@@ -468,11 +469,10 @@ theorem positional_strategy_exists_without_deadends:
      (rule ParityGame.positional_strategy_induction_step, simp_all)
 
 
-subsection {* Positional determinacy *}
+subsection {* Positional determinacy with deadends *}
 
 text {*
   Prove a stronger version of the previous theorem: Allow deadends.
-  This is the main theorem.
 *}
 theorem positional_strategy_exists:
   assumes "v0 \<in> V"
@@ -606,11 +606,12 @@ proof-
   qed
 qed
 
-lemma winning_regions_disjoint:
-  shows "winning_region Even \<inter> winning_region Odd = {}"
-  using winning_strategy_only_for_one_player[of Even]
-  unfolding winning_region_def
-  by auto
+subsection {* The main theorem: positional determinacy *}
+
+text {*
+  Prove the main theorem: The winning regions of player \Even and \Odd are a partition of the set
+  of vertices @{term V}.
+*}
 
 theorem partition_into_winning_regions:
   shows "V = winning_region Even \<union> winning_region Odd"
@@ -621,7 +622,11 @@ proof
 next
   show "winning_region Even \<union> winning_region Odd \<subseteq> V"
     by (rule subsetI) (meson Un_iff subsetCE winning_region_in_V)
-qed (insert winning_regions_disjoint)
+next
+  show "winning_region Even \<inter> winning_region Odd = {}"
+    using winning_strategy_only_for_one_player[of Even]
+    unfolding winning_region_def by auto
+qed
 
 end -- "context ParityGame"
 
