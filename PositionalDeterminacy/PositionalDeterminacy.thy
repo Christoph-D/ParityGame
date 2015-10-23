@@ -8,54 +8,6 @@ begin
 
 context ParityGame begin
 
-text {* Removing the attractor sets of deadends leaves a subgame without deadends. *}
-
-lemma subgame_without_deadends:
-  assumes V'_def: "V' = V - attractor p (deadends p**) - attractor p** (deadends p****)"
-    (is "V' = V - ?A - ?B")
-    and v: "v \<in> V\<^bsub>subgame V'\<^esub>"
-  shows "\<not>Digraph.deadend (subgame V') v"
-proof (cases)
-  assume "deadend v"
-  have v: "v \<in> V - ?A - ?B" using v unfolding V'_def subgame_def by simp
-  { fix p' assume "v \<in> VV p'**"
-    hence "v \<in> attractor p' (deadends p'**)"
-      using `deadend v` attractor_set_base[of "deadends p'**" p']
-      unfolding deadends_def by blast
-    hence False using v by (cases p'; cases p) auto
-  }
-  thus ?thesis using v by blast
-next
-  assume "\<not>deadend v"
-  have v: "v \<in> V - ?A - ?B" using v unfolding V'_def subgame_def by simp
-  def G' \<equiv> "subgame V'"
-  interpret G': ParityGame G' unfolding G'_def using subgame_ParityGame .
-  show ?thesis proof
-    assume "Digraph.deadend (subgame V') v"
-    hence "G'.deadend v" unfolding G'_def .
-    have all_in_attractor: "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> ?A \<or> w \<in> ?B" proof (rule ccontr)
-      fix w
-      assume "v\<rightarrow>w" "\<not>(w \<in> ?A \<or> w \<in> ?B)"
-      hence "w \<in> V'" unfolding V'_def by blast
-      hence "w \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v\<rightarrow>w` by auto
-      hence "v \<rightarrow>\<^bsub>G'\<^esub> w" using `v\<rightarrow>w` assms(2) unfolding G'_def subgame_def by auto
-      thus False using `G'.deadend v` using `w \<in> V\<^bsub>G'\<^esub>` by blast
-    qed
-    { fix p' assume "v \<in> VV p'"
-      { assume "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p' (deadends p'**)"
-        hence "v \<in> attractor p' (deadends p'**)" using `v \<in> VV p'` attractor_set_VVp by blast
-        hence False using v by (cases p'; cases p) auto
-      }
-      hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor p'** (deadends p'****)"
-        using all_in_attractor by (cases p'; cases p) auto
-      hence "v \<in> attractor p'** (deadends p'****)"
-        using `\<not>deadend v` `v \<in> VV p'` attractor_set_VVpstar by auto
-      hence False using v by (cases p'; cases p) auto
-    }
-    thus False using v by blast
-  qed
-qed
-
 subsection {* Induction step *}
 
 text {*
@@ -106,7 +58,7 @@ proof-
       have "V \<subseteq> attractor p K \<union> V' \<union> W1"
         unfolding V'_def U_def by blast
       moreover have "attractor p K \<subseteq> V"
-        using attractor_is_bounded_by_V[of K] unfolding K_def U_def by blast
+        using attractor_in_V[of K] unfolding K_def U_def by blast
       ultimately show ?thesis
         unfolding W1_def winning_region_def using `V' \<subseteq> V` by blast
     qed
@@ -532,7 +484,7 @@ proof-
     then obtain \<sigma> where \<sigma>: "strategy p \<sigma>" "strategy_attracts p \<sigma> A (deadends p**)"
       using attractor_has_strategy[of "deadends p**" "p"] A_def deadends_in_V by blast
 
-    have "A \<subseteq> V" using A_def using attractor_is_bounded_by_V deadends_in_V by blast
+    have "A \<subseteq> V" using A_def using attractor_in_V deadends_in_V by blast
     hence "A - deadends p** \<subseteq> V" by auto
 
     have "winning_strategy p \<sigma> v0" proof (unfold winning_strategy_def, intro allI impI)

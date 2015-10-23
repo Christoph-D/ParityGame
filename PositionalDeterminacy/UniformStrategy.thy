@@ -5,7 +5,7 @@ text {* Theorems about how to get a uniform strategy given strategies for each n
 theory UniformStrategy
 imports
   Main
-  AttractingStrategy WinningStrategy WellOrderedStrategy
+  AttractingStrategy WinningStrategy WellOrderedStrategy WinningRegion
 begin
 
 context ParityGame begin
@@ -199,30 +199,12 @@ proof-
   thus ?thesis unfolding winning_strategy_def using well_ordered_strategy_valid by auto
 qed
 
-subsection {* Winning regions *}
+subsection {* Extending winning regions *}
 
-lemma winning_region_deadends:
-  assumes "v \<in> VV p" "deadend v"
-  shows "v \<in> winning_region p**"
-proof (rule winning_regionI)
-  show "v \<in> V" using `v \<in> VV p` by blast
-  show "winning_strategy p** \<sigma>_arbitrary v" using assms winning_strategy_on_deadends by simp
-qed simp
-
-lemma winning_region_extends_VVp:
-  assumes v: "v \<in> VV p" "v\<rightarrow>w" and w: "w \<in> winning_region p"
-  shows "v \<in> winning_region p"
-proof (rule ccontr)
-  obtain \<sigma> where \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> w"
-    using w unfolding winning_region_def by blast
-  let ?\<sigma> = "\<sigma>(v := w)"
-  assume contra: "v \<notin> winning_region p"
-  moreover have "strategy p ?\<sigma>" using valid_strategy_updates \<sigma>(1) `v\<rightarrow>w` by blast
-  moreover hence "winning_strategy p ?\<sigma> v"
-    using winning_strategy_updates \<sigma> contra v strategy_extends_backwards_VVp
-    by auto
-  ultimately show False using `v\<rightarrow>w` unfolding winning_region_def by auto
-qed
+text {*
+  Now we are finally able to prove the complement of @{text winning_region_extends_VVp} for
+  @{term "VV p**"} vertices, which was still missing.
+*}
 
 lemma winning_region_extends_VVpstar:
   assumes v: "v \<in> VV p**" and w: "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> winning_region p"
@@ -233,6 +215,8 @@ proof-
   have "winning_strategy p \<sigma> v" using strategy_extends_backwards_VVpstar[OF v \<sigma>(1)] \<sigma>(2) w by blast
   thus ?thesis unfolding winning_region_def using v \<sigma>(1) by blast
 qed
+
+text {* It immediately follows that removing a winning region cannot create new deadends. *}
 
 lemma removing_winning_region_induces_no_deadends:
   assumes "v \<in> V - winning_region p" "\<not>deadend v"

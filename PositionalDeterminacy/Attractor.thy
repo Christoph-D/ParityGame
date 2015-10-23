@@ -115,7 +115,7 @@ lemma attractor_set_non_empty: "W \<noteq> {} \<Longrightarrow> attractor p W \<
   and attractor_set_base: "W \<subseteq> attractor p W"
   using attractor_unfolding by auto
 
-lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
+lemma attractor_in_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
   using attractor_lowerbound attractor_step_bounded_by_V by auto
 
 subsection {* Extension theorems *}
@@ -133,16 +133,64 @@ lemma attractor_set_VVpstar:
 subsection {* Removing an attractor *}
 
 lemma removing_attractor_induces_no_deadends:
-  assumes "v \<in> S - attractor p W" "\<exists>w \<in> S. v\<rightarrow>w" "\<And>w. \<lbrakk> v \<in> VV p**; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<in> S"
+  assumes "v \<in> S - attractor p W" "v\<rightarrow>w" "w \<in> S" "\<And>w. \<lbrakk> v \<in> VV p**; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<in> S"
   shows "\<exists>w \<in> S - attractor p W. v\<rightarrow>w"
 proof-
-  have "v \<in> V" using assms(2) by blast
+  have "v \<in> V" using `v\<rightarrow>w` by blast
   thus ?thesis proof (cases rule: VV_cases)
     assume "v \<in> VV p"
     thus ?thesis using attractor_set_VVp assms by blast
   next
     assume "v \<in> VV p**"
     thus ?thesis using attractor_set_VVpstar assms by (metis Diff_iff edges_are_in_V(2))
+  qed
+qed
+
+text {* Removing the attractor sets of deadends leaves a subgame without deadends. *}
+
+lemma subgame_without_deadends:
+  assumes V'_def: "V' = V - attractor p (deadends p**) - attractor p** (deadends p****)"
+    (is "V' = V - ?A - ?B")
+    and v: "v \<in> V\<^bsub>subgame V'\<^esub>"
+  shows "\<not>Digraph.deadend (subgame V') v"
+proof (cases)
+  assume "deadend v"
+  have v: "v \<in> V - ?A - ?B" using v unfolding V'_def subgame_def by simp
+  { fix p' assume "v \<in> VV p'**"
+    hence "v \<in> attractor p' (deadends p'**)"
+      using `deadend v` attractor_set_base[of "deadends p'**" p']
+      unfolding deadends_def by blast
+    hence False using v by (cases p'; cases p) auto
+  }
+  thus ?thesis using v by blast
+next
+  assume "\<not>deadend v"
+  have v: "v \<in> V - ?A - ?B" using v unfolding V'_def subgame_def by simp
+  def G' \<equiv> "subgame V'"
+  interpret G': ParityGame G' unfolding G'_def using subgame_ParityGame .
+  show ?thesis proof
+    assume "Digraph.deadend (subgame V') v"
+    hence "G'.deadend v" unfolding G'_def .
+    have all_in_attractor: "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> ?A \<or> w \<in> ?B" proof (rule ccontr)
+      fix w
+      assume "v\<rightarrow>w" "\<not>(w \<in> ?A \<or> w \<in> ?B)"
+      hence "w \<in> V'" unfolding V'_def by blast
+      hence "w \<in> V\<^bsub>G'\<^esub>" unfolding G'_def subgame_def using `v\<rightarrow>w` by auto
+      hence "v \<rightarrow>\<^bsub>G'\<^esub> w" using `v\<rightarrow>w` assms(2) unfolding G'_def subgame_def by auto
+      thus False using `G'.deadend v` using `w \<in> V\<^bsub>G'\<^esub>` by blast
+    qed
+    { fix p' assume "v \<in> VV p'"
+      { assume "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p' (deadends p'**)"
+        hence "v \<in> attractor p' (deadends p'**)" using `v \<in> VV p'` attractor_set_VVp by blast
+        hence False using v by (cases p'; cases p) auto
+      }
+      hence "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor p'** (deadends p'****)"
+        using all_in_attractor by (cases p'; cases p) auto
+      hence "v \<in> attractor p'** (deadends p'****)"
+        using `\<not>deadend v` `v \<in> VV p'` attractor_set_VVpstar by auto
+      hence False using v by (cases p'; cases p) auto
+    }
+    thus False using v by blast
   qed
 qed
 

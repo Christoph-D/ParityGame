@@ -99,7 +99,7 @@ theorem attractor_has_strategy:
   shows "\<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts p \<sigma> (attractor p W) W"
 proof-
   let ?A = "attractor p W"
-  have "?A \<subseteq> V" by (simp add: `W \<subseteq> V` attractor_is_bounded_by_V)
+  have "?A \<subseteq> V" by (simp add: `W \<subseteq> V` attractor_in_V)
   moreover
     have "\<And>v. v \<in> ?A \<Longrightarrow> \<exists>\<sigma>. strategy p \<sigma> \<and> strategy_attracts_via p \<sigma> v ?A W"
     using `W \<subseteq> V` attractor_has_strategy_single by blast
