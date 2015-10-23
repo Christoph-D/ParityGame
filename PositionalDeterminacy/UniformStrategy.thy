@@ -66,7 +66,7 @@ proof-
                       choose_strategy step.hyps(2) `v0\<rightarrow>w0` w0_V)
         qed (metis DiffD1 assms(2) step.hyps(2) strategy_attracts_via_successor
                    strategy_attracts_via_v0 `v0\<rightarrow>w0` w0_V)
-        ultimately show ?case using w0_def by auto
+        ultimately show ?case by blast
       qed
 
       have "\<not>lfinite P" proof
@@ -154,7 +154,7 @@ proof-
         hence "choose v0 v0 = w0" by (simp add: step.hyps(2) well_ordered_strategy_def)
       }
       hence "choose v0 \<in> good w0" using strategies_continue choose_good step.hyps(2) by simp
-      thus ?case unfolding good_def winning_region_def using `w0 \<in> V` w0_def by auto
+      thus ?case unfolding good_def winning_region_def using `w0 \<in> V` by blast
     qed (insert `v0 \<in> winning_region p`)
 
     have "winning_path p P" proof (rule ccontr)
@@ -180,7 +180,7 @@ proof-
           using lfinite_ldropn lnull_imp_lfinite by blast
       qed (simp_all add: n)
       have "strategy p \<sigma>'" unfolding \<sigma>'_def
-        using path_strategies_strategy `lset P \<subseteq>winning_region p` `\<not>lfinite P` by blast
+        using path_strategies_strategy `lset P \<subseteq> winning_region p` `\<not>lfinite P` by blast
       moreover have "winning_strategy p \<sigma>' (lhd P')" proof-
         have "P $ n \<in> winning_region p"
           using `lset P \<subseteq> winning_region p` `\<not>lfinite P` lset_nth_member_inf by blast

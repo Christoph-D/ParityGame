@@ -181,7 +181,7 @@ proof-
               First we show that @{term P} stays in @{term V'}, because if it stays in @{term V'},
               then it conforms to @{term \<sigma>}, so it must be winning for @{term "p**"}. *}
 
-            have "lset P \<subseteq> V'" proof (rule vmc_path_lset_closed_subset)
+            have "lset P \<subseteq> V'" proof (induct rule: vmc_path_lset_induction_closed_subset)
               fix v assume "v \<in> V'" "\<not>deadend v" "v \<in> VV p**"
               hence "v \<in> ParityGame.VV (subgame V') p**" by auto
               moreover have "\<not>G'.deadend v" using G'_no_deadends `V\<^bsub>G'\<^esub> = V'` `v \<in> V'` by blast
@@ -356,7 +356,7 @@ proof-
         fix v P assume P: "v \<in> V - W1" "vmc_path G P v p \<sigma>"
         interpret vmc_path G P v p \<sigma> using P(2) .
 
-        have "lset P \<subseteq> V - W1" proof (rule vmc_path_lset_closed_subset)
+        have "lset P \<subseteq> V - W1" proof (induct rule: vmc_path_lset_induction_closed_subset)
           fix v assume "v \<in> V - W1" "\<not>deadend v" "v \<in> VV p"
           show "\<sigma> v \<in> V - W1 \<union> {}" proof (rule ccontr)
             assume "\<not>?thesis"
@@ -618,7 +618,7 @@ proof-
         using V'_no_deadends' `v0 \<in> V'` by unfold_locales
       assume contra: "\<not>winning_path p P"
 
-      have "lset P \<subseteq> V'" proof (rule vmc_path_lset_closed_subset)
+      have "lset P \<subseteq> V'" proof (induct rule: vmc_path_lset_induction_closed_subset)
         fix v assume "v \<in> V'" "\<not>deadend v" "v \<in> VV p"
         hence "v \<in> G'.VV p" unfolding G'_def by (simp add: `v \<in> V'`)
         moreover have "\<not>G'.deadend v" using V'_no_deadends `v \<in> V'` `V\<^bsub>G'\<^esub> = V'` by blast

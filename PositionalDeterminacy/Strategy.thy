@@ -546,7 +546,7 @@ proof-
   thus ?thesis using P'_def P'.P_Suc_0 assms(1) by simp
 qed
 
-subsection {* An @{term lset} induction schema for paths *}
+subsection {* @{term lset} induction schemas for paths *}
 
 text {* Let us define an induction schema useful for proving @{term "lset P \<subseteq> S"}. *}
 
@@ -554,7 +554,7 @@ lemma vmc_path_lset_induction [consumes 1, case_names base step]:
   assumes "Q P"
     and base: "v0 \<in> S"
     and step_assumption: "\<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S; Q P \<rbrakk>
-      \<Longrightarrow> Q (ltl P) \<and> lhd (ltl P) \<in> S"
+      \<Longrightarrow> Q (ltl P) \<and> (vmc_path_no_deadend.w0 P) \<in> S"
   shows "lset P \<subseteq> S"
 proof
   fix v assume "v \<in> lset P"
@@ -575,7 +575,7 @@ proof
         using vmc_path_lnull_ltl_no_deadend by blast
       show "v \<in> S"
         using step.hyps(3)
-              step_assumption[OF vmc_path_no_deadend `v0 \<in> S` `Q P`, folded w0_def]
+              step_assumption[OF vmc_path_no_deadend `v0 \<in> S` `Q P`]
               vmc_path_ltl
         by blast
     qed
@@ -584,41 +584,30 @@ qed
 
 text {* @{thm vmc_path_lset_induction} without the Q predicate. *}
 corollary vmc_path_lset_induction_simple [case_names base step]:
-  "\<lbrakk> v0 \<in> S; \<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S \<rbrakk> \<Longrightarrow> lhd (ltl P) \<in> S \<rbrakk> \<Longrightarrow> lset P \<subseteq> S"
-  using vmc_path_lset_induction[of "\<lambda>P. True"] by blast
+  assumes base: "v0 \<in> S"
+    and step: "\<And>P v0. \<lbrakk> vmc_path_no_deadend G P v0 p \<sigma>; v0 \<in> S \<rbrakk>
+      \<Longrightarrow> vmc_path_no_deadend.w0 P \<in> S"
+  shows "lset P \<subseteq> S"
+  using assms vmc_path_lset_induction[of "\<lambda>P. True"] by blast
 
-lemma (in vmc_path) vmc_path_lset_closed_subset:
+text {* Another induction schema for proving @{term "lset P \<subseteq> S"} based on closure properties. *}
+
+lemma vmc_path_lset_induction_closed_subset [case_names VVp VVpstar v0 disjoint]:
   assumes VVp: "\<And>v. \<lbrakk> v \<in> S; \<not>deadend v; v \<in> VV p \<rbrakk> \<Longrightarrow> \<sigma> v \<in> S \<union> T"
     and VVpstar: "\<And>v w. \<lbrakk> v \<in> S; \<not>deadend v; v \<in> VV p** ; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<in> S \<union> T"
     and v0: "v0 \<in> S"
-    and "lset P \<inter> T = {}"
+    and disjoint: "lset P \<inter> T = {}"
   shows "lset P \<subseteq> S"
-proof
-  fix v assume "v \<in> lset P"
-  thus "v \<in> S" using vmc_path assms(3,4)
-  proof (induct arbitrary: v0 rule: llist_set_induct)
-    case (find P)
-    interpret vmc_path G P v0 p \<sigma> using find.prems(1) .
-    show ?case by (simp add: find.prems(2))
-  next
-    case (step P v v0)
-    interpret vmc_path G P v0 p \<sigma> using step.prems(1) .
-    have "\<not>lnull (ltl P)" using step.hyps(2) by (metis emptyE lset_eq_empty)
-    then interpret vmc_path_no_deadend G P v0 p \<sigma> using vmc_path_lnull_ltl_no_deadend by blast
-    have "w0 \<in> S \<union> T" proof (cases)
-      assume "v0 \<in> VV p"
-      hence "\<sigma> v0 \<in> S \<union> T" using assms(1) step.prems(2) v0_no_deadend by blast
-      thus "w0 \<in> S \<union> T" using v0_conforms `v0 \<in> VV p` by simp
-    next
-      assume "v0 \<notin> VV p"
-      thus "w0 \<in> S \<union> T" using `v0\<rightarrow>w0` assms(2) step.prems(2) v0_no_deadend by auto
-    qed
-    hence "w0 \<in> S" using step.prems(3) w0_lset_P by blast
-    moreover have "lset (ltl P) \<inter> T = {}" using step.prems(3)
-      by (meson disjoint_eq_subset_Compl lset_ltl subset_trans)
-    ultimately show "v \<in> S" using step.hyps(3)[of w0] by simp
-  qed
-qed
+using disjoint proof (induct rule: vmc_path_lset_induction)
+  case (step P v0)
+  interpret vmc_path_no_deadend G P v0 p \<sigma> using step.hyps(1) .
+  have "lset (ltl P) \<inter> T = {}" using step.hyps(3)
+    by (meson disjoint_eq_subset_Compl lset_ltl order.trans)
+  moreover have "w0 \<in> S \<union> T"
+    using assms(1,2)[of v0] step.hyps(2) v0_no_deadend v0_conforms
+    by (cases "v0 \<in> VV p") simp_all
+  ultimately show ?case using step.hyps(3) w0_lset_P by blast
+qed (insert v0)
 
 end
 
