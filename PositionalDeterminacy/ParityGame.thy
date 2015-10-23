@@ -590,6 +590,7 @@ lemma finite_llast_deadend [simp]: "lfinite P \<Longrightarrow> deadend (llast P
 lemma finite_llast_V [simp]: "lfinite P \<Longrightarrow> llast P \<in> V"
   using P_not_null lfinite_lset lset_P_V by blast
 
+text {* If a path visits a deadend, it is winning for the other player. *}
 lemma visits_deadend:
   assumes "lset P \<inter> deadends p \<noteq> {}"
   shows "winning_path p** P"

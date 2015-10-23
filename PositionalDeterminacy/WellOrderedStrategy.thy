@@ -1,51 +1,54 @@
 section {* Well-ordered strategy *}
 
-text {*
-  Constructing a uniform strategy from a set of strategies on a set of nodes often works by
-  well-ordering the strategies and then choosing the minimal strategy on each node.
-  The following locale formalizes this idea.
-
-  Later we will use this to construct uniform attractor and winning strategies.
-*}
-
 theory WellOrderedStrategy
 imports
   Main
   Strategy
 begin
 
+text {*
+  Constructing a uniform strategy from a set of strategies on a set of nodes often works by
+  well-ordering the strategies and then choosing the minimal strategy on each node.
+  The following locale formalizes this idea.
+
+  We will use this to construct uniform attractor and winning strategies.
+*}
+
 locale WellOrderedStrategies = ParityGame +
   fixes S :: "'a set"
     and p :: Player
-    and good :: "'a \<Rightarrow> 'a Strategy set" (* The set of good strategies on a node v *)
+    -- "The set of good strategies on a node @{term v}"
+    and good :: "'a \<Rightarrow> 'a Strategy set"
     and r :: "('a Strategy \<times> 'a Strategy) set"
   assumes S_V: "S \<subseteq> V"
-    (* r is a wellorder on the set of all strategies which are good somewhere. *)
+    -- "@{term r} is a wellorder on the set of all strategies which are good somewhere."
     and r_wo: "well_order_on {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v} r"
-    (* Every node has a good strategy. *)
+    -- "Every node has a good strategy."
     and good_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v"
-    (* good strategies are well-formed strategies. *)
+    -- "good strategies are well-formed strategies."
     and good_strategies: "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>"
-    (* A good strategy on v is also good on possible successors of v. *)
+    -- "A good strategy on @{term v} is also good on possible successors of @{term v}."
     and strategies_continue: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> \<sigma> \<in> good w"
 begin
 
-(* The set of all strategies which are good somewhere. *)
+text {* The set of all strategies which are good somewhere. *}
 abbreviation "Strategies \<equiv> {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v}"
 
 definition minimal_good_strategy where
   "minimal_good_strategy v \<sigma> \<equiv> \<sigma> \<in> good v \<and> (\<forall>\<sigma>'. (\<sigma>', \<sigma>) \<in> r - Id \<longrightarrow> \<sigma>' \<notin> good v)"
 
-(* Among the good strategies on v, choose the minimum. *)
+text {* Among the good strategies on @{term v}, choose the minimum. *}
 definition choose where
   "choose v \<equiv> THE \<sigma>. minimal_good_strategy v \<sigma>"
 
-(* Define a strategy which uses the minimum strategy on all nodes of S.
-   Of course, we need to prove that this is a well-formed strategy. *)
+text {*
+  Define a strategy which uses the minimum strategy on all nodes of @{term S}.
+  Of course, we need to prove that this is a well-formed strategy.
+*}
 definition well_ordered_strategy where
   "well_ordered_strategy \<equiv> override_on \<sigma>_arbitrary (\<lambda>v. choose v v) S"
 
-(* Show some simple properties of the binary relation r on the set Strategies. *)
+text {* Show some simple properties of the binary relation @{term r} on the set @{const Strategies}. *}
 lemma r_refl [simp]: "refl_on Strategies r"
   using r_wo unfolding well_order_on_def linear_order_on_def partial_order_on_def preorder_on_def by blast
 lemma r_total [simp]: "total_on Strategies r"
@@ -55,7 +58,7 @@ lemma r_trans [simp]: "trans r"
 lemma r_wf [simp]: "wf (r - Id)"
   using well_order_on_def r_wo by blast
 
-(* Choose always chooses a minimal good strategy on S. *)
+text {* @{const choose} always chooses a minimal good strategy on @{term S}. *}
 lemma choose_works:
   assumes "v \<in> S"
   shows "minimal_good_strategy v (choose v)"
@@ -100,7 +103,7 @@ proof-
   thus ?thesis unfolding well_ordered_strategy_def using valid_strategy_updates_set by force
 qed
 
-(* Maps a path to its strategies. *)
+text {* Maps a path to its strategies. *}
 definition "path_strategies \<equiv> lmap choose"
 
 lemma path_strategies_in_Strategies:
@@ -163,7 +166,7 @@ lemma path_strategies_monotone:
   assumes P: "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
     "n < m" "enat m < llength P"
   shows "(path_strategies P $ m, path_strategies P $ n) \<in> r"
-using assms proof (induct "m - n" arbitrary: n m, simp)
+using assms proof (induct "m - n" arbitrary: n m)
   case (Suc d)
   show ?case proof (cases)
     assume "d = 0"
@@ -181,7 +184,7 @@ using assms proof (induct "m - n" arbitrary: n m, simp)
     thus ?thesis
       using m' path_strategies_monotone_Suc[OF P(1,2,3)] by (metis (no_types) Suc.prems(5) r_trans trans_def)
   qed
-qed
+qed simp
 
 lemma path_strategies_eventually_constant:
   assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"

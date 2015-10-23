@@ -8,7 +8,10 @@ begin
 
 subsection {* Definitions *}
 
-text {* A \emph{strategy} is simply a function from vertices to vertices. *}
+text {*
+  A \emph{strategy} is simply a function from vertices to vertices.
+  We only consider positional strategies.
+*}
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a"
 
 text {*
@@ -19,7 +22,7 @@ definition (in ParityGame) strategy :: "Player \<Rightarrow> 'a Strategy \<Right
 
 lemma (in ParityGame) strategyI:
   "(\<And>v. \<lbrakk> v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> v\<rightarrow>\<sigma> v) \<Longrightarrow> strategy p \<sigma>"
-  unfolding strategy_def using assms by blast
+  unfolding strategy_def by blast
 
 subsection {* Strategy-conforming paths *}
 
@@ -66,11 +69,9 @@ text {*
 *}
 definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
-lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof-
-  { fix v assume "\<not>deadend v"
-    hence "v \<rightarrow> \<sigma>_arbitrary v" unfolding \<sigma>_arbitrary_def using someI_ex[of "\<lambda>w. v\<rightarrow>w"] by blast
-  }
-  thus ?thesis unfolding strategy_def by blast
+lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof (rule strategyI)
+  fix v assume "\<not>deadend v"
+  thus "v \<rightarrow> \<sigma>_arbitrary v" unfolding \<sigma>_arbitrary_def using someI_ex[of "\<lambda>w. v\<rightarrow>w"] by blast
 qed
 
 subsection {* Valid strategies *}
@@ -103,23 +104,20 @@ lemma valid_strategy_supergame:
     and \<sigma>': "ParityGame.strategy (subgame V') p \<sigma>'"
     and G'_no_deadends: "\<And>v. v \<in> V' \<Longrightarrow> \<not>Digraph.deadend (subgame V') v"
   shows "strategy p (override_on \<sigma> \<sigma>' V')" (is "strategy p ?\<sigma>")
-proof-
+proof (rule strategyI)
   interpret G': ParityGame "subgame V'" using subgame_ParityGame .
-  {
-    fix v assume v: "v \<in> VV p" "\<not>deadend v"
-    have "v \<rightarrow> ?\<sigma> v" proof (cases)
-      assume "v \<in> V'"
-      hence "v \<in> G'.VV p" using subgame_VV `v \<in> VV p` by blast
-      moreover have "\<not>G'.deadend v" using G'_no_deadends `v \<in> V'` by blast
-      ultimately have "v \<rightarrow>\<^bsub>subgame V'\<^esub> \<sigma>' v" using \<sigma>' unfolding G'.strategy_def by blast
-      moreover have "\<sigma>' v = ?\<sigma> v" using `v \<in> V'` by simp
-      ultimately show ?thesis by (metis subgame_E subsetCE)
-    next
-      assume "v \<notin> V'"
-      thus ?thesis using v \<sigma> unfolding strategy_def by simp
-    qed
-  }
-  thus ?thesis unfolding strategy_def by blast
+  fix v assume v: "v \<in> VV p" "\<not>deadend v"
+  show "v \<rightarrow> ?\<sigma> v" proof (cases)
+    assume "v \<in> V'"
+    hence "v \<in> G'.VV p" using subgame_VV `v \<in> VV p` by blast
+    moreover have "\<not>G'.deadend v" using G'_no_deadends `v \<in> V'` by blast
+    ultimately have "v \<rightarrow>\<^bsub>subgame V'\<^esub> \<sigma>' v" using \<sigma>' unfolding G'.strategy_def by blast
+    moreover have "\<sigma>' v = ?\<sigma> v" using `v \<in> V'` by simp
+    ultimately show ?thesis by (metis subgame_E subsetCE)
+  next
+    assume "v \<notin> V'"
+    thus ?thesis using v \<sigma> unfolding strategy_def by simp
+  qed
 qed
 
 lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> \<sigma> v \<in> V"
@@ -234,7 +232,7 @@ lemma path_conforms_with_strategy_lappend:
     and P': "\<not>lnull P'" "path_conforms_with_strategy p P' \<sigma>"
     and conforms: "llast P \<in> VV p \<Longrightarrow> \<sigma> (llast P) = lhd P'"
   shows "path_conforms_with_strategy p (lappend P P') \<sigma>"
-using assms proof (induct P rule: lfinite_induct, simp)
+using assms proof (induct P rule: lfinite_induct)
   case (LCons P)
   show ?case proof (cases)
     assume "lnull (ltl P)"
@@ -272,7 +270,7 @@ using assms proof (induct P rule: lfinite_induct, simp)
     with `\<not>lnull P` show "path_conforms_with_strategy p (lappend P P') \<sigma>"
       by (metis lappend_code(2) lhd_LCons_ltl)
   qed
-qed
+qed simp
 
 lemma path_conforms_with_strategy_VVpstar:
   assumes "lset P \<subseteq> VV p**"
