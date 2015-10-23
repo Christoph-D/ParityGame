@@ -394,6 +394,15 @@ proof-
   thus ?thesis unfolding path_inf_priorities_def by blast
 qed
 
+lemma path_inf_priorities_at_least_min_prio:
+  assumes P: "valid_path P" and a: "a \<in> path_inf_priorities P"
+  shows "Min (\<omega> ` V) \<le> a"
+proof-
+  have "a \<in> lset (ldropn 0 (lmap \<omega> P))" using a unfolding path_inf_priorities_def by blast
+  hence "a \<in> \<omega> ` lset P" by simp
+  thus ?thesis using P valid_path_in_V priorities_finite Min_le by blast
+qed
+
 lemma path_inf_priorities_LCons:
   "path_inf_priorities P = path_inf_priorities (LCons v P)" (is "?A = ?B")
 proof
