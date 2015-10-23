@@ -121,30 +121,14 @@ lemma attractor_is_bounded_by_V: "W \<subseteq> V \<Longrightarrow> attractor p 
 subsection {* Extension theorems *}
 
 lemma attractor_set_VVp:
-  assumes "v \<in> VV p" "\<exists>w. v\<rightarrow>w \<and> w \<in> attractor p W"
+  assumes "v \<in> VV p" "v\<rightarrow>w" "w \<in> attractor p W"
   shows "v \<in> attractor p W"
-proof (rule ccontr)
-  assume *: "v \<notin> attractor p W"
-  hence "v \<in> V - attractor p W" using assms(1) by blast
-  moreover have "v \<notin> VV p**" using assms(1) by auto
-  moreover have "\<not>deadend v" using assms(2) using valid_edge_set by auto
-  ultimately have "v \<in> directly_attracted p (attractor p W)"
-    unfolding directly_attracted_def using assms(2) by blast
-  thus False using * attractor_unfolding by auto
-qed
+  apply (subst attractor_unfolding) unfolding directly_attracted_def using assms by auto
 
 lemma attractor_set_VVpstar:
-  assumes "v \<in> VV p**" "\<not>deadend v" "\<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor p W"
+  assumes "\<not>deadend v" "\<And>w. v\<rightarrow>w \<Longrightarrow> w \<in> attractor p W"
   shows "v \<in> attractor p W"
-proof (rule ccontr)
-  assume *: "v \<notin> attractor p W"
-  hence "v \<in> V - attractor p W" using assms(1) by blast
-  moreover have "v \<notin> VV p" using assms(1) by auto
-  ultimately have "v \<in> directly_attracted p (attractor p W)"
-    unfolding directly_attracted_def using assms(2,3) by blast
-  thus False using * attractor_unfolding by auto
-qed
-
+  apply (subst attractor_unfolding) unfolding directly_attracted_def using assms by auto
 
 subsection {* Removing an attractor *}
 
