@@ -145,7 +145,8 @@ text {*
   unable to prove this schema with @{text inductive_set} alone (without @{const lfp}).
 
   If you know how to get this induction schema working with @{text inductive_set} and without
-  @{const lfp} (and thus hopefully with a shorter proof), please contact the maintainer.
+  using @{const lfp} explicitly (and thus hopefully with a shorter proof), please feel free to
+  contact the maintainer.
 *}
 lemma attractor_set_induction [consumes 1, case_names step union]:
   assumes "W \<subseteq> V"
