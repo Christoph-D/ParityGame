@@ -35,9 +35,12 @@ proof-
       by (rule ext) (metis * fun_upd_def override_on_def)
     hence "strategy_attracts p ?\<sigma> S W"
       using strategy_attracts_irrelevant_override[OF \<sigma>(2,1) `strategy p ?\<sigma>`] by simp
-    hence "strategy_attracts_via p ?\<sigma> w S W" unfolding strategy_attracts_def using `w \<in> S` by blast
-    hence "visits_via P'' S W" unfolding strategy_attracts_via_def using `vmc_path G P'' w p ?\<sigma>` by blast
-    thus "visits_via P (insert v0 S) W" using visits_via_LCons[of "ltl P" S W v0] P_LCons by simp
+    hence "strategy_attracts_via p ?\<sigma> w S W" unfolding strategy_attracts_def
+      using `w \<in> S` by blast
+    hence "visits_via P'' S W" unfolding strategy_attracts_via_def
+      using `vmc_path G P'' w p ?\<sigma>` by blast
+    thus "visits_via P (insert v0 S) W"
+      using visits_via_LCons[of "ltl P" S W v0] P_LCons by simp
   qed
   ultimately show ?thesis by blast
 qed
