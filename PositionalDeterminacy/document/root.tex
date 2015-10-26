@@ -9,13 +9,6 @@
 \renewcommand{\bf}{\normalfont\bfseries}
 \renewcommand{\rm}{\normalfont\rmfamily}
 \renewcommand{\it}{\normalfont\itshape}
-% further packages required for unusual symbols (see also
-% isabellesym.sty), use only when needed
-
-%\usepackage{amssymb}
-  %for \<leadsto>, \<box>, \<diamond>, \<sqsupset>, \<mho>, \<Join>,
-  %\<lhd>, \<lesssim>, \<greatersim>, \<lessapprox>, \<greaterapprox>,
-  %\<triangleq>, \<yen>, \<lozenge>
 
 \usepackage{pdfsetup}
 
@@ -48,7 +41,7 @@
 
 \section{Introduction}
 
-Parity games are games played by two-players, called \Even and \Odd,
+Parity games are games played by two players, called \Even and \Odd,
 on labelled directed graphs.  Each vertex is labelled with their
 player and with a natural number, called its \emph{priority}.
 
@@ -58,7 +51,8 @@ is only relevant on infinite graphs.
 
 One reason parity games are important is that determining the winner
 is polynomial-time equivalent to the model-checking problem of the
-modal $\mu$-calculus, a logic able to express LTL and CTL* properties.
+modal $\mu$-calculus, a logic able to express LTL and CTL* properties
+(\cite{bradfield2007}).
 
 \subsection{Formal introduction}
 
@@ -75,7 +69,7 @@ priorities.
 
 A vertex $v$ is \emph{winning} for a player~$p$ iff all plays starting
 from $v$ are winning for~$p$.  It is well-known that parity games are
-\emph{determined}, that is, every node is winning for some player.
+\emph{determined}, that is, every vertex is winning for some player.
 
 A more surprising property is that parity games are also
 \emph{positionally determined}.  This means that for every vertex $v$
@@ -84,6 +78,11 @@ all \Even needs to do in order to win from $v$ is to consult this
 function whenever it is his turn (similarly if $v$ is winning for
 \Odd).  This is also called a \emph{positional strategy} for the
 winning player.
+
+We define the \emph{winning region} of player~$p$ as the set of
+vertices from which player~$p$ has positional winning strategies.
+Positional determinacy then says that the winning regions of \Even and
+of \Odd partition the graph.
 
 See \cite{automata2002/kuesters} for a modern survey on positional
 determinacy of parity games.  Their proof is based on a proof by
@@ -97,7 +96,13 @@ but we do not explicitly define so-called ``$\sigma$-traps''.  Using
 $\sigma$-traps could be worth exploring, because it has the potential
 to simplify our formalization.
 
-
+Our proof has no assumptions except those required by every parity
+game.  In particular the parity game
+\begin{itemize}
+\item may have arbitrary cardinality,
+\item may have loops,
+\item may have deadends, that is, vertices with no successors.
+\end{itemize}
 
 % sane default for proof documents
 \parindent 0pt\parskip 0.5ex
@@ -112,7 +117,6 @@ to simplify our formalization.
 \bibliography{root}
 
 \end{document}
-
 
 %%% Local Variables:
 %%% mode: latex
