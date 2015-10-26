@@ -1,3 +1,5 @@
+section {* Defining the attractor with \texttt{inductive\_set} *}
+
 theory AttractorInductive
 imports
   Main
@@ -5,6 +7,12 @@ imports
 begin
 
 context ParityGame begin
+
+text {*
+  In section \ref{sec:attractor} we defined @{const attractor} manually via @{const lfp}.
+  We can also define it with \texttt{inductive\_set}.  In this section, we do exactly this and
+  prove that the new definition yields the same set as the old definition.
+*}
 
 subsection {* @{term attractor_inductive} *}
 

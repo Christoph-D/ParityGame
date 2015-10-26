@@ -607,6 +607,7 @@ proof-
 qed
 
 subsection {* The main theorem: positional determinacy *}
+text {* \label{subsec:positional_determinacy} *}
 
 text {*
   Prove the main theorem: The winning regions of player \Even and \Odd are a partition of the set

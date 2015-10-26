@@ -1,4 +1,5 @@
 section {* Attractor sets *}
+text {* \label{sec:attractor} *}
 
 theory Attractor
 imports
@@ -140,11 +141,11 @@ lemma mono_restriction_is_mono: "mono f \<Longrightarrow> mono (\<lambda>S. f (S
   unfolding mono_def by (meson inf_mono monoD subset_refl)
 
 text {*
-  We prove a powerful induction schema for @{term attractor}.  Being able to prove this is the
-  only reason why we do not use @{text inductive_set} to define the attractor set, because I was
-  unable to prove this schema with @{text inductive_set} alone (without @{const lfp}).
+  Here we prove a powerful induction schema for @{term attractor}.  Being able to prove this is the
+  only reason why we do not use \texttt{inductive\_set} to define the attractor set, because I was
+  unable to prove this schema with \texttt{inductive\_set} alone.
 
-  If you know how to get this induction schema working with @{text inductive_set} and without
+  If you know how to get this induction schema working with \texttt{inductive\_set} and without
   using @{const lfp} explicitly (and thus hopefully with a shorter proof), please feel free to
   contact the maintainer.
 *}

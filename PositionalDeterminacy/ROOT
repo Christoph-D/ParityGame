@@ -2,6 +2,7 @@ session PositionalDeterminacy = Coinductive +
   options [document = pdf, document_output = "output"]
   theories
     PositionalDeterminacy
+    AttractorInductive
   document_files
     "root.tex"
     "root.bib"
