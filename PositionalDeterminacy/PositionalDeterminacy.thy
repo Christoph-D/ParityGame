@@ -465,7 +465,7 @@ theorem positional_strategy_exists_without_deadends:
   assumes "v \<in> V" "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
   shows "\<exists>p. v \<in> winning_region p"
   using assms ParityGame
-  by (induct "card (\<omega>\<^bsub>G\<^esub> ` V\<^bsub>G\<^esub>)" arbitrary: G v rule: nat_less_induct)
+  by (induct "card (\<omega> ` V)" arbitrary: G v rule: nat_less_induct)
      (rule ParityGame.positional_strategy_induction_step, simp_all)
 
 
