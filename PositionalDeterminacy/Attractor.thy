@@ -44,17 +44,7 @@ text {*
 *}
 
 lemma attractor_step_mono: "mono (attractor_step p W)"
-proof (rule monoI)
-  fix S T :: "'a set" assume "S \<subseteq> T"
-  show "W \<union> S \<union> directly_attracted p S \<subseteq> W \<union> T \<union> directly_attracted p T" (is "?A \<subseteq> ?B") proof
-    fix v assume v: "v \<in> ?A"
-    show "v \<in> ?B" proof (cases)
-      assume "v \<notin> W \<and> v \<notin> T"
-      hence "v \<in> directly_attracted p S" using v `S \<subseteq> T` by blast
-      thus ?thesis unfolding directly_attracted_def using `S \<subseteq> T` by auto
-    qed simp
-  qed
-qed
+  unfolding directly_attracted_def by (rule monoI) auto
 
 subsection {* Basic properties of @{term attractor} *}
 
