@@ -100,7 +100,7 @@ proof-
       ultimately show False using strategy_attracts_via_lset by blast
     qed
   }
-  thus ?thesis using strategy_attractsI[of S] well_ordered_strategy_valid by blast
+  thus ?thesis using well_ordered_strategy_valid by blast
 qed
 
 

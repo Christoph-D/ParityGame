@@ -117,7 +117,7 @@ proof-
         hence "p' = p**" by (cases p; cases p') auto
         with p' have \<sigma>: "G'.strategy p** \<sigma>" "G'.winning_strategy p** \<sigma> v" by simp_all
 
-        have "v \<in> winning_region p**" proof (rule winning_regionI)
+        have "v \<in> winning_region p**" proof
           show "v \<in> V" using `v \<in> V\<^bsub>G'\<^esub>` `V\<^bsub>G'\<^esub> \<subseteq> V` by blast
           def \<sigma>' \<equiv> "override_on (override_on \<sigma>_arbitrary \<sigma>W1 W1) \<sigma> V'"
           thus "strategy p** \<sigma>'"
@@ -278,7 +278,7 @@ proof-
         using someI_ex[of "\<lambda>w. v\<rightarrow>w \<and> (v \<in> W1 \<or> w \<notin> W1)"] by blast+
     } note choose_works = this
 
-    have "strategy p \<sigma>" proof (rule strategyI)
+    have "strategy p \<sigma>" proof
       fix v assume v: "v \<in> VV p" "\<not>deadend v"
       hence "v \<in> attractor p K - K \<Longrightarrow> v\<rightarrow>\<sigma> v" using \<sigma>_\<sigma>1 \<sigma>1(1) v unfolding strategy_def by auto
       moreover have "v \<in> V' \<Longrightarrow> v\<rightarrow>\<sigma> v" proof-

@@ -15,7 +15,7 @@ context ParityGame begin
 
 definition "winning_region p \<equiv> { v \<in> V. \<exists>\<sigma>. strategy p \<sigma> \<and> winning_strategy p \<sigma> v }"
 
-lemma winning_regionI:
+lemma winning_regionI [intro]:
   assumes "v \<in> V" "strategy p \<sigma>" "winning_strategy p \<sigma> v"
   shows "v \<in> winning_region p"
   using assms unfolding winning_region_def by blast
@@ -25,7 +25,7 @@ lemma winning_region_in_V [simp]: "winning_region p \<subseteq> V" unfolding win
 lemma winning_region_deadends:
   assumes "v \<in> VV p" "deadend v"
   shows "v \<in> winning_region p**"
-proof (rule winning_regionI)
+proof
   show "v \<in> V" using `v \<in> VV p` by blast
   show "winning_strategy p** \<sigma>_arbitrary v" using assms winning_strategy_on_deadends by simp
 qed simp
@@ -77,7 +77,7 @@ lemma winning_strategy_updates:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v0"
     and v: "v \<notin> winning_region p" "v\<rightarrow>w"
   shows "winning_strategy p (\<sigma>(v := w)) v0"
-proof (rule winning_strategyI)
+proof
   fix P assume "vmc_path G P v0 p (\<sigma>(v := w))"
   then interpret vmc_path G P v0 p "\<sigma>(v := w)" .
   have "\<And>v'. v' \<in> winning_region p \<Longrightarrow> \<sigma> v' = (\<sigma>(v := w)) v'" using v by auto

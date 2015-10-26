@@ -19,7 +19,7 @@ proof-
   from `w \<in> S` \<sigma>(2) have "strategy_attracts_via p \<sigma> w S W" unfolding strategy_attracts_def by blast
   let ?\<sigma> = "\<sigma>(v0 := w)" -- "Extend @{term \<sigma>} to the new node."
   have "strategy p ?\<sigma>" using \<sigma>(1) `v0\<rightarrow>w` valid_strategy_updates by blast
-  moreover have "strategy_attracts_via p ?\<sigma> v0 (insert v0 S) W" proof (rule strategy_attracts_viaI)
+  moreover have "strategy_attracts_via p ?\<sigma> v0 (insert v0 S) W" proof
     fix P
     assume "vmc_path G P v0 p ?\<sigma>"
     then interpret vmc_path G P v0 p ?\<sigma> .
@@ -49,7 +49,7 @@ lemma strategy_attracts_extends_VVpstar:
   assumes \<sigma>: "strategy_attracts p \<sigma> S W"
     and v0: "v0 \<notin> VV p" "v0 \<in> directly_attracted p S"
   shows "strategy_attracts_via p \<sigma> v0 (insert v0 S) W"
-proof (rule strategy_attracts_viaI)
+proof
   fix P
   assume "vmc_path G P v0 p \<sigma>"
   then interpret vmc_path G P v0 p \<sigma> .

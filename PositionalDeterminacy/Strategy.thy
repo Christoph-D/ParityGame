@@ -20,7 +20,7 @@ text {*
 definition (in ParityGame) strategy :: "Player \<Rightarrow> 'a Strategy \<Rightarrow> bool" where
   "strategy p \<sigma> \<equiv> \<forall>v \<in> VV p. \<not>deadend v \<longrightarrow> v\<rightarrow>\<sigma> v"
 
-lemma (in ParityGame) strategyI:
+lemma (in ParityGame) strategyI [intro]:
   "(\<And>v. \<lbrakk> v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> v\<rightarrow>\<sigma> v) \<Longrightarrow> strategy p \<sigma>"
   unfolding strategy_def by blast
 
@@ -69,7 +69,7 @@ text {*
 *}
 definition "\<sigma>_arbitrary \<equiv> \<lambda>v. SOME w. v\<rightarrow>w"
 
-lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof (rule strategyI)
+lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof
   fix v assume "\<not>deadend v"
   thus "v \<rightarrow> \<sigma>_arbitrary v" unfolding \<sigma>_arbitrary_def using someI_ex[of "\<lambda>w. v\<rightarrow>w"] by blast
 qed
@@ -104,7 +104,7 @@ lemma valid_strategy_supergame:
     and \<sigma>': "ParityGame.strategy (subgame V') p \<sigma>'"
     and G'_no_deadends: "\<And>v. v \<in> V' \<Longrightarrow> \<not>Digraph.deadend (subgame V') v"
   shows "strategy p (override_on \<sigma> \<sigma>' V')" (is "strategy p ?\<sigma>")
-proof (rule strategyI)
+proof
   interpret G': ParityGame "subgame V'" using subgame_ParityGame .
   fix v assume v: "v \<in> VV p" "\<not>deadend v"
   show "v \<rightarrow> ?\<sigma> v" proof (cases)

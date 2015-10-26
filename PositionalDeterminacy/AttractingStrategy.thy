@@ -112,7 +112,7 @@ corollary strategy_attracts_not_outside:
   using strategy_attracts_via_v0 by blast
 
 
-lemma strategy_attracts_viaI:
+lemma strategy_attracts_viaI [intro]:
   assumes "\<And>P. vmc_path G P v0 p \<sigma> \<Longrightarrow> visits_via P A W"
   shows "strategy_attracts_via p \<sigma> v0 A W"
   unfolding strategy_attracts_via_def using assms by blast
@@ -139,7 +139,7 @@ lemma attractor_strategy_on_extends:
   unfolding strategy_attracts_via_def using visits_via_monotone by blast
 
 lemma strategy_attracts_via_trivial: "v0 \<in> W \<Longrightarrow> strategy_attracts_via p \<sigma> v0 A W"
-proof (rule strategy_attracts_viaI)
+proof
   fix P assume "v0 \<in> W" "vmc_path G P v0 p \<sigma>"
   then interpret vmc_path G P v0 p \<sigma> by blast
   show "visits_via P A W" using visits_via_trivial using `v0 \<in> W` by blast
@@ -150,7 +150,7 @@ lemma strategy_attracts_via_successor:
     and v0: "v0 \<in> A - W"
     and w0: "v0\<rightarrow>w0" "v0 \<in> VV p \<Longrightarrow> \<sigma> v0 = w0"
   shows "strategy_attracts_via p \<sigma> w0 A W"
-proof (rule strategy_attracts_viaI)
+proof
   fix P assume "vmc_path G P w0 p \<sigma>"
   then interpret vmc_path G P w0 p \<sigma> .
   def [simp]: P' \<equiv> "LCons v0 P"
@@ -191,10 +191,10 @@ lemma (in vmc_path) strategy_attractsE:
   shows "visits_via P A W"
   using assms(1)[unfolded strategy_attracts_def] assms(2) strategy_attracts_viaE by blast
 
-lemma strategy_attractsI:
+lemma strategy_attractsI [intro]:
   assumes "\<And>P v. \<lbrakk> v \<in> A; vmc_path G P v p \<sigma> \<rbrakk> \<Longrightarrow> visits_via P A W"
   shows "strategy_attracts p \<sigma> A W"
-  unfolding strategy_attracts_def using strategy_attracts_viaI assms by blast
+  unfolding strategy_attracts_def using assms by blast
 
 lemma (in vmc_path) strategy_attracts_lset:
   assumes "strategy_attracts p \<sigma> A W" "v0 \<in> A"
@@ -202,8 +202,7 @@ lemma (in vmc_path) strategy_attracts_lset:
   using assms(1)[unfolded strategy_attracts_def] assms(2) strategy_attracts_via_lset(1)[of A W]
   by blast
 
-lemma strategy_attracts_empty [simp]: "strategy_attracts p \<sigma> {} W"
-  using strategy_attractsI by blast
+lemma strategy_attracts_empty [simp]: "strategy_attracts p \<sigma> {} W" by blast
 
 lemma strategy_attracts_invalid_path:
   assumes P: "P = LCons v (LCons w P')" "v \<in> A - W" "w \<notin> A \<union> W"
