@@ -1,4 +1,4 @@
-theory BonusLemmas
+theory AttractorInductive
 imports
   Main
   Attractor
@@ -11,9 +11,11 @@ subsection {* @{term attractor_inductive} *}
 text {* The attractor set of a given set of vertices, defined inductively. *}
 inductive_set attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
   for p :: Player and W :: "'a set" where
-  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W" |
-  VVp: "v \<in> VV p \<Longrightarrow> \<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W" |
-  VVpstar: "\<not>deadend v \<Longrightarrow> v \<in> VV p** \<Longrightarrow> \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor_inductive p W"
+  Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W"
+| VVp: "\<lbrakk> v \<in> VV p; \<exists>w. v\<rightarrow>w \<and> w \<in> attractor_inductive p W \<rbrakk>
+    \<Longrightarrow> v \<in> attractor_inductive p W"
+| VVpstar: "\<lbrakk> v \<in> VV p**; \<not>deadend v; \<forall>w. v\<rightarrow>w \<longrightarrow> w \<in> attractor_inductive p W \<rbrakk>
+    \<Longrightarrow> v \<in> attractor_inductive p W"
 
 text {*
   We show that the inductive definition and the definition via least fixed point are the same.
@@ -23,10 +25,13 @@ lemma attractor_inductive_is_attractor:
   shows "attractor_inductive p W = attractor p W"
 proof
   show "attractor_inductive p W \<subseteq> attractor p W" proof
-    fix v show "v \<in> attractor_inductive p W \<Longrightarrow> v \<in> attractor p W" proof (induct rule: attractor_inductive.induct)
-    case (Base v) thus ?case using attractor_set_base by auto
-    next case (VVp v) thus ?case using attractor_set_VVp by auto
-    next case (VVpstar v) thus ?case using attractor_set_VVpstar by auto
+    fix v assume "v \<in> attractor_inductive p W"
+    thus "v \<in> attractor p W" proof (induct rule: attractor_inductive.induct)
+      case (Base v) thus ?case using attractor_set_base by auto
+    next
+      case (VVp v) thus ?case using attractor_set_VVp by auto
+    next
+      case (VVpstar v) thus ?case using attractor_set_VVpstar by auto
     qed
   qed
   show "attractor p W \<subseteq> attractor_inductive p W" proof-
@@ -66,9 +71,7 @@ proof
         ultimately show "v \<in> attractor_inductive p W" by (meson UnE)
       qed
       thus "P (W \<union> S \<union> directly_attracted p S)" using P_def by simp
-    next
-      case (union M) thus ?case by (simp add: P_def Sup_least)
-    qed
+    qed (simp add: P_def Sup_least)
     thus ?thesis using P_def by simp
   qed
 qed
