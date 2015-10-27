@@ -1,4 +1,4 @@
-section {* Uniform strategies *}
+section {* Uniform Strategies *}
 
 text {* Theorems about how to get a uniform strategy given strategies for each node. *}
 
@@ -10,7 +10,7 @@ begin
 
 context ParityGame begin
 
-subsection {* A uniform attractor strategy *}
+subsection {* A Uniform Attractor Strategy *}
 
 lemma merge_attractor_strategies:
   assumes "S \<subseteq> V"
@@ -104,7 +104,7 @@ proof-
 qed
 
 
-subsection {* A uniform winning strategy *}
+subsection {* A Uniform Winning Strategy *}
 
 text {*
   Let @{term S} be the winning region of player @{term p}.
@@ -199,7 +199,7 @@ proof-
   thus ?thesis unfolding winning_strategy_def using well_ordered_strategy_valid by auto
 qed
 
-subsection {* Extending winning regions *}
+subsection {* Extending Winning Regions *}
 
 text {*
   Now we are finally able to prove the complement of @{text winning_region_extends_VVp} for

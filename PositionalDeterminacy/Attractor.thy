@@ -1,4 +1,4 @@
-section {* Attractor sets *}
+section {* Attractor Sets *}
 text {* \label{sec:attractor} *}
 
 theory Attractor
@@ -47,7 +47,7 @@ text {*
 lemma attractor_step_mono: "mono (attractor_step p W)"
   unfolding directly_attracted_def by (rule monoI) auto
 
-subsection {* Basic properties of @{term attractor} *}
+subsection {* Basic Properties of an Attractor *}
 
 lemma attractor_unfolding: "attractor p W = attractor_step p W (attractor p W)"
   unfolding attractor_def using attractor_step_mono lfp_unfold by blast
@@ -59,7 +59,7 @@ lemma attractor_set_non_empty: "W \<noteq> {} \<Longrightarrow> attractor p W \<
 lemma attractor_in_V: "W \<subseteq> V \<Longrightarrow> attractor p W \<subseteq> V"
   using attractor_lowerbound attractor_step_bounded_by_V by auto
 
-subsection {* Attractor set extensions *}
+subsection {* Attractor Set Extensions *}
 
 lemma attractor_set_VVp:
   assumes "v \<in> VV p" "v\<rightarrow>w" "w \<in> attractor p W"
@@ -71,7 +71,7 @@ lemma attractor_set_VVpstar:
   shows "v \<in> attractor p W"
   apply (subst attractor_unfolding) unfolding directly_attracted_def using assms by auto
 
-subsection {* Removing an attractor *}
+subsection {* Removing an Attractor *}
 
 lemma removing_attractor_induces_no_deadends:
   assumes "v \<in> S - attractor p W" "v\<rightarrow>w" "w \<in> S" "\<And>w. \<lbrakk> v \<in> VV p**; v\<rightarrow>w \<rbrakk> \<Longrightarrow> w \<in> S"
@@ -135,7 +135,7 @@ next
   qed
 qed
 
-subsection {* Attractor set induction *}
+subsection {* Attractor Set Induction *}
 
 lemma mono_restriction_is_mono: "mono f \<Longrightarrow> mono (\<lambda>S. f (S \<inter> V))"
   unfolding mono_def by (meson inf_mono monoD subset_refl)

@@ -1,4 +1,4 @@
-section {* Positional determinacy of parity games *}
+section {* Positional Determinacy of Parity Games *}
 
 theory PositionalDeterminacy
 imports
@@ -8,7 +8,7 @@ begin
 
 context ParityGame begin
 
-subsection {* Induction step *}
+subsection {* Induction Step *}
 
 text {*
   The proof of positional determinacy is by induction over the size of the finite set
@@ -459,7 +459,7 @@ proof-
 qed
 
 
-subsection {* Positional determinacy without deadends *}
+subsection {* Positional Determinacy without Deadends *}
 
 theorem positional_strategy_exists_without_deadends:
   assumes "v \<in> V" "\<And>v. v \<in> V \<Longrightarrow> \<not>deadend v"
@@ -469,7 +469,7 @@ theorem positional_strategy_exists_without_deadends:
      (rule ParityGame.positional_strategy_induction_step, simp_all)
 
 
-subsection {* Positional determinacy with deadends *}
+subsection {* Positional Determinacy with Deadends *}
 
 text {*
   Prove a stronger version of the previous theorem: Allow deadends.
@@ -606,7 +606,7 @@ proof-
   qed
 qed
 
-subsection {* The main theorem: positional determinacy *}
+subsection {* The Main Theorem: Positional Determinacy *}
 text {* \label{subsec:positional_determinacy} *}
 
 text {*

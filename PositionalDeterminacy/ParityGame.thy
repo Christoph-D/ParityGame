@@ -1,4 +1,4 @@
-section {* Parity games *}
+section {* Parity Games *}
 
 theory ParityGame
 imports
@@ -44,7 +44,7 @@ lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<
 text {* A vertex without successors is a \emph{deadend}. *}
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 
-subsection {* Valid paths *}
+subsection {* Valid Paths *}
 
 text {*
   We say that a path is \emph{valid} if it is empty or if it starts in @{term V} and walks along edges.
@@ -158,7 +158,7 @@ using `valid_path P` proof (coinduction arbitrary: P
   case base thus ?case using G'(2) valid_path_cons_simp by auto
 qed (meson G'(3) subset_eq valid_path_edges' valid_path_ltl')
 
-subsection {* Maximal paths *}
+subsection {* Maximal Paths *}
 
 text {*
   We say that a path is \emph{maximal} if it is empty or if it ends in a deadend.
@@ -232,7 +232,7 @@ lemma infinite_path_is_maximal: "\<lbrakk> valid_path P; \<not>lfinite P \<rbrak
 
 end -- "locale Digraph"
 
-subsection {* Parity games *}
+subsection {* Parity Games *}
 
 text {* Parity games are games played by two players, called \Even and \Odd. *}
 
@@ -265,7 +265,7 @@ lemma VV_impl2: "v \<in> VV p** \<Longrightarrow> v \<notin> VV p" by auto
 lemma VV_equivalence [iff]: "v \<in> V \<Longrightarrow> v \<notin> VV p \<longleftrightarrow> v \<in> VV p**" by auto
 lemma VV_cases [consumes 1]: "\<lbrakk> v \<in> V ; v \<in> VV p \<Longrightarrow> P ; v \<in> VV p** \<Longrightarrow> P \<rbrakk> \<Longrightarrow> P" by auto
 
-subsection {* Sets of deadends *}
+subsection {* Sets of Deadends *}
 
 definition "deadends p \<equiv> {v \<in> VV p. deadend v}"
 lemma deadends_in_V: "deadends p \<subseteq> V" unfolding deadends_def by blast
@@ -352,7 +352,7 @@ proof-
        (cases rule: maximal_path.cases, auto)
 qed
 
-subsection {* Priorities occurring infinitely often *}
+subsection {* Priorities Occurring Infinitely Often *}
 
 text {*
   The set of priorities that occur infinitely often on a given path.  We need this to define the
@@ -425,7 +425,7 @@ corollary path_inf_priorities_ltl: "path_inf_priorities P = path_inf_priorities 
   by (metis llist.exhaust ltl_simps path_inf_priorities_LCons)
 
 
-subsection {* Winning condition *}
+subsection {* Winning Condition *}
 
 text {*
   Let $G = (V,E,V_0,\omega)$ be a parity game.
@@ -529,7 +529,7 @@ qed
 
 end -- "locale ParityGame"
 
-subsection {* Valid maximal paths *}
+subsection {* Valid Maximal Paths *}
 
 text {* Define a locale for valid maximal paths, because we need them often. *}
 

@@ -1,4 +1,4 @@
-section {* Attracting strategies *}
+section {* Attracting Strategies *}
 
 theory AttractingStrategy
 imports
@@ -10,7 +10,7 @@ text {* Here we introduce the concept of attracting strategies. *}
 
 context ParityGame begin
 
-subsection {* Paths visiting a set *}
+subsection {* Paths Visiting a Set *}
 
 text {* A path that stays in @{text A} until eventually it visits @{text W}. *}
 definition "visits_via P A W \<equiv> \<exists>n. enat n < llength P \<and> P $ n \<in> W \<and> lset (ltake (enat n) P) \<subseteq> A"
@@ -59,7 +59,7 @@ lemma (in vm_path) visits_via_deadend:
   shows "winning_path p** P"
   using assms visits_via_visits visits_deadend by blast
 
-subsection {* Attracting strategy from a single node *}
+subsection {* Attracting Strategy from a Single Node *}
 
 text {*
   All @{term \<sigma>}-paths starting from @{term v0} visit @{term W} and until then they stay in @{term A}.

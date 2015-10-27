@@ -1,4 +1,4 @@
-section {* Well-ordered strategy *}
+section {* Well-Ordered Strategy *}
 
 theory WellOrderedStrategy
 imports
@@ -106,7 +106,7 @@ proof-
   thus ?thesis unfolding well_ordered_strategy_def using valid_strategy_updates_set by force
 qed
 
-subsection {* Strategies on a path *}
+subsection {* Strategies on a Path *}
 
 text {* Maps a path to its strategies. *}
 definition "path_strategies \<equiv> lmap choose"
@@ -218,7 +218,7 @@ proof-
   thus ?thesis by blast
 qed
 
-subsection {* Eventually one strategy *}
+subsection {* Eventually One Strategy *}
 
 text {*
   The key lemma: Every path that stays in @{term S} and follows @{const well_ordered_strategy}

@@ -1,4 +1,4 @@
-section {* Winning regions *}
+section {* Winning Regions *}
 
 theory WinningRegion
 imports
@@ -30,7 +30,7 @@ proof
   show "winning_strategy p** \<sigma>_arbitrary v" using assms winning_strategy_on_deadends by simp
 qed simp
 
-subsection {* Paths in winning regions *}
+subsection {* Paths in Winning Regions *}
 
 lemma (in vmc_path) paths_stay_in_winning_region:
   assumes \<sigma>': "strategy p \<sigma>'" "winning_strategy p \<sigma>' v0"
@@ -69,7 +69,7 @@ proof
   qed
 qed
 
-subsection {* Irrelevant updates *}
+subsection {* Irrelevant Updates *}
 
 text {* Updating a winning strategy outside of the winning region is irrelevant. *}
 
@@ -87,7 +87,7 @@ proof
   thus "winning_path p P" using conforms_to_another_strategy \<sigma>(2) winning_strategy_def by blast
 qed
 
-subsection {* Extending winning regions *}
+subsection {* Extending Winning Regions *}
 
 lemma winning_region_extends_VVp:
   assumes v: "v \<in> VV p" "v\<rightarrow>w" and w: "w \<in> winning_region p"

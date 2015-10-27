@@ -1,4 +1,4 @@
-section {* Defining the attractor with \texttt{inductive\_set} *}
+section {* Defining the Attractor with \texttt{inductive\_set} *}
 
 theory AttractorInductive
 imports

@@ -1,4 +1,4 @@
-section {* Positional strategies *}
+section {* Positional Strategies *}
 
 theory Strategy
 imports
@@ -24,7 +24,7 @@ lemma (in ParityGame) strategyI [intro]:
   "(\<And>v. \<lbrakk> v \<in> VV p; \<not>deadend v \<rbrakk> \<Longrightarrow> v\<rightarrow>\<sigma> v) \<Longrightarrow> strategy p \<sigma>"
   unfolding strategy_def by blast
 
-subsection {* Strategy-conforming paths *}
+subsection {* Strategy-Conforming Paths *}
 
 text {*
   If @{term "path_conforms_with_strategy p P \<sigma>"} holds, then we call @{term P} a
@@ -59,7 +59,7 @@ locale vmc2_path = comp: vmc_path G P v0 "p**" \<sigma>' + vmc_path G P v0 p \<s
 lemma (in vmc2_path) vmc2_path [simp]: "vmc2_path G P v0 p \<sigma> \<sigma>'" by unfold_locales
 
 
-subsection {* An arbitrary strategy *}
+subsection {* An Arbitrary Strategy *}
 
 context ParityGame begin
 
@@ -74,7 +74,7 @@ lemma valid_arbitrary_strategy [simp]: "strategy p \<sigma>_arbitrary" proof
   thus "v \<rightarrow> \<sigma>_arbitrary v" unfolding \<sigma>_arbitrary_def using someI_ex[of "\<lambda>w. v\<rightarrow>w"] by blast
 qed
 
-subsection {* Valid strategies *}
+subsection {* Valid Strategies *}
 
 lemma valid_strategy_updates: "\<lbrakk> strategy p \<sigma>; v0\<rightarrow>w0 \<rbrakk> \<Longrightarrow> strategy p (\<sigma>(v0 := w0))"
   unfolding strategy_def by auto
@@ -126,7 +126,7 @@ lemma valid_strategy_in_V: "\<lbrakk> strategy p \<sigma>; v \<in> VV p; \<not>d
 lemma valid_strategy_only_in_V: "\<lbrakk> strategy p \<sigma>; \<And>v. v \<in> V \<Longrightarrow> \<sigma> v = \<sigma>' v \<rbrakk> \<Longrightarrow> strategy p \<sigma>'"
   unfolding strategy_def using edges_are_in_V(1) by auto
 
-subsection {* Conforming strategies *}
+subsection {* Conforming Strategies *}
 
 lemma path_conforms_with_strategy_ltl [intro]:
   "path_conforms_with_strategy p P \<sigma> \<Longrightarrow> path_conforms_with_strategy p (ltl P) \<sigma>"
@@ -304,7 +304,7 @@ proof-
   qed simp_all
 qed
 
-subsection {* Greedy conforming path *}
+subsection {* Greedy Conforming Path *}
 
 text {*
   Given a starting point and two strategies, there exists a path conforming to both strategies.
@@ -460,7 +460,7 @@ end
 
 end
 
-subsection {* Valid maximal conforming paths *}
+subsection {* Valid Maximal Conforming Paths *}
 
 text {* Now is the time to add some lemmas to the locale @{text "vmc_path"}. *}
 
@@ -495,7 +495,7 @@ lemma (in ParityGame) valid_maximal_conforming_path_0:
   shows "vmc_path G P (P $ 0) p \<sigma>"
   using assms by unfold_locales (simp_all add: lnth_0_conv_lhd)
 
-subsection {* Valid maximal conforming paths with one edge *}
+subsection {* Valid Maximal Conforming Paths with One Edge *}
 
 text {*
   We define a locale for valid maximal conforming paths that contain at least one edge.
@@ -546,7 +546,7 @@ proof-
   thus ?thesis using P'_def P'.P_Suc_0 assms(1) by simp
 qed
 
-subsection {* @{term lset} induction schemas for paths *}
+subsection {* @{term lset} Induction Schemas for Paths *}
 
 text {* Let us define an induction schema useful for proving @{term "lset P \<subseteq> S"}. *}
 

@@ -1,4 +1,4 @@
-section {* Attractor strategies *}
+section {* Attractor Strategies *}
 
 theory AttractorStrategy
 imports

@@ -1,4 +1,4 @@
-section {* Auxiliary lemmas for coinductive lists *}
+section {* Auxiliary Lemmas for Coinductive Lists *}
 
 text {* Some lemmas to allow better reasoning with coinductive lists. *}
 

@@ -1,4 +1,4 @@
-section {* Winning strategies *}
+section {* Winning Strategies *}
 
 theory WinningStrategy
 imports
@@ -74,7 +74,7 @@ proof
     using `v \<in> VV p` P_valid paths_are_winning_for_one_player by auto
 qed
 
-subsection {* Extension theorems *}
+subsection {* Extension Theorems *}
 
 lemma strategy_extends_VVp:
   assumes v0: "v0 \<in> VV p" "\<not>deadend v0"
