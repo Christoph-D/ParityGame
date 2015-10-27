@@ -106,6 +106,38 @@ game.  In particular the parity game
 
 The main theorem is in section \ref{subsec:positional_determinacy}.
 
+\subsection{Technical aspects}
+
+We use a coinductive list of vertices to represent paths in a graph
+because this gives us a uniform representation for finite and infinite
+paths.  We can then express properties such as that a path is maximal
+or conforms to a given strategy directly as coinductive properties.
+We use the coinductive list developed by Lochbihler in
+\cite{Coinductive-AFP}.
+
+We also explored representing paths as functions \isa{nat\
+  {\isasymRightarrow}\ {\isacharprime}a\ option} with the property
+that the domain is an initial segment of \isa{nat} (and where
+\isa{{\isacharprime}a} is the vertex type).  However, it turned out
+that coinductive lists give simpler proofs.
+
+It is possible to represent a graph as a function
+\isa{{\isacharprime}a\ {\isasymRightarrow}\ {\isacharprime}a\
+  {\isasymRightarrow}\ bool}, see for example in the proof of König's
+lemma in \cite{Coinductive-AFP}.  However, we instead go for a record
+which contains a set of vertices and a set of edges explicitly.  By
+not requiring that the set of vertices is \isa{UNIV\ ::\
+  {\isacharprime}a\ set} but rather a subset of \isa{UNIV\ ::\
+  {\isacharprime}a\ set}, it becomes easier to reason about subgraphs.
+
+Another point is that we make extensive use of locales, in particular
+to represent maximal paths conforming to a specific strategy.  Thus
+proofs often start with \isa{\isacommand{interpret}\
+  vmc{\isacharunderscore}path\ G\ P\ \ensuremath{v_0}\ p\
+  \isasymsigma} to say that $P$ is a valid maximal path in the graph
+$G$ starting in $v_0$ and conforming to the strategy $\sigma$ for
+player $p$.
+
 % sane default for proof documents
 \parindent 0pt\parskip 0.5ex
 
