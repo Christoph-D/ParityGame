@@ -203,7 +203,7 @@ subsection {* Extending Winning Regions *}
 
 text {*
   Now we are finally able to prove the complement of @{text winning_region_extends_VVp} for
-  @{term "VV p**"} vertices, which was still missing.
+  @{term "VV p**"} nodes, which was still missing.
 *}
 
 lemma winning_region_extends_VVpstar:

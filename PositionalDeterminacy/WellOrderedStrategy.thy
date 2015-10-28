@@ -7,8 +7,8 @@ imports
 begin
 
 text {*
-  Constructing a uniform strategy from a set of strategies on a set of vertices often works by
-  well-ordering the strategies and then choosing the minimal strategy on each vertex.
+  Constructing a uniform strategy from a set of strategies on a set of nodes often works by
+  well-ordering the strategies and then choosing the minimal strategy on each node.
   Then every path eventually follows one strategy because we choose the strategies along the path
   to be non-increasing in the well-ordering.
 

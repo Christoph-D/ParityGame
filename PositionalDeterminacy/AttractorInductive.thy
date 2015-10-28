@@ -16,7 +16,7 @@ text {*
 
 subsection {* @{term attractor_inductive} *}
 
-text {* The attractor set of a given set of vertices, defined inductively. *}
+text {* The attractor set of a given set of nodes, defined inductively. *}
 inductive_set attractor_inductive :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set"
   for p :: Player and W :: "'a set" where
   Base [intro!]: "v \<in> W \<Longrightarrow> v \<in> attractor_inductive p W"

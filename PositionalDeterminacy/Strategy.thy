@@ -9,7 +9,7 @@ begin
 subsection {* Definitions *}
 
 text {*
-  A \emph{strategy} is simply a function from vertices to vertices.
+  A \emph{strategy} is simply a function from nodes to nodes
   We only consider positional strategies.
 *}
 type_synonym 'a Strategy = "'a \<Rightarrow> 'a"
@@ -499,7 +499,7 @@ subsection {* Valid Maximal Conforming Paths with One Edge *}
 
 text {*
   We define a locale for valid maximal conforming paths that contain at least one edge.
-  This is equivalent to the first vertex being no deadend.  This assumption allows us to prove
+  This is equivalent to the first node being no deadend.  This assumption allows us to prove
   much stronger lemmas about @{term "ltl P"} compared to @{term "vmc_path"}.
 *}
 

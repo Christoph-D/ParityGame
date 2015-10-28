@@ -8,18 +8,18 @@ begin
 
 subsection {* Basic definitions *}
 
-text {* @{typ "'a"} is the vertex type.  Edges are pairs of vertices. *}
+text {* @{typ "'a"} is the node type.  Edges are pairs of nodes. *}
 type_synonym 'a Edge = "'a \<times> 'a"
 
-text {* A path is a possibly infinite list of vertices. *}
+text {* A path is a possibly infinite list of nodes. *}
 type_synonym 'a Path = "'a llist"
 
 subsection {* Graphs *}
 
 text {*
   We define graphs as a locale over a record.
-  The record contains vertices and edges, the locale adds the assumption that the edges are pairs
-  of vertices.
+  The record contains nodes (AKA vertices) and edges.
+  The locale adds the assumption that the edges are pairs of nodes.
 *}
 
 record 'a Graph =
@@ -41,7 +41,7 @@ lemma Digraph [simp]: "Digraph G" by unfold_locales
 
 lemma edges_are_in_V [intro]: "v\<rightarrow>w \<Longrightarrow> v \<in> V" "v\<rightarrow>w \<Longrightarrow> w \<in> V" using valid_edge_set by blast+
 
-text {* A vertex without successors is a \emph{deadend}. *}
+text {* A node without successors is a \emph{deadend}. *}
 abbreviation deadend :: "'a \<Rightarrow> bool" where "deadend v \<equiv> \<not>(\<exists>w \<in> V. v \<rightarrow> w)"
 
 subsection {* Valid Paths *}
@@ -272,7 +272,7 @@ lemma deadends_in_V: "deadends p \<subseteq> V" unfolding deadends_def by blast
 
 subsection {* Subgames *}
 
-text {* We define a subgame by restricting the set of vertices to a given subset. *}
+text {* We define a subgame by restricting the set of nodes to a given subset. *}
 
 definition subgame where
   "subgame V' \<equiv> G\<lparr>
@@ -431,7 +431,7 @@ text {*
   Let $G = (V,E,V_0,\omega)$ be a parity game.
   An infinite path $v_0,v_1,\ldots$ in $G$ is winning for player \Even (\Odd) if the minimum
   priority occurring infinitely often is even (odd).
-  A finite path is winning for player @{term p} iff the last vertex on the path belongs to the other
+  A finite path is winning for player @{term p} iff the last node on the path belongs to the other
   player.
 
   Empty paths are irrelevant, but it is useful to assign them to a fixed winner in order to get a

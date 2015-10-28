@@ -33,7 +33,7 @@ proof-
   thus ?thesis using winning_path_drop_add P_valid n(1) by blast
 qed
 
-text {* There cannot exist winning strategies for both players for the same vertex. *}
+text {* There cannot exist winning strategies for both players for the same node. *}
 
 lemma winning_strategy_only_for_one_player:
   assumes \<sigma>: "strategy p \<sigma>" "winning_strategy p \<sigma> v"

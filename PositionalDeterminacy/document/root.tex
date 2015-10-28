@@ -42,8 +42,8 @@
 \section{Introduction}
 
 Parity games are games played by two players, called \Even and \Odd,
-on labelled directed graphs.  Each vertex is labelled with their
-player and with a natural number, called its \emph{priority}.
+on labelled directed graphs.  Each node is labelled with their player
+and with a natural number, called its \emph{priority}.
 
 To call this a \emph{parity game}, we only need to assume that the
 number of different priorities is finite.  Of course, this condition
@@ -57,32 +57,32 @@ modal $\mu$-calculus, a logic able to express LTL and CTL* properties
 \subsection{Formal Introduction}
 
 Formally, a parity game is $G = (V,E,V_0,\omega)$, where $(V,E)$ is a
-directed graph, $V_0 \subseteq V$ is the set of \Even vertices, and
+directed graph, $V_0 \subseteq V$ is the set of \Even nodes, and
 $\omega: V \to \mathbb{N}$ is a function with $|f(V)| < \infty$.
 
 A \emph{play} is a maximal path in $G$.  A finite play is winning for
-\Even iff the last vertex is not in $V_0$.  An infinite play is
-winning for \Even iff the minimum priority occurring infinitely often
-on the path is even.  On an infinite path at least one priority occurs
+\Even iff the last node is not in $V_0$.  An infinite play is winning
+for \Even iff the minimum priority occurring infinitely often on the
+path is even.  On an infinite path at least one priority occurs
 infinitely often because there is only a finite number of different
 priorities.
 
-A vertex $v$ is \emph{winning} for a player~$p$ iff all plays starting
+A node $v$ is \emph{winning} for a player~$p$ iff all plays starting
 from $v$ are winning for~$p$.  It is well-known that parity games are
-\emph{determined}, that is, every vertex is winning for some player.
+\emph{determined}, that is, every node is winning for some player.
 
 A more surprising property is that parity games are also
-\emph{positionally determined}.  This means that for every vertex $v$
+\emph{positionally determined}.  This means that for every node $v$
 winning for \Even, there is a function $\sigma: V_0 \to V$ such that
 all \Even needs to do in order to win from $v$ is to consult this
 function whenever it is his turn (similarly if $v$ is winning for
 \Odd).  This is also called a \emph{positional strategy} for the
 winning player.
 
-We define the \emph{winning region} of player~$p$ as the set of
-vertices from which player~$p$ has positional winning strategies.
-Positional determinacy then says that the winning regions of \Even and
-of \Odd partition the graph.
+We define the \emph{winning region} of player~$p$ as the set of nodes
+from which player~$p$ has positional winning strategies.  Positional
+determinacy then says that the winning regions of \Even and of \Odd
+partition the graph.
 
 See \cite{automata2002/kuesters} for a modern survey on positional
 determinacy of parity games.  Their proof is based on a proof by
@@ -101,14 +101,14 @@ game.  In particular the parity game
 \begin{itemize}
 \item may have arbitrary cardinality,
 \item may have loops,
-\item may have deadends, that is, vertices with no successors.
+\item may have deadends, that is, nodes with no successors.
 \end{itemize}
 
 The main theorem is in section \ref{subsec:positional_determinacy}.
 
 \subsection{Technical Aspects}
 
-We use a coinductive list of vertices to represent paths in a graph
+We use a coinductive list of nodes to represent paths in a graph
 because this gives us a uniform representation for finite and infinite
 paths.  We can then express properties such as that a path is maximal
 or conforms to a given strategy directly as coinductive properties.
@@ -118,17 +118,17 @@ We use the coinductive list developed by Lochbihler in
 We also explored representing paths as functions \isa{nat\
   {\isasymRightarrow}\ {\isacharprime}a\ option} with the property
 that the domain is an initial segment of \isa{nat} (and where
-\isa{{\isacharprime}a} is the vertex type).  However, it turned out
-that coinductive lists give simpler proofs.
+\isa{{\isacharprime}a} is the node type).  However, it turned out that
+coinductive lists give simpler proofs.
 
 It is possible to represent a graph as a function
 \isa{{\isacharprime}a\ {\isasymRightarrow}\ {\isacharprime}a\
   {\isasymRightarrow}\ bool}, see for example in the proof of König's
 lemma in \cite{Coinductive-AFP}.  However, we instead go for a record
-which contains a set of vertices and a set of edges explicitly.  By
-not requiring that the set of vertices is \isa{UNIV\ ::\
-  {\isacharprime}a\ set} but rather a subset of \isa{UNIV\ ::\
-  {\isacharprime}a\ set}, it becomes easier to reason about subgraphs.
+which contains a set of nodes and a set of edges explicitly.  By not
+requiring that the set of nodes is \isa{UNIV\ ::\ {\isacharprime}a\
+  set} but rather a subset of \isa{UNIV\ ::\ {\isacharprime}a\ set},
+it becomes easier to reason about subgraphs.
 
 Another point is that we make extensive use of locales, in particular
 to represent maximal paths conforming to a specific strategy.  Thus

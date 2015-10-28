@@ -7,11 +7,11 @@ imports
   AttractingStrategy
 begin
 
-text {* Here we define the @{term p}-attractor of a set of vertices. *}
+text {* Here we define the @{term p}-attractor of a set of nodes. *}
 
 context ParityGame begin
 
-text {* We define the conditions for a vertex to be directly attracted from a given set. *}
+text {* We define the conditions for a node to be directly attracted from a given set. *}
 definition directly_attracted :: "Player \<Rightarrow> 'a set \<Rightarrow> 'a set" where
   "directly_attracted p S \<equiv> {v \<in> V - S. \<not>deadend v \<and>
       (v \<in> VV p   \<longrightarrow> (\<exists>w. v\<rightarrow>w \<and> w \<in> S))

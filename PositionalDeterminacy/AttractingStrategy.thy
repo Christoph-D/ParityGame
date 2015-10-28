@@ -256,7 +256,7 @@ qed
 
 text {*
   Given an attracting strategy @{term \<sigma>}, we can turn every strategy @{term \<sigma>'} into an attracting
-  strategy by overriding @{term \<sigma>'} on a suitable subset of the vertices.  This also means that
+  strategy by overriding @{term \<sigma>'} on a suitable subset of the nodes.  This also means that
   an attracting strategy is still attracting if we override it outside of @{term "A - W"}.
 *}
 lemma strategy_attracts_irrelevant_override:

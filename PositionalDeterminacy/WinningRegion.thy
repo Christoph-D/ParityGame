@@ -8,7 +8,7 @@ begin
 
 text {*
   Here we define winning regions of parity games.  The winning region for player @{text p} is the
-  set of vertices from which @{text p} has a positional winning strategy.
+  set of nodes from which @{text p} has a positional winning strategy.
 *}
 
 context ParityGame begin
@@ -106,7 +106,7 @@ qed
 
 text {*
   Unfortunately, we cannot prove the corresponding theorem @{text winning_region_extends_VVpstar}
-  for @{term "VV p**"}-vertices yet.
+  for @{term "VV p**"}-nodes yet.
   First, we need to show that there exists a uniform winning strategy on @{term "winning_region p"}.
   We will prove @{text winning_region_extends_VVpstar} as soon as we have this.
 *}

@@ -212,7 +212,7 @@ proof-
 
     text {*
       First, if we happen to land in the attractor region of @{term K}, we follow the attractor
-      strategy.  This is good because the priority of the vertices in @{term K} is good for
+      strategy.  This is good because the priority of the nodes in @{term K} is good for
       player @{term p}, so he likes to go there. *}
     obtain \<sigma>1
       where \<sigma>1: "strategy p \<sigma>1"
@@ -372,7 +372,7 @@ proof-
           \item @{term P} eventually stays in @{term V'}.
             Then @{term P} is winning because @{term \<sigma>2} is winning.
           \item @{term P} visits @{term K} infinitely often.
-            Then @{term P} is winning because of the priority of the vertices in @{term K}.
+            Then @{term P} is winning because of the priority of the nodes in @{term K}.
         \end{enumerate}
       *}
       show "winning_path p P" proof (cases)
@@ -611,7 +611,7 @@ text {* \label{subsec:positional_determinacy} *}
 
 text {*
   Prove the main theorem: The winning regions of player \Even and \Odd are a partition of the set
-  of vertices @{term V}.
+  of nodes @{term V}.
 *}
 
 theorem partition_into_winning_regions:
