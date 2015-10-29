@@ -142,12 +142,9 @@ lemma mono_restriction_is_mono: "mono f \<Longrightarrow> mono (\<lambda>S. f (S
 
 text {*
   Here we prove a powerful induction schema for @{term attractor}.  Being able to prove this is the
-  only reason why we do not use \texttt{inductive\_set} to define the attractor set, because I was
-  unable to prove this schema with \texttt{inductive\_set} alone.
+  only reason why we do not use \texttt{inductive\_set} to define the attractor set.
 
-  If you know how to get this induction schema working with \texttt{inductive\_set} and without
-  using @{const lfp} explicitly (and thus hopefully with a shorter proof), please feel free to
-  contact the maintainer.
+  See also \url{https://lists.cam.ac.uk/pipermail/cl-isabelle-users/2015-October/msg00123.html}
 *}
 lemma attractor_set_induction [consumes 1, case_names step union]:
   assumes "W \<subseteq> V"
