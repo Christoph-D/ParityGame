@@ -150,32 +150,11 @@ proof-
                 thus False using `v \<in> V'` V'_def by blast
               qed
             next
-              show "lset P \<inter> W1 = {}" proof (rule ccontr)
-                assume "lset P \<inter> W1 \<noteq> {}"
-                then obtain n where n: "enat n < llength P" "P $ n \<in> W1"
-                  by (meson lset_intersect_lnth)
-                def P' \<equiv> "ldropn n P"
-                then interpret P': vmc_path G P' "P $ n" "p**" \<sigma>'
-                  unfolding P'_def using vmc_path_ldropn n(1) by blast
-                have "winning_strategy p** \<sigma>W1 (P $ n)" using \<sigma>W1(2) n(2) by blast
-                moreover have *: "\<And>v. v \<in> W1 \<Longrightarrow> \<sigma>W1 v = \<sigma>' v"
-                  unfolding \<sigma>'_def V'_def U_def by simp
-                ultimately have "lset P' \<subseteq> W1"
-                  using P'.paths_stay_in_winning_region[OF \<sigma>W1(1)]
-                  unfolding W1_def
-                  by blast
-                hence "\<And>v. v \<in> lset P' \<Longrightarrow> \<sigma>' v = \<sigma>W1 v" using * by auto
-                hence "path_conforms_with_strategy p** P' \<sigma>W1"
-                  using path_conforms_with_strategy_irrelevant_updates P'.P_conforms
-                  by blast
-                then interpret P': vmc_path G P' "P $ n" "p**" \<sigma>W1
-                  using P'.conforms_to_another_strategy by blast
-                have "winning_path p** P'"
-                  using \<sigma>W1(2) n(2) P'.vmc_path winning_strategy_def by blast
-                thus False unfolding P'_def
-                  using winning_path_drop_add n(1) P_valid `\<not>winning_path p** P`
-                  by blast
-              qed
+              have "\<And>v. v \<in> W1 \<Longrightarrow> \<sigma>W1 v = \<sigma>' v" unfolding \<sigma>'_def V'_def U_def by simp
+              thus "lset P \<inter> W1 = {}"
+                using path_hits_winning_region_is_winning \<sigma>W1 `\<not>winning_path p** P`
+                unfolding W1_def
+                by blast
             next
               show "v \<in> V'" using `V\<^bsub>G'\<^esub> = V'` `v \<in> V\<^bsub>G'\<^esub>` by blast
             qed

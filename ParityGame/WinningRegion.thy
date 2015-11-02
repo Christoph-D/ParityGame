@@ -69,6 +69,30 @@ proof
   qed
 qed
 
+lemma (in vmc_path) path_hits_winning_region_is_winning:
+  assumes \<sigma>': "strategy p \<sigma>'" "\<And>v. v \<in> winning_region p \<Longrightarrow> winning_strategy p \<sigma>' v"
+    and \<sigma>: "\<And>v. v \<in> winning_region p \<Longrightarrow> \<sigma>' v = \<sigma> v"
+    and P: "lset P \<inter> winning_region p \<noteq> {}"
+  shows "winning_path p P"
+proof-
+  obtain n where n: "enat n < llength P" "P $ n \<in> winning_region p"
+    using P by (meson lset_intersect_lnth)
+  def P' \<equiv> "ldropn n P"
+  then interpret P': vmc_path G P' "P $ n" p \<sigma>
+    unfolding P'_def using vmc_path_ldropn n(1) by blast
+  have "winning_strategy p \<sigma>' (P $ n)" using \<sigma>'(2) n(2) by blast
+  hence "lset P' \<subseteq> winning_region p"
+    using P'.paths_stay_in_winning_region[OF \<sigma>'(1) _ \<sigma>]
+    by blast
+  hence "\<And>v. v \<in> lset P' \<Longrightarrow> \<sigma> v = \<sigma>' v" using \<sigma> by auto
+  hence "path_conforms_with_strategy p P' \<sigma>'"
+    using path_conforms_with_strategy_irrelevant_updates P'.P_conforms
+    by blast
+  then interpret P': vmc_path G P' "P $ n" p \<sigma>' using P'.conforms_to_another_strategy by blast
+  have "winning_path p P'" using \<sigma>'(2) n(2) P'.vmc_path winning_strategy_def by blast
+  thus "winning_path p P" unfolding P'_def using winning_path_drop_add n(1) P_valid by blast
+qed
+
 subsection {* Irrelevant Updates *}
 
 text {* Updating a winning strategy outside of the winning region is irrelevant. *}
