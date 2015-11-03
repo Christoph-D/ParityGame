@@ -1,4 +1,4 @@
-session ParityGame = Coinductive +
+session Parity_Game = Coinductive +
   options [document = pdf, document_output = "output"]
   theories
     PositionalDeterminacy
