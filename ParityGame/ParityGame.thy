@@ -93,15 +93,12 @@ lemma valid_path_coinduct [consumes 1, case_names base step, coinduct pred: vali
     and base: "\<And>v P. Q (LCons v LNil) \<Longrightarrow> v \<in> V"
     and step: "\<And>v w P. Q (LCons v (LCons w P)) \<Longrightarrow> v\<rightarrow>w \<and> (Q (LCons w P) \<or> valid_path (LCons w P))"
   shows "valid_path P"
-using major proof (coinduction arbitrary: P rule: valid_path.coinduct)
+using major proof (coinduction arbitrary: P)
   case valid_path
-  { assume "P \<noteq> LNil"
-    then obtain v P' where P': "P = LCons v P'" by (meson neq_LNil_conv)
-    assume "\<not>(\<exists>v. P = LCons v LNil \<and> v \<in> V)"
-    hence "P' \<noteq> LNil" using base valid_path P' by blast
-    then obtain w P'' where P'': "P' = LCons w P''" by (meson neq_LNil_conv)
-    hence "v\<rightarrow>w" "Q (LCons w P'') \<or> valid_path (LCons w P'')" using step valid_path P' P'' by blast+
-    hence ?case using P' P'' by auto
+  { assume "P \<noteq> LNil" "\<not>(\<exists>v. P = LCons v LNil \<and> v \<in> V)"
+    then obtain v w P' where "P = LCons v (LCons w P')"
+      using neq_LNil_conv base valid_path by metis
+    hence ?case using step valid_path by auto
   }
   thus ?case by blast
 qed
@@ -116,15 +113,12 @@ lemma valid_path_ends_on_deadend:
 
 lemma valid_path_prefix: "\<lbrakk> valid_path P; lprefix P' P \<rbrakk> \<Longrightarrow> valid_path P'"
 proof (coinduction arbitrary: P' P)
-  case base thus ?case by (metis LCons_lprefix_conv valid_path_cons_simp)
-next
   case (step v w P'' P' P)
   then obtain Ps where Ps: "LCons v (LCons w Ps) = P" by (metis LCons_lprefix_conv)
-  hence "valid_path (LCons w Ps)" using valid_path_ltl' local.step(2) by blast
-  moreover have "lprefix (LCons w P'') (LCons w Ps)"
-    using `LCons v (LCons w Ps) = P` local.step(1,3) by auto
-  ultimately show ?case using Ps local.step(2) valid_path_edges' by blast
-qed
+  hence "valid_path (LCons w Ps)" using valid_path_ltl' step(2) by blast
+  moreover have "lprefix (LCons w P'') (LCons w Ps)" using Ps step(1,3) by auto
+  ultimately show ?case using Ps step(2) valid_path_edges' by blast
+qed (metis LCons_lprefix_conv valid_path_cons_simp)
 
 lemma valid_path_lappend:
   assumes "valid_path P" "valid_path P'" "\<lbrakk> \<not>lnull P; \<not>lnull P' \<rbrakk> \<Longrightarrow> llast P\<rightarrow>lhd P'"
