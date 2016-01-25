@@ -419,8 +419,8 @@ text {*
   A finite path is winning for player @{term p} iff the last node on the path belongs to the other
   player.
 
-  Empty paths are irrelevant, but it is useful to assign them to a fixed winner in order to get a
-  functions.
+  Empty paths are irrelevant, but it is useful to assign a fixed winner to them in order to get
+  simpler lemmas.
 *}
 
 abbreviation "winning_priority p \<equiv> (if p = Even then even else odd)"
