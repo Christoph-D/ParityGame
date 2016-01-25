@@ -228,7 +228,7 @@ lemma lset_eq_lsetp [nitpick_unfold]:
 by(auto intro: lset_into_lsetp dest: lsetp_into_lset)
 
 hide_const (open) lsetp
-hide_fact (open) lsetp.intros lsetp_def lsetp.cases lsetp.induct lset_into_lsetp lset_eq_lsetp
+hide_fact (open) lsetp.intros lsetp.cases lsetp.induct lset_into_lsetp lset_eq_lsetp
 
 text {* code setup for @{term lset} *}
 
@@ -701,14 +701,14 @@ lemma llist_partial_function_definitions:
   "partial_function_definitions op \<sqsubseteq> lSup"
 by(unfold_locales)(auto dest: lprefix_antisym intro: lprefix_trans chain_lprefix_lSup chain_lSup_lprefix)
 
-interpretation llist!: partial_function_definitions "op \<sqsubseteq>" lSup
-  where "lSup {} \<equiv> LNil"
+interpretation llist: partial_function_definitions "op \<sqsubseteq>" lSup
+  rewrites "lSup {} \<equiv> LNil"
 by(rule llist_partial_function_definitions)(simp)
 
 abbreviation "mono_llist \<equiv> monotone (fun_ord op \<sqsubseteq>) op \<sqsubseteq>"
 
-interpretation llist_lift!: partial_function_definitions "fun_ord lprefix" "fun_lub lSup"
-  where "fun_lub lSup {} \<equiv> \<lambda>_. LNil"
+interpretation llist_lift: partial_function_definitions "fun_ord lprefix" "fun_lub lSup"
+  rewrites "fun_lub lSup {} \<equiv> \<lambda>_. LNil"
 by(rule llist_partial_function_definitions[THEN partial_function_lift])(simp)
 
 abbreviation "mono_llist_lift \<equiv> monotone (fun_ord (fun_ord lprefix)) (fun_ord lprefix)"
@@ -1012,9 +1012,14 @@ where
 definition ldropn :: "nat \<Rightarrow> 'a llist \<Rightarrow> 'a llist"
 where "ldropn n xs = (ltl ^^ n) xs"
 
+context notes [[function_internals]]
+begin
+
 partial_function (llist) ldrop :: "enat \<Rightarrow> 'a llist \<Rightarrow> 'a llist"
 where
   "ldrop n xs = (case n of 0 \<Rightarrow> xs | eSuc n' \<Rightarrow> case xs of LNil \<Rightarrow> LNil | LCons x xs' \<Rightarrow> ldrop n' xs')"
+
+end
 
 primcorec ltakeWhile :: "('a \<Rightarrow> bool) \<Rightarrow> 'a llist \<Rightarrow> 'a llist"
 where
@@ -1022,7 +1027,9 @@ where
 | "lhd (ltakeWhile P xs) = lhd xs"
 | "ltl (ltakeWhile P xs) = ltakeWhile P (ltl xs)"
 
-context fixes P :: "'a \<Rightarrow> bool" begin
+context fixes P :: "'a \<Rightarrow> bool"
+  notes [[function_internals]]
+begin
 
 partial_function (llist) ldropWhile :: "'a llist \<Rightarrow> 'a llist"
 where "ldropWhile xs = (case xs of LNil \<Rightarrow> LNil | LCons x xs' \<Rightarrow> if P x then ldropWhile xs' else xs)"
@@ -1078,8 +1085,13 @@ where
 | llexord_LCons_less: "r x y \<Longrightarrow> llexord r (LCons x xs) (LCons y ys)"
 | llexord_LNil [simp, intro!]: "llexord r LNil ys"
 
+context notes [[function_internals]]
+begin
+
 partial_function (llist) lconcat :: "'a llist llist \<Rightarrow> 'a llist"
 where "lconcat xss = (case xss of LNil \<Rightarrow> LNil | LCons xs xss' \<Rightarrow> lappend xs (lconcat xss'))"
+
+end
 
 definition lsublist :: "'a llist \<Rightarrow> nat set \<Rightarrow> 'a llist"
 where "lsublist xs A = lmap fst (lfilter (\<lambda>(x, y). y \<in> A) (lzip xs (iterates Suc 0)))"
@@ -1260,7 +1272,7 @@ unfolding lfinite_eq_range_llist_of by auto
 
 lemma llength_eq_enat_lfiniteD: "llength xs = enat n \<Longrightarrow> lfinite xs"
 proof(induct n arbitrary: xs)
-  case 0[folded zero_enat_def]
+  case [folded zero_enat_def]: 0
   thus ?case by simp
 next
   case (Suc n)
@@ -1479,7 +1491,7 @@ qed
 
 lemma fixes f F
   defines "F \<equiv> \<lambda>ltake n xs. case xs of LNil \<Rightarrow> LNil | LCons x xs \<Rightarrow> case n of 0 \<Rightarrow> LNil | eSuc n \<Rightarrow> LCons x (ltake n xs)"
-  shows ltake_conv_fixp: "ltake \<equiv> curry (ccpo.fixp (fun_lub lSup) (fun_ord op \<sqsubseteq>) (\<lambda>ltake. split (F (curry ltake))))" (is "?lhs \<equiv> ?rhs")
+  shows ltake_conv_fixp: "ltake \<equiv> curry (ccpo.fixp (fun_lub lSup) (fun_ord op \<sqsubseteq>) (\<lambda>ltake. case_prod (F (curry ltake))))" (is "?lhs \<equiv> ?rhs")
   and ltake_mono: "\<And>nxs. mono_llist (\<lambda>ltake. case nxs of (n, xs) \<Rightarrow> F (curry ltake) n xs)" (is "PROP ?mono")
 proof(intro eq_reflection ext)
   show mono: "PROP ?mono" unfolding F_def by(tactic {* Partial_Function.mono_tac @{context} 1 *})
@@ -1491,7 +1503,7 @@ proof(intro eq_reflection ext)
   qed
 qed
 
-lemma monotone_ltake: "monotone (rel_prod op \<le> op \<sqsubseteq>) op \<sqsubseteq> (split ltake)"
+lemma monotone_ltake: "monotone (rel_prod op \<le> op \<sqsubseteq>) op \<sqsubseteq> (case_prod ltake)"
 by(rule llist.fixp_preserves_mono2[OF ltake_mono ltake_conv_fixp]) simp
 
 lemma mono2mono_ltake1[THEN llist.mono2mono, cont_intro, simp]:
@@ -1502,7 +1514,7 @@ lemma mono2mono_ltake2[THEN llist.mono2mono, cont_intro, simp]:
   shows monotone_ltake2: "monotone op \<sqsubseteq> op \<sqsubseteq> (ltake n)"
 using monotone_ltake by auto
 
-lemma mcont_ltake: "mcont (prod_lub Sup lSup) (rel_prod op \<le> op \<sqsubseteq>) lSup op \<sqsubseteq> (split ltake)"
+lemma mcont_ltake: "mcont (prod_lub Sup lSup) (rel_prod op \<le> op \<sqsubseteq>) lSup op \<sqsubseteq> (case_prod ltake)"
 by(rule llist.fixp_preserves_mcont2[OF ltake_mono ltake_conv_fixp]) simp
 
 lemma mcont2mcont_ltake1 [THEN llist.mcont2mcont, cont_intro, simp]:
@@ -1630,14 +1642,14 @@ lemma monotone_enat_cocase [cont_intro, simp]:
   \<Longrightarrow> monotone op \<le> ord (\<lambda>n. case n of 0 \<Rightarrow> a | eSuc n' \<Rightarrow> f n' n)"
 by(rule monotone_enat_le_case)
 
-lemma monotone_ldrop: "monotone (rel_prod op = op \<sqsubseteq>) op \<sqsubseteq> (split ldrop)"
+lemma monotone_ldrop: "monotone (rel_prod op = op \<sqsubseteq>) op \<sqsubseteq> (case_prod ldrop)"
 by(rule llist.fixp_preserves_mono2[OF ldrop.mono ldrop_def]) simp
 
 lemma mono2mono_ldrop2 [THEN llist.mono2mono, cont_intro, simp]:
   shows monotone_ldrop2: "monotone op \<sqsubseteq> op \<sqsubseteq> (ldrop n)"
 by(simp add: monotone_ldrop[simplified])
 
-lemma mcont_ldrop: "mcont (prod_lub the_Sup lSup) (rel_prod op = op \<sqsubseteq>) lSup op \<sqsubseteq> (split ldrop)"
+lemma mcont_ldrop: "mcont (prod_lub the_Sup lSup) (rel_prod op = op \<sqsubseteq>) lSup op \<sqsubseteq> (case_prod ldrop)"
 by(rule llist.fixp_preserves_mcont2[OF ldrop.mono ldrop_def]) simp
 
 lemma mcont2monct_ldrop2 [THEN llist.mcont2mcont, cont_intro, simp]:
@@ -2469,7 +2481,7 @@ proof(intro eq_reflection ext)
   qed
 qed
 
-lemma monotone_lzip: "monotone (rel_prod op \<sqsubseteq> op \<sqsubseteq>) op \<sqsubseteq> (split lzip)"
+lemma monotone_lzip: "monotone (rel_prod op \<sqsubseteq> op \<sqsubseteq>) op \<sqsubseteq> (case_prod lzip)"
 by(rule llist.fixp_preserves_mono2[OF lzip_mono lzip_conv_fixp]) simp
 
 lemma mono2mono_lzip1 [THEN llist.mono2mono, cont_intro, simp]:
@@ -2480,7 +2492,7 @@ lemma mono2mono_lzip2 [THEN llist.mono2mono, cont_intro, simp]:
   shows monotone_lzip2: "monotone op \<sqsubseteq> op \<sqsubseteq> (\<lambda>ys. lzip xs ys)"
 by(simp add: monotone_lzip[simplified])
 
-lemma mcont_lzip: "mcont (prod_lub lSup lSup) (rel_prod op \<sqsubseteq> op \<sqsubseteq>) lSup op \<sqsubseteq> (split lzip)"
+lemma mcont_lzip: "mcont (prod_lub lSup lSup) (rel_prod op \<sqsubseteq> op \<sqsubseteq>) lSup op \<sqsubseteq> (case_prod lzip)"
 by(rule llist.fixp_preserves_mcont2[OF lzip_mono lzip_conv_fixp]) simp
 
 lemma mcont2mcont_lzip1 [THEN llist.mcont2mcont, cont_intro, simp]:
@@ -2527,7 +2539,7 @@ by(auto simp add: lset_conv_lnth lnth_lzip)(auto intro!: exI simp add: lnth_lzip
 
 lemma lset_lzipD1: "(x, y) \<in> lset (lzip xs ys) \<Longrightarrow> x \<in> lset xs"
 proof(induct "lzip xs ys" arbitrary: xs ys rule: lset_induct)
-  case find[symmetric]
+  case [symmetric]: find
   thus ?case by(auto simp add: lzip_eq_LCons_conv)
 next
   case (step z zs)
@@ -2536,7 +2548,7 @@ qed
 
 lemma lset_lzipD2: "(x, y) \<in> lset (lzip xs ys) \<Longrightarrow> y \<in> lset ys"
 proof(induct "lzip xs ys" arbitrary: xs ys rule: lset_induct)
-  case find[symmetric]
+  case [symmetric]: find
   thus ?case by(auto simp add: lzip_eq_LCons_conv)
 next
   case (step z zs)
@@ -4635,7 +4647,7 @@ proof
   assume "?lhs"
   thus "?rhs" (is "?concl xss")
   proof(induct "lconcat xss" arbitrary: xss)
-    case lfinite_LNil[symmetric]
+    case [symmetric]: lfinite_LNil
     moreover hence "lnull (lfilter (\<lambda>xs. \<not> lnull xs) xss)"
       by(auto simp add: lconcat_eq_LNil)
     ultimately show ?case by(auto)
@@ -5137,7 +5149,7 @@ proof(rule rel_funI)+
   assume "A x y"
   thus "llist_all2 B (corec_llist IS_LNIL1 LHD1 STOP1 MORE1 LTL1 x) (corec_llist IS_LNIL2 LHD2 STOP2 MORE2 LTL2 y)"
   proof(coinduction arbitrary: x y)
-    case (LNil x y)[transfer_rule]
+    case [transfer_rule]: (LNil x y)
     show ?case by simp transfer_prover
   next
     case (LCons x y)

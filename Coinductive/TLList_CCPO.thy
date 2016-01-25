@@ -79,8 +79,8 @@ by auto
 
 lift_definition tSup :: "('a, 'b) tllist set \<Rightarrow> ('a, 'b) tllist"
 is "\<lambda>A. (lSup (fst ` A), flat_lub b (snd ` (A \<inter> {(xs, _). lfinite xs})))"
-proof -
-  case (goal1 A1 A2)
+proof goal_cases
+  case (1 A1 A2)
   hence "fst ` A1 = fst ` A2" "snd ` (A1 \<inter> {(xs, _). lfinite xs}) = snd ` (A2 \<inter> {(xs, _). lfinite xs})"
     by(auto 4 3 simp add: rel_set_def intro: rev_image_eqI)
   thus ?case by simp
@@ -212,7 +212,7 @@ by unfold_locales(auto simp add: mk_less_def intro: tllist_ord_antisym tllist_or
 lemma tllist_ord_partial_function_definitions: "partial_function_definitions tllist_ord tSup"
 by unfold_locales(auto simp add: mk_less_def intro: tllist_ord_antisym tllist_ord_trans chain_tllist_ord_tSup chain_tSup_tllist_ord)
 
-interpretation tllist!: partial_function_definitions "tllist_ord" "tSup"
+interpretation tllist: partial_function_definitions "tllist_ord" "tSup"
 by(rule tllist_ord_partial_function_definitions)
 
 lemma admissible_mcont_is_TNil [THEN admissible_subst, cont_intro, simp]:
@@ -244,7 +244,7 @@ by(auto 4 4 simp add: rel_fun_def dest: rel_setD1 rel_setD2 llist_all2_lnullD in
 
 lift_definition ex_TCons :: "('a, 'b) tllist set \<Rightarrow> bool"
 is "\<lambda>Y. \<exists>(xs, b) \<in> Y. \<not> lnull xs" parametric ex_TCons_raw_parametric
-by(auto dest: rel_setD1 rel_setD2)
+by (blast dest: rel_setD1 rel_setD2)+
 
 lemma ex_TCons_iff: "ex_TCons Y \<longleftrightarrow> (\<exists>xs \<in> Y. \<not> is_TNil xs)"
 by transfer auto
@@ -265,10 +265,10 @@ lemma ttl_tSup:
   "\<lbrakk> Complete_Partial_Order.chain tllist_ord Y; \<exists>xs \<in> Y. \<not> is_TNil xs \<rbrakk>
   \<Longrightarrow> ttl (tSup Y) = tSup (ttl ` (Y \<inter> {xs. \<not> is_TNil xs}))"
 unfolding ex_TCons_iff[symmetric] retain_TCons_conv[symmetric]
-proof transfer
-  case (goal1 Y)
+proof (transfer, goal_cases)
+  case prems: (1 Y)
   then obtain xs b' where xsb: "(xs, b') \<in> Y" "\<not> lnull xs" by blast
-  note chain = goal1(1)
+  note chain = prems(1)
 
   have "flat_lub b (snd ` (Y \<inter> {(xs, _). lfinite xs})) = flat_lub b (insert b (snd ` (Y \<inter> {(xs, _). lfinite xs})))"
     by(auto simp add: flat_lub_def)
@@ -283,7 +283,7 @@ proof transfer
   also
   have "ltl ` (fst ` Y \<inter> {xs. \<not> lnull xs}) = fst ` apfst ltl ` (Y \<inter> {(xs, b). \<not> lnull xs})"
     by(auto simp add: image_image)
-  ultimately show ?case using goal1 by clarsimp
+  ultimately show ?case using prems by clarsimp
 qed
 
 lemma tSup_TCons: "A \<noteq> {} \<Longrightarrow> tSup (TCons x ` A) = TCons x (tSup A)"
@@ -332,7 +332,7 @@ lemma mcont_lprefix_case_aux:
   shows "mcont tSup tllist_ord lub ord (\<lambda>xs. case xs of TNil b \<Rightarrow> bot b | TCons x xs' \<Rightarrow> f x xs' xs)"
   (is "mcont _ _ _ _ ?f")
 proof(rule mcontI)
-  interpret b!: ccpo lub ord "mk_less ord" by(rule ccpo)
+  interpret b: ccpo lub ord "mk_less ord" by(rule ccpo)
 
   show "cont tSup tllist_ord lub ord ?f"
   proof(rule contI)
@@ -459,7 +459,7 @@ end
 lifting_update tllist.lifting
 lifting_forget tllist.lifting
 
-interpretation tllist!: partial_function_definitions "tllist_ord b" "tSup b" for b
+interpretation tllist: partial_function_definitions "tllist_ord b" "tSup b" for b
 by(rule tllist_ord_partial_function_definitions)
 
 lemma tllist_case_mono [partial_function_mono, cont_intro]: 
