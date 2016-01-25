@@ -2,7 +2,7 @@
 theory Strategy_Avoids
 imports
   Main
-  attractor_strategy
+  AttractorStrategy
 begin
 
 context ParityGame begin
