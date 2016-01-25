@@ -1,4 +1,4 @@
-isabelle=~/local/Isabelle2015/bin/isabelle
+isabelle=~/local/Isabelle2016-RC1/bin/isabelle
 
 all:
 	$(isabelle) build -o browser_info -v -d ../Coinductive/ -D .

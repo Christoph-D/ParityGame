@@ -1,5 +1,7 @@
-session Parity_Game = Coinductive +
-  options [document = pdf, document_output = "output"]
+chapter AFP
+
+session Parity_Game (AFP) = Coinductive +
+  options [timeout = 600]
   theories
     PositionalDeterminacy
     AttractorInductive
