@@ -1,0 +1,21 @@
+language: isabelle
+
+before_install:
+  - "wget http://isabelle.in.tum.de/website-Isabelle2016-RC2/dist/Isabelle2016-RC2_app.tar.gz"
+  - "tar -xzf Isabelle2016-RC2_app.tar.gz"
+  - "mkdir -p ~/.isabelle/Isabelle2016-RC2/heaps/polyml-5.6_x86-linux/"
+  - "pushd ~/.isabelle/Isabelle2016-RC2/heaps/polyml-5.6_x86-linux/"
+  - "wget http://yozora.eu/Isabelle2016-RC2_heap_prebuilt.tar.gz"
+  - "tar -xzf Isabelle2016-RC2_heap_prebuilt.tar.gz"
+  - "popd"
+
+addons:
+  apt:
+    packages:
+      - lib32stdc++6
+      - texlive-latex-base
+      - texlive-latex-recommended
+      - texlive-fonts-recommended
+
+script:
+  - "cd ParityGame && ../Isabelle2016-RC2/bin/isabelle build -o document=pdf -j 2 -v -d ../Coinductive/ -D ."
