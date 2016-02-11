@@ -1,5 +1,7 @@
 = Parity Games
 
+image:https://travis-ci.org/Christoph-D/ParityGame.svg?branch=master["Build Status", link="https://travis-ci.org/Christoph-D/ParityGame"]
+
 Formal proofs about parity games in the generic proof assistant
 http://isabelle.in.tum.de/[Isabelle].
 
