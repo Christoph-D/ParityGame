@@ -1,0 +1,7 @@
+= Parity Games
+
+Formal proofs about parity games in the generic proof assistant
+http://isabelle.in.tum.de/[Isabelle].
+
+This is the official development repository of
+link:http://afp.sourceforge.net/entries/Parity_Game.shtml[].
