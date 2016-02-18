@@ -2,3 +2,4 @@ output/
 document/*
 !document/root.tex
 !document/root.bib
+*~
