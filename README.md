@@ -4,7 +4,7 @@ Formal proofs about parity games in the generic proof assistant
 [Isabelle](http://isabelle.in.tum.de/).
 
 This is the official development repository of
-<http://afp.sourceforge.net/entries/Parity_Game.shtml>.
+<https://www.isa-afp.org/entries/Parity_Game.shtml>.
 
 The `afp` branch contains the AFP version, which should be identical
 to <https://bitbucket.org/isa-afp/afp-devel/>.  The `master` branch is
