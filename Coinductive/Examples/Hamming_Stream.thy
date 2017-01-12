@@ -65,7 +65,7 @@ by simp_all
 lemma lprefix_lmergeI:
   "\<lbrakk> lprefix xs xs'; lprefix ys ys' \<rbrakk>
   \<Longrightarrow> lprefix (lmerge xs ys) (lmerge xs' ys')"
-by(coinduction arbitrary: xs xs' ys ys')(fastforce simp add: lhd_lmerge ltl_lmerge dest: lprefix_lhdD lprefix_lnullD simp add: not_lnull_conv split: split_if_asm)
+by(coinduction arbitrary: xs xs' ys ys')(fastforce simp add: lhd_lmerge ltl_lmerge dest: lprefix_lhdD lprefix_lnullD simp add: not_lnull_conv split: if_split_asm)
 
 lemma [partial_function_mono]:
   assumes F: "mono_llist F" and G: "mono_llist G"
@@ -73,13 +73,13 @@ lemma [partial_function_mono]:
 by(blast intro: monotoneI lprefix_lmergeI monotoneD[OF F] monotoneD[OF G])
 
 lemma in_lset_lmergeD: "x \<in> lset (lmerge xs ys) \<Longrightarrow> x \<in> lset xs \<or> x \<in> lset ys"
-by(induct zs\<equiv>"lmerge xs ys" arbitrary: xs ys rule: llist_set_induct)(auto simp add: lhd_lmerge ltl_lmerge split: split_if_asm dest: in_lset_ltlD)
+by(induct zs\<equiv>"lmerge xs ys" arbitrary: xs ys rule: llist_set_induct)(auto simp add: lhd_lmerge ltl_lmerge split: if_split_asm dest: in_lset_ltlD)
 
 lemma lset_lmerge: "lset (lmerge xs ys) \<subseteq> lset xs \<union> lset ys"
 by(auto dest: in_lset_lmergeD)
 
 lemma lfinite_lmergeD: "lfinite (lmerge xs ys) \<Longrightarrow> lfinite xs \<or> lfinite ys"
-by(induct zs\<equiv>"lmerge xs ys" arbitrary: xs ys rule: lfinite_induct)(fastforce simp add: ltl_lmerge if_pull2 split: split_if_asm)+
+by(induct zs\<equiv>"lmerge xs ys" arbitrary: xs ys rule: lfinite_induct)(fastforce simp add: ltl_lmerge if_pull2 split: if_split_asm)+
 
 lemma fixes F
   defines "F \<equiv> \<lambda>lmerge (xs, ys). case xs of LNil \<Rightarrow> LNil | LCons x xs' \<Rightarrow> case ys of LNil \<Rightarrow> LNil | LCons y ys' \<Rightarrow> (if x < y then LCons x (curry lmerge xs' ys) else if y < x then LCons y (curry lmerge xs ys') else LCons y (curry lmerge xs' ys'))"
@@ -235,7 +235,7 @@ lemma smooth_ge_Suc0: "smooth n \<Longrightarrow> n \<ge> Suc 0"
 by(cases n) simp_all
 
 lemma prime_nat_dvdD: "prime p \<Longrightarrow> (n :: nat) dvd p \<Longrightarrow> n = 1 \<or> n = p"
-unfolding prime_def by simp
+unfolding prime_nat_iff by simp
 
 lemma smooth_times [simp]: "smooth (x * y) \<longleftrightarrow> smooth x \<and> smooth y"
 by(auto simp add: smooth_def)
@@ -304,8 +304,9 @@ proof(induction n rule: less_induct)
     with `prime p` n have "n' < n" by(simp add: smooth_gt0 prime_gt_Suc_0_nat)
     hence n': "n' \<in> lset hamming" using `smooth n'` by(rule less.IH)
 
-    from `prime p` `p \<le> 5` have "p = 2 \<or> p = 3 \<or> p = 5"
-      by(cases "p = 0 \<or> p = 1 \<or> p = 2 \<or> p = 3 \<or> p = 4 \<or> p = 5") auto
+    from \<open>p \<le> 5\<close> have "p = 0 \<or> p = 1 \<or> p = 2 \<or> p = 3 \<or> p = 4 \<or> p = 5"
+      by presburger
+    with `prime p` have "p = 2 \<or> p = 3 \<or> p = 5" by auto
     thus ?thesis
     proof(elim disjE)
       assume "p = 2"

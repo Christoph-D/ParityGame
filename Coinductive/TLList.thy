@@ -243,9 +243,8 @@ by(simp add: reflp_def)
 
 setup_lifting Quotient_tllist reflp_tllist
 
-context
+context includes lifting_syntax
 begin
-interpretation lifting_syntax .
 
 lemma TNil_transfer [transfer_rule]:
   "(B ===> pcr_tllist A B) (Pair LNil) TNil"
@@ -345,10 +344,10 @@ apply(safe elim!: GrpE)
    apply(rule_tac b="tllist_of_llist (b, ba) bb" in relcomppI)
     apply(auto intro!: GrpI simp add: tmap_tllist_of_llist)[2]
   apply(rule_tac b="tllist_of_llist (b, ba) bb" in relcomppI)
-   apply(auto simp add: tmap_tllist_of_llist intro!: GrpI split: split_if_asm)[2]
+   apply(auto simp add: tmap_tllist_of_llist intro!: GrpI split: if_split_asm)[2]
  apply(rule_tac b="llist_of_tllist bb" in relcomppI)
 apply(auto intro!: GrpI)
-apply(transfer, auto intro: GrpI split: split_if_asm)+
+apply(transfer, auto intro: GrpI split: if_split_asm)+
 done
 
 subsection {* Library function definitions *}
@@ -658,7 +657,7 @@ lemma tllist_all2_conv_all_tnth:
   tlength xs = tlength ys \<and> 
   (\<forall>n. enat n < tlength xs \<longrightarrow> P (tnth xs n) (tnth ys n)) \<and>
   (tfinite xs \<longrightarrow> Q (terminal xs) (terminal ys))"
-by transfer(auto 4 4 simp add: llist_all2_conv_all_lnth split: split_if_asm dest: lfinite_llength_enat not_lfinite_llength)
+by transfer(auto 4 4 simp add: llist_all2_conv_all_lnth split: if_split_asm dest: lfinite_llength_enat not_lfinite_llength)
 
 lemma tllist_all2_tnthD:
   "\<lbrakk> tllist_all2 P Q xs ys; enat n < tlength xs \<rbrakk> 
@@ -835,9 +834,8 @@ abbreviation "tllist_all == pred_tllist"
 
 subsubsection {* Transfer rules for the Transfer package *}
 
-context
+context includes lifting_syntax
 begin
-interpretation lifting_syntax .
 
 lemma set1_pre_tllist_transfer [transfer_rule]:
   "(rel_pre_tllist A B C ===> rel_set A) set1_pre_tllist set1_pre_tllist"
