@@ -427,15 +427,15 @@ lemma awalk_decomp_verts:
   obtains q r where "cas u q y" "cas y r v" "p = q @ r" "awalk_verts u q = xs @ [y]" "awalk_verts y r = y # ys"
 using assms
 proof -
-  def q \<equiv> "take (length xs) p" and r \<equiv> "drop (length xs) p"
-  then have "p = q @ r" by simp
-  moreover then have "cas u q (awlast u q)" "cas (awlast u q) r v"
+  define q r where "q = take (length xs) p" and "r = drop (length xs) p"
+  then have p: "p = q @ r" by simp
+  moreover from p have "cas u q (awlast u q)" "cas (awlast u q) r v"
     using `cas u p v` by auto
   moreover have "awlast u q = y"
     using q_def and assms by (auto simp: awalk_verts_take_conv)
-  moreover have "awalk_verts u q = xs @ [awlast u q]"
+  moreover have *: "awalk_verts u q = xs @ [awlast u q]"
     using assms q_def by (auto simp: awalk_verts_take_conv)
-  moreover then have "awalk_verts y r = y # ys"
+  moreover from * have "awalk_verts y r = y # ys"
     unfolding q_def r_def using assms by (auto simp: awalk_verts_drop_conv not_less)
   ultimately show ?thesis by (intro that) auto
 qed
@@ -669,19 +669,24 @@ qed
 
 subsection {* Paths *}
 
-lemma (in fin_digraph) length_apath:
+lemma (in fin_digraph) length_apath_less:
   assumes "apath u p v"
-  shows "length p \<le> card (verts G)"
+  shows "length p < card (verts G)"
 proof -
-  have "length p \<le> length (awalk_verts u p)"
+  have "length p < length (awalk_verts u p)" unfolding awalk_verts_conv
     by (auto simp: awalk_verts_conv)
-  also have "\<dots> = card (set (awalk_verts u p))"
+  also have "length (awalk_verts u p) = card (set (awalk_verts u p))"
     using `apath u p v` by (auto simp: apath_def distinct_card)
   also have "\<dots> \<le> card (verts G)"
     using `apath u p v` unfolding apath_def awalk_conv
     by (auto intro: card_mono)
   finally show ?thesis .
 qed
+
+lemma (in fin_digraph) length_apath:
+  assumes "apath u p v"
+  shows "length p \<le> card (verts G)"
+  using length_apath_less[OF assms] by auto
 
 lemma (in fin_digraph) apaths_finite_triple:
   shows "finite {(u,p,v). apath u p v}"

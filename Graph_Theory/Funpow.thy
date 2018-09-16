@@ -1,10 +1,10 @@
 theory Funpow
 imports
-  "~~/src/HOL/Library/FuncSet"
-  "~~/src/HOL/Library/Permutations"
+  "HOL-Library.FuncSet"
+  "HOL-Library.Permutations"
 begin
 
-section \<open>Auxiliary Lemmas about @{term "op ^^"}\<close>
+section \<open>Auxiliary Lemmas about @{term "(^^)"}\<close>
 
 lemma funpow_simp_l: "f ((f ^^ n) x) = (f ^^ Suc n) x"
   by (metis comp_apply funpow.simps(2))
@@ -329,7 +329,7 @@ lemma inj_on_funpow_least:
   shows "inj_on (\<lambda>k. (f^^k) s) {0..<n}"
 proof -
   { fix k l assume A: "k < n" "l < n" "k \<noteq> l" "(f ^^ k) s = (f ^^ l) s"
-    def k' \<equiv> "min k l" and l' \<equiv> "max k l"
+    define k' l' where "k' = min k l" and "l' = max k l"
     with A have A': "k' < l'" "(f ^^ k') s = (f ^^ l') s" "l' < n"
       by (auto simp: min_def max_def)
 
@@ -659,7 +659,7 @@ lemma funpow_neq_less_funpow_dist:
 proof (rule notI)
   assume A: "(f ^^ m) x = (f ^^ n) x"
 
-  def m' \<equiv> "min m n" and n' \<equiv> "max m n"
+  define m' n' where "m' = min m n" and "n' = max m n"
   with A assms have A': "m' < n'" "(f ^^ m') x = (f ^^ n') x" "n' \<le> funpow_dist f x y"
     by (auto simp: min_def max_def)
 
@@ -681,7 +681,7 @@ lemma funpow_neq_less_funpow_dist1:
 proof (rule notI)
   assume A: "(f ^^ m) x = (f ^^ n) x"
 
-  def m' \<equiv> "min m n" and n' \<equiv> "max m n"
+  define m' n' where "m' = min m n" and "n' = max m n"
   with A assms have A': "m' < n'" "(f ^^ m') x = (f ^^ n') x" "n' < funpow_dist1 f x y"
     by (auto simp: min_def max_def)
 
@@ -765,10 +765,10 @@ next
   case False
   have "(f ^^ funpow_dist1 f x y) x = (f ^^ (funpow_dist1 f x y mod m)) x"
     using assms by (simp add: funpow_mod_eq)
-  then have "\<not>(funpow_dist1 f x y mod m < funpow_dist1 f x y)"
-    by (metis False assms(3) funpow_dist_least funpow_dist_prop funpow_dist_step)
-  then show ?thesis
-    by (metis (poly_guards_query) Divides.mod_less_eq_dividend assms(2) le_less mod_less_divisor)
+  with False \<open>y \<in> orbit f x\<close> have "funpow_dist1 f x y \<le> funpow_dist1 f x y mod m"
+    by auto (metis funpow_dist_least funpow_dist_prop funpow_dist_step funpow_simp_l not_less) 
+  with \<open>m > 0\<close> show ?thesis
+    by (auto intro: order_trans)
 qed
 
 

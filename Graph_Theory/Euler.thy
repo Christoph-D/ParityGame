@@ -480,7 +480,7 @@ lemma open_euler_infinite_label:
   assumes deg_out: "out_degree G v + 1 = in_degree G v"
   shows "\<exists>p. pre_digraph.euler_trail G u p v"
 proof -
-  def [simp]: label \<equiv> "fst o snd :: 'a \<times> nat \<times> 'a \<Rightarrow> nat"
+  define label :: "'a \<times> nat \<times> 'a \<Rightarrow> nat" where [simp]: "label = fst o snd"
 
   interpret fin_digraph G by fact
 
@@ -496,15 +496,16 @@ proof -
     using `l \<notin> _` by (auto simp: image_def)
 
   let ?H = "add_arc ?e"
-    -- "We define a graph which has an closed euler trail"
+    \<comment> \<open>We define a graph which has an closed euler trail\<close>
 
   have [simp]: "verts ?H = verts G" using uv by simp
   have [intro]: "\<And>a. compatible (add_arc a) G" by (simp add: compatible_def)
 
-  interpret H: fin_digraph "add_arc a" for a
+  interpret H: fin_digraph "add_arc a"
     rewrites "tail (add_arc a) = tail G" and "head (add_arc a) = head G"
       and "pre_digraph.cas (add_arc a) = cas"
       and "pre_digraph.awalk_verts (add_arc a) = awalk_verts"
+     for a
       by unfold_locales (auto dest: wellformed intro: compatible_cas compatible_awalk_verts
           simp: verts_add_arc_conv)
 
@@ -533,8 +534,8 @@ proof -
   then have "?e \<in> set p" by (auto simp: pre_digraph.euler_trail_def)
   then obtain q r where p_decomp: "p = q @ [?e] @ r"
     by (auto simp: in_set_conv_decomp)
-    -- "We show now that removing the additional arc of @{term ?H}
-      from p yields an euler trail in G "
+    \<comment> \<open>We show now that removing the additional arc of @{term ?H}
+      from p yields an euler trail in G\<close>
 
   have "euler_trail u (r @ q) v"
   proof (unfold euler_trail_conv_connected[OF con], intro conjI)
@@ -601,8 +602,9 @@ proof -
       and i: "inj_on f (arcs G)"
     by atomize_elim (rule finite_imp_inj_to_nat_seg, auto)
 
-  def iso_f \<equiv> "\<lparr> iso_verts = id, iso_arcs = (\<lambda>a. (tail G a, f a, head G a)),
-    head = snd o snd, tail = fst \<rparr>"
+  define iso_f where "iso_f =
+    \<lparr> iso_verts = id, iso_arcs = (\<lambda>a. (tail G a, f a, head G a)),
+      head = snd o snd, tail = fst \<rparr>"
   have [simp]: "iso_verts iso_f = id" "iso_head iso_f = snd o snd" "iso_tail iso_f = fst"
     unfolding iso_f_def by auto
   have di_iso_f: "digraph_isomorphism iso_f" unfolding digraph_isomorphism_def iso_f_def

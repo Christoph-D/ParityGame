@@ -4,7 +4,7 @@
 section {* Manual construction of a resumption codatatype *}
 
 theory Resumption imports 
-  "~~/src/HOL/Library/Old_Datatype"
+  "HOL-Library.Old_Datatype"
 begin
 
 text {*
@@ -19,7 +19,7 @@ codatatype ('a,'b,'c,'d) resumption =
 
 *}
 
-subsection {* Auxiliary definitions and lemmata similar to @{theory Old_Datatype} *}
+subsection {* Auxiliary definitions and lemmata similar to @{theory "HOL-Library.Old_Datatype"} *}
 
 lemma Lim_mono: "(\<And>d. rs d \<subseteq> rs' d) \<Longrightarrow> Old_Datatype.Lim rs \<subseteq> Old_Datatype.Lim rs'"
 by(simp add: Lim_def) blast
@@ -193,9 +193,7 @@ using assms by simp_all
 
 code_datatype Terminal Linear Branch
 
-setup {*
-  Code.add_case @{thm case_resumption_cert}
-*}
+setup \<open>Code.declare_case_global @{thm case_resumption_cert}\<close>
 
 setup {*
   Nitpick.register_codatatype @{typ "('a,'b,'c,'d) resumption"} @{const_name case_resumption}
@@ -368,7 +366,7 @@ lemma Eq_RESUMPTION_refl:
   assumes "r \<in> resumption"
   shows "Eq_RESUMPTION r r"
 proof -
-  def r' == r
+  define r' where "r' = r"
   with assms have "r = r' \<and> r \<in> resumption" by auto
   thus "Eq_RESUMPTION r r'"
   proof(coinduct)
@@ -422,7 +420,7 @@ lemma resumption_equalityI [consumes 1, case_names Eq_resumption, case_conclusio
              (\<exists>rs rs' c. r = Branch c rs \<and> r' = Branch c rs' \<and> (\<forall>d. X (rs d) (rs' d) \<or> rs d = rs' d))"
   shows "r = r'"
 proof -
-  def M == "Rep_resumption r" and N == "Rep_resumption r'"
+  define M N where "M = Rep_resumption r" and "N = Rep_resumption r'"
   with `X r r'` have "\<exists>r r'. M = Rep_resumption r \<and> N = Rep_resumption r' \<and> X r r'" by blast
   hence "M = N"
   proof(coinduct rule: Eq_RESUMPTION_I)
@@ -459,13 +457,13 @@ lemma equals_RESUMPTION_corec:
   shows "h = RESUMPTION_corec f"
 proof
   fix x
-  def h' == "RESUMPTION_corec f"
+  define h' where "h' = RESUMPTION_corec f"
   have h': "\<And>x. h' x = (case f x of Terminal_corec a \<Rightarrow> TERMINAL a
                                    | Linear_corec b x' \<Rightarrow> LINEAR b (h' x')
                                    | Branch_corec c xs \<Rightarrow> BRANCH c (\<lambda>d. h' (xs d))
                                    | Resumption_corec r \<Rightarrow> Rep_resumption r)"
     unfolding h'_def by(simp add: RESUMPTION_corec)
-  def M == "h x" and N == "h' x"
+  define M N where "M = h x" and "N = h' x"
   hence "\<exists>x. M = h x \<and> N = h' x" by blast
   thus "M = N"
   proof(coinduct rule: Eq_RESUMPTION_I)

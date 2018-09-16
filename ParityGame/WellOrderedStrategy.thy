@@ -20,17 +20,17 @@ text {*
 locale WellOrderedStrategies = ParityGame +
   fixes S :: "'a set"
     and p :: Player
-    -- "The set of good strategies on a node @{term v}"
+    \<comment> \<open>The set of good strategies on a node @{term v}\<close>
     and good :: "'a \<Rightarrow> 'a Strategy set"
     and r :: "('a Strategy \<times> 'a Strategy) set"
   assumes S_V: "S \<subseteq> V"
-    -- "@{term r} is a wellorder on the set of all strategies which are good somewhere."
+    \<comment> \<open>@{term r} is a wellorder on the set of all strategies which are good somewhere.\<close>
     and r_wo: "well_order_on {\<sigma>. \<exists>v \<in> S. \<sigma> \<in> good v} r"
-    -- "Every node has a good strategy."
+    \<comment> \<open>Every node has a good strategy.\<close>
     and good_ex: "\<And>v. v \<in> S \<Longrightarrow> \<exists>\<sigma>. \<sigma> \<in> good v"
-    -- "good strategies are well-formed strategies."
+    \<comment> \<open>good strategies are well-formed strategies.\<close>
     and good_strategies: "\<And>v \<sigma>. \<sigma> \<in> good v \<Longrightarrow> strategy p \<sigma>"
-    -- "A good strategy on @{term v} is also good on possible successors of @{term v}."
+    \<comment> \<open>A good strategy on @{term v} is also good on possible successors of @{term v}.\<close>
     and strategies_continue: "\<And>v w \<sigma>. \<lbrakk> v \<in> S; v\<rightarrow>w; v \<in> VV p \<Longrightarrow> \<sigma> v = w; \<sigma> \<in> good v \<rbrakk> \<Longrightarrow> \<sigma> \<in> good w"
 begin
 
@@ -134,7 +134,7 @@ lemma path_strategies_monotone_Suc:
     "enat (Suc n) < llength P"
   shows "(path_strategies P $ Suc n, path_strategies P $ n) \<in> r"
 proof-
-  def P' \<equiv> "ldropn n P"
+  define P' where "P' = ldropn n P"
   hence "enat (Suc 0) < llength P'" using P(4)
     by (metis enat_ltl_Suc ldrop_eSuc_ltl ldropn_Suc_conv_ldropn llist.disc(2) lnull_0_llength ltl_ldropn)
   then obtain v w Ps where vw: "P' = LCons v (LCons w Ps)"
@@ -197,7 +197,7 @@ lemma path_strategies_eventually_constant:
   assumes "\<not>lfinite P" "lset P \<subseteq> S" "valid_path P" "path_conforms_with_strategy p P well_ordered_strategy"
   shows "\<exists>n. \<forall>m \<ge> n. path_strategies P $ n = path_strategies P $ m"
 proof-
-  def \<sigma>_set \<equiv> "lset (path_strategies P)"
+  define \<sigma>_set where "\<sigma>_set = lset (path_strategies P)"
   have "\<exists>\<sigma>. \<sigma> \<in> \<sigma>_set" unfolding \<sigma>_set_def path_strategies_def
     using assms(1) lfinite_lmap lset_nth_member_inf by blast
   then obtain \<sigma>' where \<sigma>': "\<sigma>' \<in> \<sigma>_set" "\<And>\<tau>. (\<tau>, \<sigma>') \<in> r - Id \<Longrightarrow> \<tau> \<notin> \<sigma>_set"
@@ -241,7 +241,7 @@ next
   then obtain n where n: "\<And>m. n \<le> m \<Longrightarrow> path_strategies P $ n = path_strategies P $ m"
     using path_strategies_eventually_constant assms by blast
   let ?\<sigma> = well_ordered_strategy
-  def P' \<equiv> "ldropn n P"
+  define P' where "P' = ldropn n P"
   { fix v assume "v \<in> lset P'"
     hence "v \<in> S" using `lset P \<subseteq> S` P'_def in_lset_ldropnD by fastforce
     from `v \<in> lset P'` obtain m where m: "enat m < llength P'" "P' $ m = v" by (meson in_lset_conv_lnth)
@@ -257,6 +257,6 @@ next
     using path_conforms_with_strategy_irrelevant_updates P'_def by blast
 qed
 
-end -- "WellOrderedStrategies"
+end \<comment> \<open>WellOrderedStrategies\<close>
 
 end
