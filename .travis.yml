@@ -16,6 +16,9 @@ addons:
       - texlive-latex-base
       - texlive-latex-recommended
       - texlive-fonts-recommended
+      - texlive-generic-recommended
+      - texlive-math-extra
 
 script:
-  - "cd ParityGame && ../Isabelle2018/bin/isabelle build -o document=pdf -j 2 -v -d ../Coinductive/ -d ../Graph_Theory -D ."
+  - "cd ParityGame"
+  - "../Isabelle2018/bin/isabelle build -o document=pdf -j 2 -v -d ../Coinductive/ -d ../Graph_Theory -D ."
