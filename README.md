@@ -7,8 +7,8 @@ This is the official development repository of
 <https://www.isa-afp.org/entries/Parity_Game.shtml>.
 
 The `afp` branch contains the AFP version, which should be identical
-to <https://bitbucket.org/isa-afp/afp-devel/>.  The `master` branch is
-the development branch.
+to <https://foss.heptapod.net/isa-afp/afp-devel/>.  The `master`
+branch is the development branch.
 
 Build status:
 
