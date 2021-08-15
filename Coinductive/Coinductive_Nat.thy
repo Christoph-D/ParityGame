@@ -3,7 +3,7 @@
     Maintainer:  Andreas Lochbihler
 *)
 
-section {* Extended natural numbers as a codatatype *}
+section \<open>Extended natural numbers as a codatatype\<close>
 
 theory Coinductive_Nat imports
   "HOL-Library.Extended_Nat"
@@ -69,7 +69,7 @@ proof
   qed
 qed
 
-subsection {* Case operator *}
+subsection \<open>Case operator\<close>
 
 lemma enat_coexhaust:
   obtains (0) "n = 0"
@@ -122,7 +122,7 @@ declare co.enat.collapse[simp]
 lemma epred_conv_minus: "epred n = n - 1"
 by(cases n rule: co.enat.exhaust)(simp_all)
 
-subsection {* Corecursion for @{typ enat} *}
+subsection \<open>Corecursion for @{typ enat}\<close>
 
 lemma case_enat_numeral [simp]: "case_enat f i (numeral v) = (let n = numeral v in f n)"
 by(simp add: numeral_eq_enat)
@@ -243,7 +243,7 @@ lemma epred_Sup: "epred (Sup A) = Sup (epred ` A)"
 by(auto 4 4 simp add: bot_enat_def Sup_enat_def epred_Max inj_on_def neq_zero_conv_eSuc dest: finite_imageD2[where B="{0}"])
 
 
-subsection {* Less as greatest fixpoint *}
+subsection \<open>Less as greatest fixpoint\<close>
 
 coinductive_set Le_enat :: "(enat \<times> enat) set"
 where
@@ -266,7 +266,7 @@ proof -
       thus ?thesis ..
     next
       case False
-      with `m \<le> n` obtain m' n' where "m = eSuc m'" "n = n' + 1" "m' \<le> n'"
+      with \<open>m \<le> n\<close> obtain m' n' where "m = eSuc m'" "n = n' + 1" "m' \<le> n'"
         by(cases m rule: enat_coexhaust, simp)
           (cases n rule: enat_coexhaust, auto simp add: eSuc_plus_1[symmetric])
       hence ?Le_enat_add by fastforce
@@ -282,16 +282,16 @@ proof(induct l arbitrary: m n)
   thus ?case by(simp add: zero_enat_def[symmetric])
 next
   case (Suc l)
-  from `(m, n) \<in> Le_enat` show ?case
+  from \<open>(m, n) \<in> Le_enat\<close> show ?case
   proof cases
     case Le_enat_zero
-    with `n < enat (Suc l)` show ?thesis by auto
+    with \<open>n < enat (Suc l)\<close> show ?thesis by auto
   next
     case (Le_enat_add M N K)
-    from `n = N + K` `n < enat (Suc l)` `K \<noteq> 0`
+    from \<open>n = N + K\<close> \<open>n < enat (Suc l)\<close> \<open>K \<noteq> 0\<close>
     have "N < enat l" by(cases N)(cases K, auto simp add: zero_enat_def)
-    with `(M, N) \<in> Le_enat` have "M < enat l" by(rule Suc)
-    with `m = eSuc M` show ?thesis by(simp add: eSuc_enat[symmetric])
+    with \<open>(M, N) \<in> Le_enat\<close> have "M < enat l" by(rule Suc)
+    with \<open>m = eSuc M\<close> show ?thesis by(simp add: eSuc_enat[symmetric])
   qed
 qed
 
@@ -341,9 +341,9 @@ proof -
       thus ?thesis by simp
     next
       case (eSuc m')
-      with step[OF `P m n`]
+      with step[OF \<open>P m n\<close>]
       have "n \<noteq> 0" and disj: "(\<exists>k n'. P m' n' \<and> epred n = n' + k) \<or> m' \<le> epred n" by auto
-      from `n \<noteq> 0` obtain n' where n': "n = eSuc n'"
+      from \<open>n \<noteq> 0\<close> obtain n' where n': "n = eSuc n'"
         by(cases n rule: enat_coexhaust) auto
       from disj show ?thesis
       proof
@@ -360,7 +360,7 @@ proof -
   qed
 qed
 
-subsection {* Equality as greatest fixpoint *}
+subsection \<open>Equality as greatest fixpoint\<close>
 
 lemma enat_equalityI [consumes 1, case_names Eq_enat,
                                   case_conclusion Eq_enat zero eSuc]:
@@ -407,14 +407,14 @@ lemma enat_coinduct2 [consumes 1, case_names zero eSuc]:
   \<Longrightarrow> m = n"
 by(erule enat_coinduct) blast
 
-subsection {* Uniqueness of corecursion *}
+subsection \<open>Uniqueness of corecursion\<close>
 
 lemma enat_unfold_unique:
   assumes h: "!!x. h x = (if stop x then 0 else eSuc (h (next x)))"
   shows "h x = enat_unfold stop next x"
 by(coinduction arbitrary: x rule: enat_coinduct)(subst (1 3) h, auto)
 
-subsection {* Setup for partial\_function *}
+subsection \<open>Setup for partial\_function\<close>
 
 lemma enat_diff_cancel_left: "\<lbrakk> m \<le> x; m \<le> y \<rbrakk> \<Longrightarrow> x - m = y - m \<longleftrightarrow> x = (y :: enat)"
 by(cases x y m rule: enat.exhaust[case_product enat.exhaust[case_product enat.exhaust]])(simp_all, arith)
@@ -468,17 +468,16 @@ qed
 
 lemma Sup_image_eadd1:
   assumes "Y \<noteq> {}"
-  shows "Sup ((\<lambda>y :: enat. x + y) ` Y) = x + Sup Y"
+  shows "Sup ((\<lambda>y :: enat. y+x) ` Y) = Sup Y + x"
 proof(cases "finite Y")
   case True
-  have "(+) x ` Y = {x + m |m. m \<in> Y}" by auto
-  thus ?thesis using True by(simp add: Sup_enat_def add_Max_commute assms)
+  thus ?thesis by(simp add: Sup_enat_def Max_add_commute assms)
 next
   case False
   thus ?thesis
   proof(cases x)
     case (enat x')
-    hence "\<not> finite ((+) x ` Y)" using False
+    hence "\<not> finite ((\<lambda>y. y+x) ` Y)" using False
       by(auto dest!: finite_imageD intro: inj_onI)
     with False show ?thesis by(simp add: Sup_enat_def assms)
   next
@@ -489,9 +488,8 @@ next
 qed
 
 lemma Sup_image_eadd2:
-  "Y \<noteq> {} \<Longrightarrow> Sup ((\<lambda>y :: enat. y + x) ` Y) = Sup Y + x"
-by(subst (1 2) add.commute)(rule Sup_image_eadd1)
-
+  "Y \<noteq> {} \<Longrightarrow> Sup ((\<lambda>y :: enat. x + y) ` Y) = x + Sup Y"
+by(simp add: Sup_image_eadd1 add.commute)
 
 lemma mono2mono_eSuc [THEN lfp.mono2mono, cont_intro, simp]:
   shows monotone_eSuc: "monotone (\<le>) (\<le>) eSuc"
@@ -542,10 +540,10 @@ lemma mono2mono_eadd[THEN lfp.mono2mono2, cont_intro, simp]:
 by(simp add: monotone_eadd1 monotone_eadd2)
 
 lemma mcont_eadd2: "mcont Sup (\<le>) Sup (\<le>) (\<lambda>y. x + y :: enat)"
-by(auto intro: mcontI monotone_eadd2 contI Sup_image_eadd1[symmetric])
+by(auto intro: mcontI monotone_eadd2 contI Sup_image_eadd2[symmetric])
 
 lemma mcont_eadd1: "mcont Sup (\<le>) Sup (\<le>) (\<lambda>x. x + y :: enat)"
-by(auto intro: mcontI monotone_eadd1 contI Sup_image_eadd2[symmetric])
+by(auto intro: mcontI monotone_eadd1 contI Sup_image_eadd1[symmetric])
 
 lemma mcont2mcont_eadd [cont_intro, simp]:
   "\<lbrakk> mcont lub ord Sup (\<le>) (\<lambda>x. f x);
@@ -679,7 +677,7 @@ proof -
     have "f (\<Squnion>?Y) (eSuc (\<Squnion>?Y)) = lub ((\<lambda>x. f x (eSuc x)) ` ?Y)"
       using mcont [THEN mcont_contD] by blast
     moreover from chain_epredI [OF chain] Y'
-      have "SUPREMUM ?Y eSuc = eSuc (\<Squnion>?Y)"
+      have "\<Squnion>(eSuc ` ?Y) = eSuc (\<Squnion>?Y)"
       using mcont_eSuc [THEN mcont_contD, symmetric] by blast
     ultimately show "f (epred (Sup Y)) (Sup Y) = lub ((\<lambda>x. f (epred x) x) ` Y)"
       by (subst (1 2 3) eq) (simp add: image_image)
@@ -695,7 +693,7 @@ proof -
 qed
 
 
-subsection {* Misc. *}
+subsection \<open>Misc.\<close>
 
 lemma enat_add_mono [simp]:
   "enat x + y < enat x + z \<longleftrightarrow> y < z"

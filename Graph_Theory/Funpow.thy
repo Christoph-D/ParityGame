@@ -47,7 +47,7 @@ lemma inj_funpow:
 proof (induct n)
   case 0 then show ?case by (auto simp: id_def[symmetric])
 next
-  case (Suc n) with assms show ?case unfolding funpow.simps by (rule inj_comp)
+  case (Suc n) with assms show ?case unfolding funpow.simps by (rule inj_compose)
 qed
 
 lemma funpow_inj_finite:
@@ -70,7 +70,7 @@ proof -
     have "(p ^^ (n - m)) x = inv (p ^^ m) ((p ^^ m) ((p ^^ (n - m)) x))"
       using \<open>inj p\<close> by (simp add: inv_f_f inj_funpow)
     also have "((p ^^ m) ((p ^^ (n - m)) x)) = (p ^^ n) x"
-      using `m < n` by (simp add: funpow_add_app)
+      using \<open>m < n\<close> by (simp add: funpow_add_app)
     also have "inv (p ^^ m) \<dots> = x"
       using \<open>inj p\<close>  by (simp add: \<open>(p ^^ n) x = _\<close> inj_funpow)
     finally have "(p ^^ (n - m)) x = x" "0 < n - m"
@@ -585,7 +585,7 @@ proof (induction arbitrary: f rule: finite_psubset_induct)
   next
     case False
     then obtain s where "s \<in> S" by auto
-    with `f permutes S` have "orbit f s \<subseteq> S"
+    with \<open>f permutes S\<close> have "orbit f s \<subseteq> S"
       by (rule permutes_orbit_subset)
     have cyclic_orbit: "cyclic_on f (orbit f s)"
       using \<open>f permutes S\<close> \<open>finite S\<close> by (rule cyclic_on_orbit)
@@ -608,7 +608,7 @@ proof (induction arbitrary: f rule: finite_psubset_induct)
       then have "cyclic_on f c" using C(1)[OF \<open>c \<in> C\<close>] by (simp cong: cyclic_cong add: *)
     } note in_C_cyclic = this
 
-    have Un_ins: "\<Union>insert (orbit f s) C = S"
+    have Un_ins: "\<Union>(insert (orbit f s) C) = S"
       using \<open>\<Union>C = _\<close>  \<open>orbit f s \<subseteq> S\<close> by blast
 
     have Disj_ins: "(\<forall>c1 \<in> insert (orbit f s) C. \<forall>c2 \<in> insert (orbit f s) C. c1 \<noteq> c2 \<longrightarrow> c1 \<inter> c2 = {})"
@@ -969,7 +969,7 @@ next
     have "segment f a (f x) \<subseteq> segment f b (f x) \<or> segment f b (f x) \<subseteq> segment f a (f x)"
       apply auto
        apply (metis * inv_end_in_segment[OF _ _ \<open>bij f\<close>] inv_f_eq[OF \<open>inj f\<close>] segment_step_2D segment_subset step.prems subsetCE)
-      by (metis (no_types, lifting) `inj f` * inv_end_in_segment[OF _ _ \<open>bij f\<close>] inv_f_eq orbit_eqI(2) segment_step_2D segment_subset subsetCE)
+      by (metis (no_types, lifting) \<open>inj f\<close> * inv_end_in_segment[OF _ _ \<open>bij f\<close>] inv_f_eq orbit_eqI(2) segment_step_2D segment_subset subsetCE)
     ultimately
     have "segment f a (f x) \<subseteq> segment f b (f x)" using A by auto
   } note C = this
