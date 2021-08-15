@@ -14,4 +14,4 @@ Build status:
 
 master | afp
 :---: | :---:
-[![Build Status master](https://travis-ci.org/Christoph-D/ParityGame.svg?branch=master)](https://travis-ci.org/Christoph-D/ParityGame) | [![Build Status afp](https://travis-ci.org/Christoph-D/ParityGame.svg?branch=afp)](https://travis-ci.org/Christoph-D/ParityGame)
+[![Build Status master](https://travis-ci.com/Christoph-D/ParityGame.svg?branch=master)](https://travis-ci.com/Christoph-D/ParityGame) | [![Build Status afp](https://travis-ci.com/Christoph-D/ParityGame.svg?branch=afp)](https://travis-ci.com/Christoph-D/ParityGame)
