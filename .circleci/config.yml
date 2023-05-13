@@ -11,8 +11,8 @@ jobs:
           command: |
             wget https://isabelle.in.tum.de/dist/Isabelle2022_linux.tar.gz
             tar -xzf Isabelle2022_linux.tar.gz
-            mkdir -p ~/.isabelle/Isabelle2022/heaps/polyml-5.8.2_x86_64_32-linux/
-            pushd ~/.isabelle/Isabelle2022/heaps/polyml-5.8.2_x86_64_32-linux/
+            mkdir -p ~/.isabelle/Isabelle2022/heaps/polyml-5.9_x86_64_32-linux/
+            pushd ~/.isabelle/Isabelle2022/heaps/polyml-5.9_x86_64_32-linux/
             wget http://yozora.eu/Isabelle2022_heap_prebuilt.tar.gz
             tar -xzf Isabelle2022_heap_prebuilt.tar.gz
             popd
