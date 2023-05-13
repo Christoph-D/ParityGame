@@ -1,0 +1,28 @@
+version: 2.1
+
+jobs:
+  build:
+    docker:
+      - image: cimg/base:2023.05
+    steps:
+      - checkout
+      - run:
+          name: Prepare Isabelle environment
+          command: |
+            wget https://isabelle.in.tum.de/dist/Isabelle2022_linux.tar.gz
+            tar -xzf Isabelle2022_linux.tar.gz
+            mkdir -p ~/.isabelle/Isabelle2022/heaps/polyml-5.8.2_x86_64_32-linux/
+            pushd ~/.isabelle/Isabelle2022/heaps/polyml-5.8.2_x86_64_32-linux/
+            wget http://yozora.eu/Isabelle2022_heap_prebuilt.tar.gz
+            tar -xzf Isabelle2022_heap_prebuilt.tar.gz
+            popd
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y lib32stdc++6 texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-generic-recommended texlive-math-extra
+      - run:
+          name: Build theory
+          command: |
+            cd ParityGame
+            ../Isabelle2022/bin/isabelle build -o document=pdf -j 2 -v -d ../Coinductive/ -d ../Graph_Theory -D .
